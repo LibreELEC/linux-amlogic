@@ -429,8 +429,10 @@ static int cfg80211_sme_connect(struct wireless_dev *wdev,
 	if (!rdev->ops->auth || !rdev->ops->assoc)
 		return -EOPNOTSUPP;
 
+#ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->current_bss)
 		return -EALREADY;
+#endif
 
 	if (WARN_ON(wdev->conn))
 		return -EINPROGRESS;
