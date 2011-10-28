@@ -432,10 +432,15 @@ static int cfg80211_sme_connect(struct wireless_dev *wdev,
 #ifndef CONFIG_CFG80211_ALLOW_RECONNECT
 	if (wdev->current_bss)
 		return -EALREADY;
-#endif
 
 	if (WARN_ON(wdev->conn))
 		return -EINPROGRESS;
+#else
+	if (wdev->conn) {
+		kfree(wdev->conn);
+		wdev->conn = NULL;
+	}
+#endif
 
 	wdev->conn = kzalloc(sizeof(*wdev->conn), GFP_KERNEL);
 	if (!wdev->conn)
