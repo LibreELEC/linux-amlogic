@@ -834,6 +834,7 @@ struct efi_simple_text_output_protocol {
 	void *test_string;
 };
 
+
 extern struct list_head efivar_sysfs_list;
 
 static inline void
