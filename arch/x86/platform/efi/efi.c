@@ -77,17 +77,6 @@ static __initdata efi_config_table_type_t arch_tables[] = {
 
 u64 efi_setup;		/* efi setup_data physical address */
 
-/*
- * Returns 1 if 'facility' is enabled, 0 otherwise.
- */
-int efi_enabled(int facility)
-{
-	return test_bit(facility, &x86_efi_facility) != 0;
-}
-EXPORT_SYMBOL(efi_enabled);
-
-u64 efi_setup;		/* efi setup_data physical address */
-
 static bool __initdata disable_runtime = false;
 static int __init setup_noefi(char *arg)
 {
