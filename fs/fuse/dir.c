@@ -753,23 +753,26 @@ static int fuse_rmdir(struct inode *dir, struct dentry *entry)
 	return err;
 }
 
-static int fuse_rename(struct inode *olddir, struct dentry *oldent,
-		       struct inode *newdir, struct dentry *newent)
+static int fuse_rename_common(struct inode *olddir, struct dentry *oldent,
+			      struct inode *newdir, struct dentry *newent,
+			      unsigned int flags, int opcode, size_t argsize)
 {
 	int err;
-	struct fuse_rename_in inarg;
+	struct fuse_rename2_in inarg;
 	struct fuse_conn *fc = get_fuse_conn(olddir);
-	struct fuse_req *req = fuse_get_req_nopages(fc);
+	struct fuse_req *req;
 
+	req = fuse_get_req_nopages(fc);
 	if (IS_ERR(req))
 		return PTR_ERR(req);
 
-	memset(&inarg, 0, sizeof(inarg));
+	memset(&inarg, 0, argsize);
 	inarg.newdir = get_node_id(newdir);
-	req->in.h.opcode = FUSE_RENAME;
+	inarg.flags = flags;
+	req->in.h.opcode = opcode;
 	req->in.h.nodeid = get_node_id(olddir);
 	req->in.numargs = 3;
-	req->in.args[0].size = sizeof(inarg);
+	req->in.args[0].size = argsize;
 	req->in.args[0].value = &inarg;
 	req->in.args[1].size = oldent->d_name.len + 1;
 	req->in.args[1].value = oldent->d_name.name;
@@ -783,12 +786,17 @@ static int fuse_rename(struct inode *olddir, struct dentry *oldent,
 		fuse_invalidate_attr(oldent->d_inode);
 		fuse_update_ctime(oldent->d_inode);
 
+		if (flags & RENAME_EXCHANGE) {
+			fuse_invalidate_attr(newent->d_inode);
+			fuse_update_ctime(newent->d_inode);
+		}
+
 		fuse_invalidate_attr(olddir);
 		if (olddir != newdir)
 			fuse_invalidate_attr(newdir);
 
 		/* newent will end up negative */
-		if (newent->d_inode) {
+		if (!(flags & RENAME_EXCHANGE) && newent->d_inode) {
 			fuse_invalidate_attr(newent->d_inode);
 			fuse_invalidate_entry_cache(newent);
 			fuse_update_ctime(newent->d_inode);
