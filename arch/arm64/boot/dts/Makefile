@@ -6,4 +6,4 @@ targets += $(dtb-y)
 
 dtbs: $(addprefix $(obj)/, $(dtb-y))
 
-clean-files := *.dtb
+clean-files := dts/*.dtb *.dtb
