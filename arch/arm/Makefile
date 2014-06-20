@@ -309,7 +309,10 @@ dtbs: scripts
 	MACHINE=$(MACHINE) \
 	dtbs
 
-zImage-dtb: vmlinux scripts dtbs
+zImage-dtb: vmlinux
+	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
+
+uImage-dtb: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
 
 # We use MRPROPER_FILES and CLEAN_FILES now

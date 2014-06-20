@@ -51,7 +51,7 @@ DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
 else
 DTB_LIST := $(dtb-y)
 endif
-DTB_OBJS := $(addprefix $(obj)/dts/,$(DTB_LIST))
+DTB_OBJS := $(addprefix $(obj)/dts/amlogic/,$(DTB_LIST))
 
 ifeq ($(CONFIG_XIP_KERNEL),y)
 
@@ -127,6 +127,10 @@ $(obj)/uImage:	$(obj)/$(F_CIMAGE_NAME) FORCE
 	@$(check_for_multiple_loadaddr)
 	$(call if_changed,uimage)
 	@$(kecho) '  Image $@ is ready'
+
+$(obj)/uImage-dtb:	$(obj)/zImage-dtb FORCE
+	$(call if_changed,uimage)
+	@echo '  Kernel: $@ is ready'
 
 $(obj)/bootp/bootp: $(obj)/zImage initrd FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/bootp $@
