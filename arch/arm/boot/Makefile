@@ -129,6 +129,7 @@ $(obj)/uImage:	$(obj)/$(F_CIMAGE_NAME) FORCE
 	@$(kecho) '  Image $@ is ready'
 
 $(obj)/uImage-dtb:	$(obj)/zImage-dtb FORCE
+	$(eval UIMAGE_COMPRESSION := none)
 	$(call if_changed,uimage)
 	@echo '  Kernel: $@ is ready'
 
