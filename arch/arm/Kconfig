@@ -2003,6 +2003,12 @@ config ARM_ATAG_DTB_COMPAT_CMDLINE_EXTEND
 	  The command-line arguments provided by the boot loader will be
 	  appended to the the device tree bootargs property.
 
+config ARM_ATAG_DTB_COMPAT_CMDLINE_APPEND
+	bool "Append device tree bootargs to bootloader kernel arguments"
+	help
+	  The command-line arguments provided by the boot loader will be
+	  appended with the device tree bootargs property.
+
 endchoice
 
 config CMDLINE

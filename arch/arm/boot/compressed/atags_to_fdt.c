@@ -7,6 +7,12 @@
 #define do_extend_cmdline 0
 #endif
 
+#if defined(CONFIG_ARM_ATAG_DTB_COMPAT_CMDLINE_APPEND)
+#define do_append_cmdline 1
+#else
+#define do_append_cmdline 0
+#endif
+
 static int node_offset(void *fdt, const char *node_path)
 {
 	int offset = fdt_path_offset(fdt, node_path);
@@ -95,6 +101,38 @@ static void merge_fdt_bootargs(void *fdt, const char *fdt_cmdline)
 	setprop_string(fdt, "/chosen", "bootargs", cmdline);
 }
 
+static void append_fdt_bootargs(void *fdt, const char *fdt_cmdline)
+{
+	char cmdline[COMMAND_LINE_SIZE];
+	const char *fdt_bootargs;
+	char *ptr = cmdline;
+	int len = 0;
+
+	/* copy the ATAG_CMDLINE into the buffer */
+	if (fdt_cmdline) {
+		len = strlen(fdt_cmdline);
+		if (len < COMMAND_LINE_SIZE) {
+			memcpy(ptr, fdt_cmdline, len);
+			ptr += len;
+		}
+	}
+
+	/* and append the fdt command line */
+	fdt_bootargs = getprop(fdt, "/chosen", "bootargs", &len);
+	if (fdt_bootargs)
+		if (ptr - cmdline + len + 2 < COMMAND_LINE_SIZE) {
+			*ptr++ = ' ';
+			memcpy(ptr, fdt_bootargs, len);
+			/* len is the length of the string
+			 * including the NULL terminator */
+			ptr += len - 1;
+		}
+
+	*ptr = '\0';
+
+	setprop_string(fdt, "/chosen", "bootargs", cmdline);
+}
+
 /*
  * Convert and fold provided ATAGs into the provided FDT.
  *
@@ -141,6 +179,9 @@ int atags_to_fdt(void *atag_list, void *fdt, int total_space)
 			 */
 			if (do_extend_cmdline)
 				merge_fdt_bootargs(fdt,
+						   atag->u.cmdline.cmdline);
+			else if (do_append_cmdline)
+				append_fdt_bootargs(fdt,
 						   atag->u.cmdline.cmdline);
 			else
 				setprop_string(fdt, "/chosen", "bootargs",
