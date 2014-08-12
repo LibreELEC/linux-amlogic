@@ -700,7 +700,9 @@ extern int extenal_api_key_set_version(char *devvesion);
 static int aml_rtc_probe(struct platform_device *pdev)
 {
 	struct aml_rtc_priv *priv;
+	struct device_node* aml_rtc_node = pdev->dev.of_node;
 	int ret;
+	int sec_adjust = 0;
 
 #ifdef CONFIG_SECURITYKEY
 	static char keyexamples[4096];
@@ -752,6 +754,12 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 #endif
 	rtc_wait_s_ready();
+
+	ret = of_property_read_u32(aml_rtc_node, "sec_adjust", &sec_adjust);
+	if (!ret) {
+		ser_access_write(RTC_SEC_ADJUST_ADDR, 1<<23 | 10<<19 | 1735 );
+		rtc_wait_s_ready();
+	}
 
 	//check_osc_clk();
 	//ser_access_write(RTC_COUNTER_ADDR, 0);
