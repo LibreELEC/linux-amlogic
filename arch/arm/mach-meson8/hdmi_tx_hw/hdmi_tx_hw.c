@@ -2390,6 +2390,9 @@ static int hdmitx_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio
         break;
     }
 
+    if((hdmitx_device->cur_VIC == HDMI_1080p24) && (audio_param->sample_rate == FS_48K)) {
+        audio_N_para = 6144 * 3;
+    }
     hdmi_print(INF, AUD "set audio N para\n");
 
     hdmitx_set_aud_pkt_type(audio_param->type);
