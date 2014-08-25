@@ -41,13 +41,6 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 
-#if defined (CONFIG_PLAT_MESON)
-#include <asm/cacheflush.h>
-#include <plat/sram.h>
-#include <plat/io.h>
-#endif /* CONFIG_PLAT_MESON */
-#include <mach/system.h>
-#include <mach/register.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
@@ -157,11 +150,10 @@ void soft_restart(unsigned long addr)
 	/* Should never get here. */
 	BUG();
 }
-#if 0
 static void null_restart(char mode, const char *cmd)
 {
 }
-#endif
+#if 0
 void arm_machine_restart(char mode, const char *cmd)
 {
 #if defined (CONFIG_PLAT_MESON) && !defined(CONFIG_ARCH_MESON2)
@@ -220,15 +212,14 @@ void arm_machine_restart(char mode, const char *cmd)
     arch_reset(mode, cmd);
 
 }
-
+#endif
 /*
  * Function pointers to optional machine specific functions
  */
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
-//void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
-void (*arm_pm_restart)(char str, const char *cmd) = arm_machine_restart;
+void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
 /*
@@ -341,6 +332,7 @@ void machine_power_off(void)
 	local_irq_disable();
 	smp_send_stop();
 
+	arm_machine_flush_console();
 	if (pm_power_off)
 		pm_power_off();
 }

@@ -40,6 +40,7 @@
 
 #include "common.h"
 
+extern void meson_common_restart(char mode,const char *cmd);
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 
@@ -88,13 +89,13 @@ static struct of_device_id mxs_of_lm_bus_ids[] = {
 	{},
 };
 #endif
-
+#if 0
 static void meson6tv_power_off(void)
 {
 	printk("triggering power off\n");
 	kernel_restart("charging_reboot");
 }
-
+#endif
 static void __init meson6tv_dt_init_machine(void)
 {
 	struct device *parent;
@@ -107,7 +108,7 @@ static void __init meson6tv_dt_init_machine(void)
 
 	//of_platform_populate(NULL, of_default_bus_match_table,
 	//aml_meson6_auxdata_lookup, NULL);
-	pm_power_off = meson6tv_power_off;
+	//pm_power_off = meson6tv_power_off;
 }
 
 static const char __initdata *m6tv_common_boards_compat[] = {
@@ -125,4 +126,5 @@ DT_MACHINE_START(AML8726_MX, "Amlogic Meson6TV")
 	.init_time	= meson6tv_timer_init,	// dt - 4
 	.init_machine	= meson6tv_dt_init_machine,
 	.dt_compat	= m6tv_common_boards_compat,
+	.restart    = meson_common_restart,
 MACHINE_END

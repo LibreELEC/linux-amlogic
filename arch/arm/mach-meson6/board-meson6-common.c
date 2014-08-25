@@ -45,6 +45,7 @@
 
 #include <linux/of_fdt.h>
 #include <linux/amlogic/vmapi.h>
+extern void meson_common_restart(char mode,const char *cmd);
 static void meson_map_board_io(void);
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
@@ -185,6 +186,6 @@ DT_MACHINE_START(AML8726_MX, "Amlogic Meson6")
 	.init_time		= meson_timer_init, /// dt - 4
 //	.handle_irq	= gic_handle_irq,
 	.init_machine	= meson_init_machine_devicetree,
-//.restart	=
+	.restart	= meson_common_restart,
 	.dt_compat	= m6_common_board_compat,
 MACHINE_END
