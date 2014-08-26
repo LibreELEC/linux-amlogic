@@ -505,7 +505,7 @@ static void dwc_otg_hcd_power_save(dwc_otg_hcd_t * hcd, int power_on)
 		{
 			if(power_on)
 			{
-				dwc_otg_enable_common_interrupts(hcd->core_if);
+				dwc_otg_enable_host_interrupts(hcd->core_if);
 				dwc_otg_enable_global_interrupts(hcd->core_if);
 			}
 			else
