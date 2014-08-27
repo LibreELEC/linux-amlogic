@@ -69,7 +69,7 @@ static int rmda_rd_item_count_pre = 0;
 
 
 
-#define RDMA_TABLE_SIZE                     (PAGE_SIZE)
+#define RDMA_TABLE_SIZE                    2*(PAGE_SIZE)
 
 static ulong* rmda_table = NULL;
 
