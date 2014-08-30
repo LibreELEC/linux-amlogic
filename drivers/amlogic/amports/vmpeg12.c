@@ -24,6 +24,7 @@
 #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
+#include <linux/kfifo.h>
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
 #include <plat/io.h>
@@ -31,7 +32,6 @@
 #include <linux/amlogic/amports/amstream.h>
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
-#include <linux/amlogic/amports/vfp.h>
 #include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
 
@@ -84,7 +84,8 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define SEQINFO_EXT_AVAILABLE   0x80000000
 #define SEQINFO_PROG            0x00010000
 
-#define VF_POOL_SIZE        24
+#define VF_POOL_SIZE        32
+#define DECODE_BUFFER_NUM_MAX 8
 #define PUT_INTERVAL        HZ/100
 
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
@@ -133,6 +134,10 @@ static const struct vframe_operations_s vmpeg_vf_provider =
 };
 static struct vframe_provider_s vmpeg_vf_prov;
 
+static DECLARE_KFIFO(newframe_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(display_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(recycle_q, vframe_t *, VF_POOL_SIZE);
+
 static const u32 frame_rate_tab[16] = {
     96000 / 30, 96000 / 24, 96000 / 24, 96000 / 25,
     96000 / 30, 96000 / 30, 96000 / 50, 96000 / 60,
@@ -142,13 +147,8 @@ static const u32 frame_rate_tab[16] = {
     96000 / 24, 96000 / 24, 96000 / 24
 };
 
-static struct vframe_s vfqool[VF_POOL_SIZE];
-static s32 vfbuf_use[8];
-static struct vframe_s *vfp_pool_newframe[VF_POOL_SIZE+1];
-static struct vframe_s *vfp_pool_display[VF_POOL_SIZE+1];
-static struct vframe_s *vfp_pool_recycle[VF_POOL_SIZE+1];
-static vfq_t newframe_q, display_q, recycle_q;
-
+static struct vframe_s vfpool[VF_POOL_SIZE];
+static s32 vfbuf_use[DECODE_BUFFER_NUM_MAX];
 static u32 dec_control = 0;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
@@ -162,6 +162,7 @@ static u32 frame_rpt_state;
 static s32 frame_force_skip_flag = 0;
 static s32 error_frame_skip_level = 0;
 static s32 wait_buffer_counter = 0;
+static u32 first_i_frame_ready = 0;
 
 static inline u32 index2canvas(u32 index)
 {
@@ -245,7 +246,6 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 {
     u32 reg, info, seqinfo, offset, pts, pts_valid = 0;
     vframe_t *vf;
-    ulong flags;
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -258,6 +258,12 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
     else if (reg) {
         info = READ_VREG(MREG_PIC_INFO);
         offset = READ_VREG(MREG_FRAME_OFFSET);
+
+        if ((first_i_frame_ready == 0) &&
+            ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) &&
+            ((info & PICINFO_ERROR) == 0)) {
+            first_i_frame_ready = 1;
+        }
 
         if ((((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) || ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_P))
              && (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0)) {
@@ -307,7 +313,10 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
             seqinfo = READ_VREG(MREG_SEQ_INFO);
 
-            vf = vfq_pop(&newframe_q);
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
 
             set_frame_info(vf);
 
@@ -339,14 +348,13 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
             vfbuf_use[index] = 1;
 
-            if (error_skip(info, vf)) {
-                spin_lock_irqsave(&lock, flags);
-                vfq_push(&recycle_q, vf);
-                spin_unlock_irqrestore(&lock, flags);
+            if ((error_skip(info, vf)) ||
+                ((first_i_frame_ready == 0) && ((PICINFO_TYPE_MASK & info) != PICINFO_TYPE_I))) {
+                kfifo_put(&recycle_q, (const vframe_t **)&vf);
             } else {
-                vfq_push(&display_q, vf);
+                kfifo_put(&display_q, (const vframe_t **)&vf);
+                vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             }
-            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
         } else {
             u32 index = ((reg & 0xf) - 1) & 7;
@@ -370,7 +378,10 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
                 frame_rpt_state = FRAME_REPEAT_NONE;
             }
 
-            vf = vfq_pop(&newframe_q);
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
 
             vfbuf_use[index] = 2;
 
@@ -390,19 +401,22 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = (pts_valid) ? pts : 0;
 
-            if (error_skip(info, vf)) {
-                vfq_push(&recycle_q, vf);
+            if ((error_skip(info, vf)) ||
+                ((first_i_frame_ready == 0) && ((PICINFO_TYPE_MASK & info) != PICINFO_TYPE_I))) {
+                kfifo_put(&recycle_q, (const vframe_t **)&vf);
             } else {
-                vfq_push(&display_q, vf);
+                kfifo_put(&display_q, (const vframe_t **)&vf);
                 vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             }
 
-            vf = vfq_pop(&newframe_q);
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
 
             set_frame_info(vf);
 
             vf->index = index;
-
             vf->type = (first_field_type == VIDTYPE_INTERLACE_TOP) ?
                        VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
 #ifdef NV21
@@ -416,10 +430,11 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = 0;
 
-            if (error_skip(info, vf)) {
-                vfq_push(&recycle_q, vf);
+            if ((error_skip(info, vf)) ||
+                ((first_i_frame_ready == 0) && ((PICINFO_TYPE_MASK & info) != PICINFO_TYPE_I))) {
+                kfifo_put(&recycle_q, (const vframe_t **)&vf);
             } else {
-                vfq_push(&display_q, vf);
+                kfifo_put(&display_q, (const vframe_t **)&vf);
                 vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             }
         }
@@ -432,21 +447,29 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
 static vframe_t *vmpeg_vf_peek(void* op_arg)
 {
-    return vfq_peek(&display_q);
+    vframe_t *vf;
+
+    if (kfifo_peek(&display_q, &vf)) {
+        return vf;
+    }
+
+    return NULL;
 }
 
 static vframe_t *vmpeg_vf_get(void* op_arg)
 {
-    return vfq_pop(&display_q);
+    vframe_t *vf;
+
+    if (kfifo_get(&display_q, &vf)) {
+        return vf;
+    }
+
+    return NULL;
 }
 
 static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
-    if (vf->index >= VF_POOL_SIZE) {
-        return;
-    }
-
-    vfq_push(&recycle_q, vf);
+    kfifo_put(&recycle_q, (const vframe_t **)&vf);
 }
 
 static int vmpeg_event_cb(int type, void *data, void *private_data)
@@ -473,11 +496,14 @@ static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     spin_lock_irqsave(&lock, flags);
+
     states->vf_pool_size = VF_POOL_SIZE;
-    states->buf_recycle_num = vfq_level(&recycle_q);
-    states->buf_free_num = vfq_level(&newframe_q);
-    states->buf_avail_num = vfq_level(&display_q);
+    states->buf_free_num = kfifo_len(&newframe_q);
+    states->buf_avail_num = kfifo_len(&display_q);
+    states->buf_recycle_num = kfifo_len(&recycle_q);
+
     spin_unlock_irqrestore(&lock, flags);
+
     return 0;
 }
 
@@ -513,8 +539,8 @@ static void vmpeg_put_timer_func(unsigned long arg)
     }
 
     if ((READ_VREG(MREG_WAIT_BUFFER) != 0) &&
-         (vfq_empty(&recycle_q)) &&
-         (vfq_empty(&display_q)) &&
+         (kfifo_is_empty(&recycle_q)) &&
+         (kfifo_is_empty(&display_q)) &&
          (state == RECEIVER_INACTIVE)) {
         if (++wait_buffer_counter > 4) {
             fatal_reset = 1;
@@ -524,7 +550,7 @@ static void vmpeg_put_timer_func(unsigned long arg)
         wait_buffer_counter = 0;
     }
 
-    if (fatal_reset && vfq_empty(&display_q)) {
+    if (fatal_reset && (kfifo_is_empty(&display_q))) {
         printk("$$$$$$decoder is waiting for buffer or fatal reset.\n");
 
         amvdec_stop();
@@ -540,14 +566,17 @@ static void vmpeg_put_timer_func(unsigned long arg)
         amvdec_start();
     }
 
-    while (!vfq_empty(&recycle_q) && (READ_VREG(MREG_BUFFERIN) == 0)) {
-        vframe_t *vf = vfq_pop(&recycle_q);
+    while (!kfifo_is_empty(&recycle_q) &&
+           (READ_VREG(MREG_BUFFERIN) == 0)) {
+        vframe_t *vf;
+        if (kfifo_get(&recycle_q, &vf)) {
+            if ((vf->index >= 0) && (--vfbuf_use[vf->index] == 0)) {
+                WRITE_VREG(MREG_BUFFERIN, vf->index + 1);
+                vf->index = -1;
+            }
 
-        if (--vfbuf_use[vf->index] == 0) {
-            WRITE_VREG(MREG_BUFFERIN, vf->index + 1);
+            kfifo_put(&newframe_q, (const vframe_t **)&vf);
         }
-
-        vfq_push(&newframe_q, vf);
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -731,23 +760,25 @@ static void vmpeg12_prot_init(void)
 static void vmpeg12_local_init(void)
 {
     int i;
-    vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
-    vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
-    vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
 
-    for (i = 0; i < VF_POOL_SIZE; i++) {
-        vfqool[i].index = VF_POOL_SIZE;
-        vfq_push(&newframe_q, &vfqool[i]);
+    INIT_KFIFO(display_q);
+    INIT_KFIFO(recycle_q);
+    INIT_KFIFO(newframe_q);
+
+    for (i=0; i<VF_POOL_SIZE; i++) {
+        const vframe_t *vf = &vfpool[i];
+        vfpool[i].index = -1;
+        kfifo_put(&newframe_q, &vf);
     }
 
-    frame_width = frame_height = frame_dur = frame_prog = 0;
-
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++) {
         vfbuf_use[i] = 0;
     }
 
+    frame_width = frame_height = frame_dur = frame_prog = 0;
     frame_force_skip_flag = 0;
     wait_buffer_counter = 0;
+    first_i_frame_ready = 0;
 
     dec_control &= DEC_CONTROL_INTERNAL_MASK;
 }
@@ -855,14 +886,7 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
-        vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
-        vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
-        spin_unlock_irqrestore(&lock, flags);
-
-    vf_unreg_provider(&vmpeg_vf_prov);
+        vf_unreg_provider(&vmpeg_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 
@@ -917,6 +941,8 @@ module_param(stat, uint, 0664);
 MODULE_PARM_DESC(stat, "\n amvdec_mpeg12 stat \n");
 module_param(dec_control, uint, 0664);
 MODULE_PARM_DESC(dec_control, "\n amvmpeg12 decoder control \n");
+module_param(error_frame_skip_level, uint, 0664);
+MODULE_PARM_DESC(error_frame_skip_level, "\n amvdec_mpeg12 error_frame_skip_level \n");
 
 module_init(amvdec_mpeg12_driver_init_module);
 module_exit(amvdec_mpeg12_driver_remove_module);

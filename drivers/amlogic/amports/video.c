@@ -3148,6 +3148,9 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
         set_clone_frame_rate(android_clone_rate, 200);
 #endif
     }
+    else if(type == VFRAME_EVENT_PROVIDER_RESET) {
+        video_vf_light_unreg_provider();
+    }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
         video_vf_light_unreg_provider();
     }
