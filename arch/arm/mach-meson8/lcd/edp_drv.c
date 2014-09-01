@@ -20,8 +20,6 @@
 
 #define DPRINT(...)		printk(__VA_ARGS__)
 
-static struct class *edp_debug_class = NULL;
-
 //*************************************//
 // dptx for operation eDP Host (Tx)
 // trdp for operation eDP Sink (Rx)
@@ -372,15 +370,7 @@ static int dptx_init_downspread(unsigned char ss_enable)
 
 	return status;
 }
-#if 0
-static char *dptx_explain_reply_code(int status)
-{
-	switch (status) {
-		default:
-			return "unknown status";
-	}
-}
-#endif
+
 static int trdp_AUX_check_status(void)
 {
 	if (READ_DPTX_REG(EDP_TX_TRANSMITTER_OUTPUT_ENABLE) & 1)
@@ -404,7 +394,7 @@ static int trdp_AUXRead(unsigned long address, unsigned long byte_count, unsigne
 
 	status = trdp_AUX_check_status();
 	if (status) {
-		printk("AUXRead error: edp transmitter disabled\n");
+		DPRINT("AUXRead error: edp transmitter disabled\n");
 		return (int)status;
 	}
 
@@ -476,7 +466,7 @@ static int trdp_AUXRead(unsigned long address, unsigned long byte_count, unsigne
 
 	status = trdp_AUX_check_status();
 	if (status) {
-		printk("AUXRead error: edp transmitter disabled\n");
+		DPRINT("AUXRead error: edp transmitter disabled\n");
 		return (int)status;
 	}
 
@@ -539,7 +529,7 @@ static int trdp_AUXWrite(unsigned long address, unsigned long byte_count, unsign
 
 	status = trdp_AUX_check_status();
 	if (status) {
-		printk("AUXWrite error: edp transmitter disabled\n");
+		DPRINT("AUXWrite error: edp transmitter disabled\n");
 		return (int)status;
 	}
 
@@ -606,7 +596,7 @@ static int trdp_AUXWrite(unsigned long address, unsigned long byte_count, unsign
 
 	status = trdp_AUX_check_status();
 	if (status) {
-		printk("AUXWrite error: edp transmitter disabled\n");
+		DPRINT("AUXWrite error: edp transmitter disabled\n");
 		return (int)status;
 	}
 
@@ -1859,14 +1849,14 @@ void dplpm_off(void)
 //***********************************************//
 static const char * edp_usage_str =
 {"Usage:\n"
-"    echo read tx <addr> <reg_count> > debug ; read edp tx reg value\n"
-"    echo write <value> tx <addr> > debug ; write edp tx reg with value\n"
-"    echo read rx <addr> <reg_count> > debug ; read edp DPCD reg value\n"
-"    echo write <value> rx <addr> > debug ; write edp DPCD reg with value\n"
-"    echo link > debug ; print edp link config information\n"
-"    echo msa > debug ; print edp main stream attributes information\n"
-"    echo dpcd > debug ; print edp DPCD information\n"
-"    echo status > debug ; print edp link training status information\n"
+"    echo read tx <addr> <reg_count> > edp ; read edp tx reg value\n"
+"    echo write <value> tx <addr> > edp ; write edp tx reg with value\n"
+"    echo read rx <addr> <reg_count> > edp ; read edp DPCD reg value\n"
+"    echo write <value> rx <addr> > edp ; write edp DPCD reg with value\n"
+"    echo link > edp ; print edp link config information\n"
+"    echo msa > edp ; print edp main stream attributes information\n"
+"    echo dpcd > edp ; print edp DPCD information\n"
+"    echo status > edp ; print edp link training status information\n"
 };
 
 static ssize_t edp_debug_help(struct class *class, struct class_attribute *attr, char *buf)
@@ -1971,50 +1961,43 @@ static ssize_t edp_debug(struct class *class, struct class_attribute *attr, cons
 }
 
 static struct class_attribute edp_debug_class_attrs[] = {
-	__ATTR(debug, S_IRUGO | S_IWUSR, edp_debug_help, edp_debug),
-	__ATTR(help, S_IRUGO | S_IWUSR, edp_debug_help, NULL),
+	__ATTR(edp, S_IRUGO | S_IWUSR, edp_debug_help, edp_debug),
 };
 
-static int creat_edp_attr(void)
+static int creat_edp_attr(Lcd_Config_t *pConf)
 {
 	int i;
 
-	edp_debug_class = class_create(THIS_MODULE, "edp");
-	if(IS_ERR(edp_debug_class)) {
-		printk("create edp debug class fail\n");
-		return -1;
-	}
 	//create class attr
 	for(i=0;i<ARRAY_SIZE(edp_debug_class_attrs);i++) {
-		if (class_create_file(edp_debug_class, &edp_debug_class_attrs[i])) {
+		if (class_create_file(pConf->lcd_misc_ctrl.debug_class, &edp_debug_class_attrs[i])) {
 			printk("create edp debug attribute %s fail\n",edp_debug_class_attrs[i].attr.name);
 		}
 	}
 
 	return 0;
 }
-static int remove_edp_attr(void)
+static int remove_edp_attr(Lcd_Config_t *pConf)
 {
     int i;
 
-    if (edp_debug_class == NULL)
+    if (pConf->lcd_misc_ctrl.debug_class == NULL)
         return -1;
 
     for(i=0;i<ARRAY_SIZE(edp_debug_class_attrs);i++) {
-        class_remove_file(edp_debug_class, &edp_debug_class_attrs[i]);
+        class_remove_file(pConf->lcd_misc_ctrl.debug_class, &edp_debug_class_attrs[i]);
     }
-    class_destroy(edp_debug_class);
 
     return 0;
 }
 //*********************************************************//
 
-void edp_probe(void)
+void edp_probe(Lcd_Config_t *pConf)
 {
-	creat_edp_attr();
+	creat_edp_attr(pConf);
 }
 
-void edp_remove(void)
+void edp_remove(Lcd_Config_t *pConf)
 {
-	remove_edp_attr();
+	remove_edp_attr(pConf);
 }

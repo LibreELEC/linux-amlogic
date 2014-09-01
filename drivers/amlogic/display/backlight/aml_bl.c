@@ -1280,6 +1280,56 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 }
 #endif
 
+//****************************
+#ifdef CONFIG_AML_LCD_BACKLIGHT_SUPPORT
+static struct class *bl_debug_class = NULL;
+static ssize_t bl_status_read(struct class *class, struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "read backlight status: bl_real_status=%s(%d), bl_status=%s(%d), bl_level=%d\n", (bl_real_status ? "ON" : "OFF"), bl_real_status,
+						((bl_status == 0) ? "OFF" : ((bl_status == 1) ? "lcd_on_bl_off" : "lcd_on_bl_on")), bl_status, bl_level);
+}
+
+static struct class_attribute bl_debug_class_attrs[] = {
+	__ATTR(status,  S_IRUGO | S_IWUSR, bl_status_read, NULL),
+};
+
+static int creat_bl_attr(void)
+{
+    int i;
+
+    bl_debug_class = class_create(THIS_MODULE, "lcd_bl");
+    if(IS_ERR(bl_debug_class)) {
+        printk("create lcd_bl debug class fail\n");
+        return -1;
+    }
+
+    for(i=0;i<ARRAY_SIZE(bl_debug_class_attrs);i++) {
+        if (class_create_file(bl_debug_class, &bl_debug_class_attrs[i])) {
+            printk("create lcd_bl debug attribute %s fail\n", bl_debug_class_attrs[i].attr.name);
+        }
+    }
+
+    return 0;
+}
+
+static int remove_bl_attr(void)
+{
+    int i;
+
+    if (bl_debug_class == NULL)
+        return -1;
+
+    for(i=0;i<ARRAY_SIZE(bl_debug_class_attrs);i++) {
+        class_remove_file(bl_debug_class, &bl_debug_class_attrs[i]);
+    }
+    class_destroy(bl_debug_class);
+    bl_debug_class = NULL;
+
+    return 0;
+}
+#endif
+//****************************
+
 static int aml_bl_probe(struct platform_device *pdev)
 {
     struct backlight_properties props;
@@ -1369,6 +1419,10 @@ static int aml_bl_probe(struct platform_device *pdev)
     if (pdata->set_bl_level)
         pdata->set_bl_level(bldev->props.brightness);
 
+#ifdef CONFIG_AML_LCD_BACKLIGHT_SUPPORT
+    creat_bl_attr();
+#endif
+
     printk("aml bl probe OK.\n");
     return 0;
 
@@ -1382,6 +1436,10 @@ static int __exit aml_bl_remove(struct platform_device *pdev)
     struct aml_bl *amlbl = platform_get_drvdata(pdev);
 
     DTRACE();
+
+#ifdef CONFIG_AML_LCD_BACKLIGHT_SUPPORT
+    remove_bl_attr();
+#endif
 
     if (bl_config.workqueue)
         destroy_workqueue(bl_config.workqueue);

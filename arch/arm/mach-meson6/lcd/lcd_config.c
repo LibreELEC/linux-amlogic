@@ -49,7 +49,6 @@ static spinlock_t gamma_write_lock;
 static spinlock_t lcd_clk_lock;
 
 static Lcd_Config_t *lcd_Conf;
-static struct class *lcd_video_class = NULL;
 static unsigned char lcd_gamma_init_err = 0;
 static unsigned gamma_cntl_port_offset = 0;
 
@@ -1423,11 +1422,11 @@ static void lcd_test(unsigned num)
 		case 4:
 			WRITE_LCD_REG(venc_video_mode, 0);
 			WRITE_LCD_REG((venc_test_base+1), 0);
-			WRITE_LCD_REG((venc_test_base+2), 0x3ff);
+			WRITE_LCD_REG((venc_test_base+2), 0x200);
 			WRITE_LCD_REG((venc_test_base+3), 0x200);
 			WRITE_LCD_REG((venc_test_base+4), 0x200);
 			WRITE_LCD_REG(venc_test_base, 1);
-			printk("show test pattern 4: White\n");
+			printk("show test pattern 4: Gray\n");
 			break;
 		case 5:
 			WRITE_LCD_REG(venc_video_mode, 0);
@@ -1467,25 +1466,21 @@ static void lcd_test(unsigned num)
 //***********************************************
 static ssize_t lcd_video_vso_read(struct class *class, struct class_attribute *attr, char *buf)
 {
-    return sprintf(buf, "read vso start: %u %u\n", lcd_Conf->lcd_timing.vso_hstart, lcd_Conf->lcd_timing.vso_vstart);
+    return sprintf(buf, "read vso start: %u\n", lcd_Conf->lcd_timing.vso_vstart);
 }
 
 static ssize_t lcd_video_vso_write(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
 {
     unsigned int ret;
-    unsigned int para[2];
+    unsigned int temp;
 
-    para[0] = 10;
-    para[0] = 10;
-    ret = sscanf(buf, "%u %u", &para[0], &para[1]);
-    lcd_Conf->lcd_timing.vso_hstart = (unsigned short)para[0];
-    lcd_Conf->lcd_timing.vso_vstart = (unsigned short)para[1];
+    temp = 10;
+    ret = sscanf(buf, "%u", &temp);
+    lcd_Conf->lcd_timing.vso_vstart = (unsigned short)temp;
     lcd_Conf->lcd_timing.vso_user = 1;
-    WRITE_LCD_REG(ENCL_VIDEO_VSO_BEGIN,   lcd_Conf->lcd_timing.vso_hstart);
-    WRITE_LCD_REG(ENCL_VIDEO_VSO_END,     lcd_Conf->lcd_timing.vso_hstart);
     WRITE_LCD_REG(ENCL_VIDEO_VSO_BLINE,   lcd_Conf->lcd_timing.vso_vstart);
     WRITE_LCD_REG(ENCL_VIDEO_VSO_ELINE,   lcd_Conf->lcd_timing.vso_vstart + 2);
-    printk("set vso start: %u %u\n", lcd_Conf->lcd_timing.vso_hstart, lcd_Conf->lcd_timing.vso_vstart);
+    printk("set vso start: %u\n", lcd_Conf->lcd_timing.vso_vstart);
 
     if (ret != 1 || ret !=2)
         return -EINVAL;
@@ -1498,18 +1493,12 @@ static struct class_attribute lcd_video_class_attrs[] = {
     __ATTR(vso,  S_IRUGO | S_IWUSR, lcd_video_vso_read, lcd_video_vso_write),
 };
 
-static int creat_lcd_video_attr(void)
+static int creat_lcd_video_attr(Lcd_Config_t *pConf)
 {
     int i;
 
-    lcd_video_class = class_create(THIS_MODULE, "lcd_video");
-    if(IS_ERR(lcd_video_class)) {
-        printk("create lcd_video class fail\n");
-        return -1;
-    }
-
     for(i=0;i<ARRAY_SIZE(lcd_video_class_attrs);i++) {
-        if (class_create_file(lcd_video_class, &lcd_video_class_attrs[i])) {
+        if (class_create_file(pConf->lcd_misc_ctrl.debug_class, &lcd_video_class_attrs[i])) {
             printk("create lcd_video attribute %s fail\n", lcd_video_class_attrs[i].attr.name);
         }
     }
@@ -1517,17 +1506,16 @@ static int creat_lcd_video_attr(void)
     return 0;
 }
 
-static int remove_lcd_video_attr(void)
+static int remove_lcd_video_attr(Lcd_Config_t *pConf)
 {
     int i;
 
-    if (lcd_video_class == NULL)
+    if (pConf->lcd_misc_ctrl.debug_class == NULL)
         return -1;
 
     for(i=0;i<ARRAY_SIZE(lcd_video_class_attrs);i++) {
-        class_remove_file(lcd_video_class, &lcd_video_class_attrs[i]);
+        class_remove_file(pConf->lcd_misc_ctrl.debug_class, &lcd_video_class_attrs[i]);
     }
-    class_destroy(lcd_video_class);
 
     return 0;
 }
@@ -1574,15 +1562,10 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
     unsigned min_error = MAX_ERROR;
     unsigned error = MAX_ERROR;
     unsigned clk_num = 0;
-    unsigned fin = FIN_FREQ;
-    unsigned fout = pConf->lcd_timing.lcd_clk;
+    unsigned fin, fout;
 
-    if (fout >= 200) {//clk
-        fout = fout / 1000;  //kHz
-    }
-    else {//frame_rate
-        fout = (fout * pConf->lcd_basic.h_period * pConf->lcd_basic.v_period) / 1000;	//kHz
-    }
+    fin = FIN_FREQ; //kHz
+    fout = pConf->lcd_timing.lcd_clk / 1000; //kHz
 
     switch (pConf->lcd_basic.lcd_type) {
         case LCD_DIGITAL_LVDS:
@@ -1813,7 +1796,7 @@ static void lcd_tcon_config(Lcd_Config_t *pConf)
 #endif
 
     if (pConf->lcd_timing.vso_user == 0) {
-        pConf->lcd_timing.vso_hstart = pConf->lcd_timing.vs_hs_addr;
+        //pConf->lcd_timing.vso_hstart = pConf->lcd_timing.vs_hs_addr;
         pConf->lcd_timing.vso_vstart = pConf->lcd_timing.vs_vs_addr;
     }
 
@@ -1825,6 +1808,10 @@ static void lcd_tcon_config(Lcd_Config_t *pConf)
 static void lcd_control_config_pre(Lcd_Config_t *pConf)
 {
     unsigned ss_level;
+
+    if (pConf->lcd_timing.lcd_clk < 200) {//prepare refer clock for frame_rate setting
+        pConf->lcd_timing.lcd_clk = (pConf->lcd_timing.lcd_clk * pConf->lcd_basic.h_period * pConf->lcd_basic.v_period);
+    }
 
     ss_level = ((pConf->lcd_timing.clk_ctrl >> CLK_CTRL_SS) & 0xf);
     ss_level = ((ss_level >= SS_LEVEL_MAX) ? (SS_LEVEL_MAX-1) : ss_level);
@@ -1960,10 +1947,10 @@ void lcd_config_probe(Lcd_Config_t *pConf)
     lcd_Conf = pConf;
     lcd_config_assign(pConf);
 
-    creat_lcd_video_attr();
+    creat_lcd_video_attr(pConf);
 }
 
-void lcd_config_remove(void)
+void lcd_config_remove(Lcd_Config_t *pConf)
 {
-    remove_lcd_video_attr();
+    remove_lcd_video_attr(pConf);
 }

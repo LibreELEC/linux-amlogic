@@ -779,6 +779,7 @@ static int remove_lcd_gamma_attr(void)
         class_remove_file(gamma_debug_class, &aml_lcd_gamma_class_attrs[i]);
     }
     class_destroy(gamma_debug_class);
+    gamma_debug_class = NULL;
 
     return 0;
 }
@@ -798,6 +799,28 @@ static unsigned char temp_dsi_lane_num;
 static unsigned temp_dsi_bit_rate_min, temp_dsi_bit_rate_max, temp_factor_denominator, temp_factor_numerator;
 static unsigned char temp_edp_link_rate, temp_edp_lane_count, temp_edp_vswing, temp_edp_preemphasis;
 
+static const char * lcd_common_usage_str =
+{"Usage:\n"
+"    echo 0/1 > status ; 0=disable lcd; 1=enable lcd\n"
+"    cat status ; read current lcd status\n"
+"\n"
+"    echo 0/1 > print ; 0=disable debug print; 1=enable debug print\n"
+"    cat print ; read current debug print flag\n"
+"\n"
+"    echo <cmd> ... > debug ; lcd common debug, use 'cat debug' for help\n"
+"    cat debug ; print help information for debug command\n"
+#ifdef CONFIG_LCD_IF_MIPI_VALID
+"\n"
+"    echo <cmd> ... > dsi ; mipi-dsi debug, use 'cat dsi' for help\n"
+"    cat dsi ; print help information for dsi command\n"
+#endif
+#ifdef CONFIG_LCD_IF_EDP_VALID
+"\n"
+"    echo <cmd> ... > print ; edp debug, use 'cat edp' for help\n"
+"    cat print ; print help information for edp command\n"
+#endif
+};
+
 static const char * lcd_usage_str =
 {"Usage:\n"
 "    echo basic <h_active> <v_active> <h_period> <v_period> > debug ; write lcd basic config\n"
@@ -816,29 +839,34 @@ static const char * lcd_usage_str =
 #endif
 "3=ttl\n"
 "    <lcd_bits> : 6=6bit(RGB18bit), 8=8bit(RGB24bit)\n"
-"    <ss_level> : lcd clock spread spectrum level (0~6), 0 for disable\n"
+"    <ss_level> : lcd clock spread spectrum level, 0 for disable\n"
 "    <xx_pol>   : 0=negative, 1=positive\n"
 "    <xx_valid> : 0=disable, 1=enable\n"
 "\n"
 "    echo ttl <rb_swap> <bit_swap> > debug ; write ttl RGB swap config\n"
 "    echo lvds <vswing_level> <lvds_repack> <pn_swap> > debug ; write lvds config\n"
 #ifdef CONFIG_LCD_IF_MIPI_VALID
-"    echo mdsi <bit_rate_min> <bit_rate_max> <factor> > debug ; write mipi-dsi config\n"
+"    echo mdsi <lane_num> <bit_rate_max> <factor> > debug ; write mipi-dsi clock config\n"
+"    echo mctl <init_mode> <disp_mode> <lp_clk_auto_stop> <transfer_switch> > debug ; write mipi-dsi control config\n"
 #endif
 #ifdef CONFIG_LCD_IF_EDP_VALID
 "    echo edp <link_rate> <lane_count> <vswing_level> > debug ; write edp config\n"
 #endif
 "data format:\n"
 "    <xx_swap>      : 0=normal, 1=swap\n"
-"    <vswing_level> : lvds support level 0~4 (Default=1); "
+"    <vswing_level> : lvds support level 0~4 (Default=1);"
 #ifdef CONFIG_LCD_IF_EDP_VALID
-"edp support level 0~3 (default=0)"
+" edp support level 0~3 (default=0)"
 #endif
 "\n"
 "    <lvds_repack>  : 0=JEIDA mode, 1=VESA mode\n"
 "    <pn_swap>      : 0=normal, 1=swap lvds p/n channels\n"
 #ifdef CONFIG_LCD_IF_MIPI_VALID
-"    <bit_rate_xxx> : unit in MHz\n"
+"    <bit_rate_max> : unit in MHz\n"
+"    <factor>:      : special adjust, 0 for default\n"
+"    <xxxx_mode>    : 0=video mode, 1=command mode\n"
+"    <lp_clk_auto_stop> : 0=disable, 1=enable\n"
+"    <transfer_switch>  : 0=auto, 1=standard, 2=slow\n"
 #endif
 #ifdef CONFIG_LCD_IF_EDP_VALID
 "    <link_rate>    : 0=1.62G, 1=2.7G\n"
@@ -859,10 +887,12 @@ static const char * lcd_usage_str =
 "    echo reset > debug ; reset lcd config & driver\n"
 "    echo read > debug ; read current lcd config\n"
 "    echo test <num> > debug ; bist pattern test, 0=pattern off, 1~7=different pattern\n"
-"\n"
-"    echo 0/1 > status ; 0=disable lcd; 1=enable lcd\n"
-"    cat status ; read current lcd status\n"
 };
+
+static ssize_t lcd_debug_common_help(struct class *class, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%s\n",lcd_common_usage_str);
+}
 
 static ssize_t lcd_debug_help(struct class *class, struct class_attribute *attr, char *buf)
 {
@@ -1115,7 +1145,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				t[0] = 0;
 				ret = sscanf(buf, "test %d", &t[0]);
 				if (pDev->pConf->lcd_misc_ctrl.lcd_status == 0)
-					printk("lcd has already OFF, can't display test pattern\n");
+					printk("lcd is already OFF, can't display test pattern\n");
 				else
 					pDev->pConf->lcd_misc_ctrl.lcd_test(t[0]);
 			}
@@ -1196,15 +1226,27 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			break;
 #ifdef CONFIG_LCD_IF_MIPI_VALID
 		case 'm':	//write mipi config
-			t[0] = 0;
-			t[1] = 0;
-			t[2] = 0;
-			ret = sscanf(buf, "mdsi %d %d %d", &t[0],&t[1],&t[2]);
-			pDev->pConf->lcd_control.mipi_config->bit_rate_min = t[0]*1000;
-			pDev->pConf->lcd_control.mipi_config->bit_rate_max = t[1]*1000;
-			pDev->pConf->lcd_control.mipi_config->factor_numerator=t[2];
-			pDev->pConf->lcd_control.mipi_config->factor_denominator=10;
-			printk("dsi bit_rate min=%dMHz, max=%dMHz, factor=%d\n",t[0], t[1], pDev->pConf->lcd_control.mipi_config->factor_numerator=t[2]);
+			if (buf[1] == 'd') {
+				t[0] = 0;
+				t[1] = 4;
+				t[2] = 0;
+				ret = sscanf(buf, "mdsi %d %d %d", &t[0],&t[1],&t[2]);
+				pDev->pConf->lcd_control.mipi_config->lane_num = (unsigned char)(t[0]);
+				pDev->pConf->lcd_control.mipi_config->bit_rate_max = t[1]*1000;
+				pDev->pConf->lcd_control.mipi_config->factor_numerator = t[2];
+				pDev->pConf->lcd_control.mipi_config->factor_denominator=10;
+				printk("dsi lane_num = %d, bit_rate max=%dMHz, factor=%d\n",t[0], t[1], pDev->pConf->lcd_control.mipi_config->factor_numerator);
+			}
+			else if (buf[1] == 'c') {
+				t[0] = 1;
+				t[1] = 0;
+				t[2] = 0;
+				t[3] = 0;
+				ret = sscanf(buf, "mctl %d %d %d %d", &t[0],&t[1],&t[2],&t[3]);
+				pDev->pConf->lcd_control.mipi_config->operation_mode = ((t[0] << BIT_OPERATION_MODE_INIT) | (t[1] << BIT_OPERATION_MODE_DISP));
+				pDev->pConf->lcd_control.mipi_config->transfer_ctrl = ((t[2] << BIT_TRANS_CTRL_CLK) | (t[3] << BIT_TRANS_CTRL_SWITCH));
+				printk("dsi operation mode init=%s(%d), display=%s(%d), lp_clk_auto_stop=%d, transfer_switch=%d\n",(t[0]? "command" : "video"), t[0], (t[1] ? "command" : "video"), t[1], t[2], t[3]);
+			}
 			break;
 #endif
 		case 'd':
@@ -1246,7 +1288,10 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 		case 'e':
 			if (buf[1] == 'n') {
 				printk("power on lcd.\n");
+				_lcd_module_disable();
+				mdelay(200);
 				_lcd_module_enable();
+				_enable_backlight();
 			}
 #ifdef CONFIG_LCD_IF_EDP_VALID
 			else if (buf[1] == 'd') {
@@ -1306,7 +1351,7 @@ static ssize_t lcd_status_write(struct class *class, struct class_attribute *att
 			mutex_unlock(&lcd_vout_mutex);
 		}
 		else {
-			printk("lcd has already ON\n");
+			printk("lcd is already ON\n");
 		}
 	}
 	else {
@@ -1317,7 +1362,7 @@ static ssize_t lcd_status_write(struct class *class, struct class_attribute *att
 			mutex_unlock(&lcd_vout_mutex);
 		}
 		else {
-			printk("lcd has already OFF\n");
+			printk("lcd is already OFF\n");
 		}
 	}
 
@@ -1349,18 +1394,37 @@ static ssize_t lcd_print_write(struct class *class, struct class_attribute *attr
 
 static struct class_attribute lcd_debug_class_attrs[] = {
 	__ATTR(debug,  S_IRUGO | S_IWUSR, lcd_debug_help, lcd_debug),
-	__ATTR(help,  S_IRUGO | S_IWUSR, lcd_debug_help, NULL),
+	__ATTR(help,  S_IRUGO | S_IWUSR, lcd_debug_common_help, NULL),
 	__ATTR(status,  S_IRUGO | S_IWUSR, lcd_status_read, lcd_status_write),
 	__ATTR(print,  S_IRUGO | S_IWUSR, lcd_print_read, lcd_print_write),
 };
+
+static int creat_lcd_class(void)
+{
+    pDev->pConf->lcd_misc_ctrl.debug_class = class_create(THIS_MODULE, "lcd");
+    if(IS_ERR(pDev->pConf->lcd_misc_ctrl.debug_class)) {
+        printk("create lcd debug class fail\n");
+        return -1;
+    }
+    return 0;
+}
+
+static int remove_lcd_class(void)
+{
+    if (pDev->pConf->lcd_misc_ctrl.debug_class == NULL)
+        return -1;
+
+    class_destroy(pDev->pConf->lcd_misc_ctrl.debug_class);
+    pDev->pConf->lcd_misc_ctrl.debug_class = NULL;
+    return 0;
+}
 
 static int creat_lcd_attr(void)
 {
     int i;
 
-    pDev->pConf->lcd_misc_ctrl.debug_class = class_create(THIS_MODULE, "lcd");
-    if(IS_ERR(pDev->pConf->lcd_misc_ctrl.debug_class)) {
-        printk("create lcd debug class fail\n");
+    if(pDev->pConf->lcd_misc_ctrl.debug_class == NULL) {
+        printk("no lcd debug class exist\n");
         return -1;
     }
 
@@ -1383,7 +1447,6 @@ static int remove_lcd_attr(void)
     for(i=0;i<ARRAY_SIZE(lcd_debug_class_attrs);i++) {
         class_remove_file(pDev->pConf->lcd_misc_ctrl.debug_class, &lcd_debug_class_attrs[i]);
     }
-    class_destroy(pDev->pConf->lcd_misc_ctrl.debug_class);
 
     return 0;
 }
@@ -2176,6 +2239,7 @@ static int lcd_probe(struct platform_device *pdev)
 	pDev->pConf = (Lcd_Config_t *)(pdata->lcd_conf);
 #endif
 
+	creat_lcd_class();
 	lcd_config_assign(pDev->pConf);
 	lcd_config_probe(pDev->pConf);
 	save_lcd_config(pDev->pConf);
@@ -2204,9 +2268,12 @@ static int lcd_remove(struct platform_device *pdev)
 {
 	unregister_reboot_notifier(&lcd_reboot_nb);
 
-	remove_lcd_gamma_attr();
-	lcd_config_remove();
+	lcd_config_remove(pDev->pConf);
 	remove_lcd_attr();
+	remove_lcd_class();
+#ifdef CONFIG_AML_GAMMA_DEBUG
+	remove_lcd_gamma_attr();
+#endif
 
 	if (pDev->pConf->lcd_basic.model_name)
 		kfree(pDev->pConf->lcd_basic.model_name);

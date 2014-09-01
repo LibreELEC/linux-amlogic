@@ -440,6 +440,6 @@ extern void mipi_dsi_link_off(Lcd_Config_t *pConf);
 extern void set_mipi_dsi_control(Lcd_Config_t *pConf);
 extern void mipi_dsi_off(void);
 extern void dsi_probe(Lcd_Config_t *pConf);
-extern void dsi_remove(void);
+extern void dsi_remove(Lcd_Config_t *pConf);
 
 #endif

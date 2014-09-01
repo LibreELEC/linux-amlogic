@@ -310,7 +310,7 @@ typedef struct {
 extern Lcd_Config_t* get_lcd_config(void);
 extern void lcd_config_init(Lcd_Config_t *pConf);
 extern void lcd_config_probe(Lcd_Config_t *pConf);
-extern void lcd_config_remove(void);
+extern void lcd_config_remove(Lcd_Config_t *pConf);
 
 
 #define LCD_NAME	"lcd"

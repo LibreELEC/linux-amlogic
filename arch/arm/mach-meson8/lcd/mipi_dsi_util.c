@@ -52,7 +52,6 @@ static const char *video_mode_type_table[] = {
 static DSI_Phy_t dsi_phy_config;
 static DSI_Vid_t dsi_vid_config;
 static DSI_Config_t *dsi_config = NULL;
-static struct class *dsi_debug_class = NULL;
 static unsigned char dsi_init_on_table_dft[] = {
     0x05,0x11,0,
     0xff,50,
@@ -1107,10 +1106,10 @@ void mipi_dsi_off(void)
 //***********************************************//
 static const char * dsi_usage_str =
 {"Usage:\n"
-"    echo read <addr> <reg_count> > debug ; read dsi phy reg value\n"
-"    echo write <addr> <value> > debug ; write dsi phy reg with value\n"
-"    echo info > debug ; print dsi config information\n"
-"    echo dphy > debug ; print dsi phy timing information\n"
+"    echo read <addr> <reg_count> > dsi ; read dsi phy reg value\n"
+"    echo write <addr> <value> > dsi ; write dsi phy reg with value\n"
+"    echo info > dsi ; print dsi config information\n"
+"    echo dphy > dsi ; print dsi phy timing information\n"
 };
 
 static ssize_t dsi_debug_help(struct class *class, struct class_attribute *attr, char *buf)
@@ -1161,39 +1160,33 @@ static ssize_t dsi_debug(struct class *class, struct class_attribute *attr, cons
 }
 
 static struct class_attribute dsi_debug_class_attrs[] = {
-    __ATTR(debug, S_IRUGO | S_IWUSR, dsi_debug_help, dsi_debug),
-    __ATTR(help, S_IRUGO | S_IWUSR, dsi_debug_help, NULL),
+    __ATTR(dsi, S_IRUGO | S_IWUSR, dsi_debug_help, dsi_debug),
 };
 
-static int creat_dsi_attr(void)
-{
-	int i;
-
-	dsi_debug_class = class_create(THIS_MODULE, "dsi");
-	if(IS_ERR(dsi_debug_class)) {
-		printk("create dsi debug class fail\n");
-		return -1;
-	}
-	//create class attr
-	for(i=0;i<ARRAY_SIZE(dsi_debug_class_attrs);i++) {
-		if (class_create_file(dsi_debug_class, &dsi_debug_class_attrs[i])) {
-			printk("create dsi debug attribute %s fail\n",dsi_debug_class_attrs[i].attr.name);
-		}
-	}
-
-	return 0;
-}
-static int remove_dsi_attr(void)
+static int creat_dsi_attr(Lcd_Config_t *pConf)
 {
     int i;
 
-    if (dsi_debug_class == NULL)
+    //create class attr
+    for(i=0;i<ARRAY_SIZE(dsi_debug_class_attrs);i++) {
+        if (class_create_file(pConf->lcd_misc_ctrl.debug_class, &dsi_debug_class_attrs[i])) {
+            printk("create dsi debug attribute %s fail\n",dsi_debug_class_attrs[i].attr.name);
+        }
+    }
+
+    return 0;
+}
+static int remove_dsi_attr(Lcd_Config_t *pConf)
+{
+    int i;
+
+    if (pConf->lcd_misc_ctrl.debug_class == NULL)
         return -1;
 
     for(i=0;i<ARRAY_SIZE(dsi_debug_class_attrs);i++) {
-        class_remove_file(dsi_debug_class, &dsi_debug_class_attrs[i]);
+        class_remove_file(pConf->lcd_misc_ctrl.debug_class, &dsi_debug_class_attrs[i]);
     }
-    class_destroy(dsi_debug_class);
+    class_destroy(pConf->lcd_misc_ctrl.debug_class);
 
     return 0;
 }
@@ -1206,10 +1199,10 @@ void dsi_probe(Lcd_Config_t *pConf)
     //pConf->lcd_control.mipi_config->bit_rate_min *= 1000;
     pConf->lcd_control.mipi_config->bit_rate_max *= 1000;
 
-    creat_dsi_attr();
+    creat_dsi_attr(pConf);
 }
 
-void dsi_remove(void)
+void dsi_remove(Lcd_Config_t *pConf)
 {
-    remove_dsi_attr();
+    remove_dsi_attr(pConf);
 }
