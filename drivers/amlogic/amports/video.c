@@ -439,6 +439,18 @@ u32 get_video_angle(void) { return video_angle; }
 EXPORT_SYMBOL(get_video_angle);
 extern void prot_get_parameter(u32 wide_mode, vframe_t * vf, vpp_frame_par_t * next_frame_par, const vinfo_t *vinfo);
 #endif
+static inline ulong keep_phy_addr(ulong addr)
+{
+    if (addr == 0) {
+        return 0;
+    }
+
+#ifdef CONFIG_KEEP_FRAME_RESERVED
+    return addr;
+#else
+    return (ulong)virt_to_phys((u8 *)addr);
+#endif
+}
 
 #ifdef CONFIG_AM_VIDEO2
 void set_clone_frame_rate(unsigned int frame_rate, unsigned int delay);
@@ -762,7 +774,7 @@ void ge2d_show_frame(ulong yaddr,ulong uaddr)
 {
     u32 cur_index;
     u32 y_index, u_index;
-    cur_index = READ_MPEG_REG(VD1_IF0_CANVAS0);
+    cur_index = READ_VCBUS_REG(VD1_IF0_CANVAS0 + cur_dev->viu_off);
     y_index = cur_index & 0xff;
     u_index = (cur_index >> 8) & 0xff;
     canvas_update_addr(y_index, (u32)yaddr);
@@ -773,7 +785,7 @@ int ge2d_store_frame(ulong yaddr,ulong uaddr,u32 ydupindex,u32 udupindex)
     u32 cur_index;
     u32 y_index, u_index,des_index,src_index;
     canvas_t cs0,cs1,cyd;
-    cur_index = READ_MPEG_REG(VD1_IF0_CANVAS0);
+    cur_index = READ_VCBUS_REG(VD1_IF0_CANVAS0 + cur_dev->viu_off);
     y_index = cur_index & 0xff;
     u_index = (cur_index >> 8) & 0xff;
 
@@ -792,7 +804,7 @@ int ge2d_store_frame(ulong yaddr,ulong uaddr,u32 ydupindex,u32 udupindex)
 
     src_index = ((y_index&0xff) | (( u_index << 8)& 0x0000ff00 ));
     des_index = ((ydupindex&0xff) | (( udupindex << 8)& 0x0000ff00 ));
-    //printk("src_index=[0x%x] y_index=[0x%x]  u_index=[0x%x] \n",src_index,y_index,u_index);
+    //printk("ge2d_store_frame src_index=[0x%x] y_index=[0x%x]  u_index=[0x%x] \n",src_index,y_index,u_index);
     //printk("des_index=[0x%x]  y_index= [0x%x]\n",des_index,udupindex);
 
     ge2d_canvas_dup(&cs0,&cs1,&cyd,GE2D_FORMAT_M24_NV21,src_index,des_index);
@@ -801,8 +813,8 @@ int ge2d_store_frame(ulong yaddr,ulong uaddr,u32 ydupindex,u32 udupindex)
 static void ge2d_keeplastframe_block(void)
 {
     mutex_lock(&video_module_mutex);
-    ge2d_store_frame(keep_y_addr,keep_u_addr,DISPLAY_CANVAS_YDUP_INDEX,DISPLAY_CANVAS_UDUP_INDEX);
-    ge2d_show_frame(keep_y_addr,keep_u_addr);
+    ge2d_store_frame(keep_phy_addr(keep_y_addr),keep_phy_addr(keep_u_addr),DISPLAY_CANVAS_YDUP_INDEX,DISPLAY_CANVAS_UDUP_INDEX);
+    ge2d_show_frame(keep_phy_addr(keep_y_addr),keep_phy_addr(keep_u_addr));
     mutex_unlock(&video_module_mutex);
 
 }
@@ -2858,19 +2870,20 @@ exit:
 static int alloc_keep_buffer(void)
 {
     amlog_mask(LOG_MASK_KEEPBUF, "alloc_keep_buffer\n");
-
     if(!keep_y_addr){
         keep_y_addr = __get_free_pages(GFP_KERNEL, get_order(Y_BUFFER_SIZE));
         if (!keep_y_addr) {
             amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc y addr\n", __FUNCTION__);
             goto err1;
         }
+        printk("alloc_keep_buffer keep_y_addr %x\n",(unsigned int)keep_y_addr);
 
         keep_y_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_y_addr), Y_BUFFER_SIZE);
         if (!keep_y_addr_remap) {
                 amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap y addr\n", __FUNCTION__);
                 goto err2;
         }
+
     }
 
     if(!keep_u_addr){
@@ -2879,12 +2892,14 @@ static int alloc_keep_buffer(void)
             amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc u addr\n", __FUNCTION__);
             goto err3;
         }
+        printk("alloc_keep_buffer keep_u_addr %x\n",(unsigned int)keep_u_addr);
 
         keep_u_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_u_addr), U_BUFFER_SIZE);
         if (!keep_u_addr_remap) {
             amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap u addr\n", __FUNCTION__);
             goto err4;
         }
+
     }
 
     if(!keep_v_addr){
@@ -2893,12 +2908,14 @@ static int alloc_keep_buffer(void)
             amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc v addr\n", __FUNCTION__);
             goto err5;
         }
+        printk("alloc_keep_buffer keep_v_addr %x\n",(unsigned int)keep_v_addr);
 
         keep_v_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_v_addr), U_BUFFER_SIZE);
         if (!keep_v_addr_remap) {
             amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap v addr\n", __FUNCTION__);
             goto err6;
         }
+
     }
     printk("yaddr=%lx,u_addr=%lx,v_addr=%lx\n",keep_y_addr,keep_u_addr,keep_v_addr);
     return 0;
@@ -2907,12 +2924,14 @@ err6:
     free_pages(keep_v_addr, get_order(U_BUFFER_SIZE));
     keep_v_addr = 0;
 err5:
+    if(keep_u_addr_remap)
     iounmap(keep_u_addr_remap);
     keep_u_addr_remap = NULL;
 err4:
     free_pages(keep_u_addr, get_order(U_BUFFER_SIZE));
     keep_u_addr = 0;
 err3:
+    if(keep_y_addr_remap)
     iounmap(keep_y_addr_remap);
     keep_y_addr_remap = NULL;
 err2:
@@ -2922,18 +2941,7 @@ err1:
     return -ENOMEM;
 }
 
-static inline ulong keep_phy_addr(ulong addr)
-{
-    if (addr == 0) {
-        return 0;
-    }
 
-#ifdef CONFIG_KEEP_FRAME_RESERVED
-    return addr;
-#else
-    return (ulong)virt_to_phys((u8 *)addr);
-#endif
-}
 
 void get_video_keep_buffer(ulong *addr, ulong *phys_addr)
 {
@@ -3237,7 +3245,7 @@ unsigned int vf_keep_current(void)
         return 0;
     }
 
-    if (!keep_y_addr_remap) {
+    if (!keep_y_addr ||!keep_y_addr_remap) {
         //if (alloc_keep_buffer())
         return -1;
     }
@@ -3328,7 +3336,6 @@ unsigned int vf_keep_current(void)
                 Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cs0.width,cs0.height, cs1.width,cs1.height, cs2.width,cs2.height);
             return -1;
         }
-
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) && /*must not the same address*/
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height)) &&
