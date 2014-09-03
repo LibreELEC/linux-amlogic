@@ -72,7 +72,7 @@ static void vh265_vf_put(vframe_t *, void*);
 static int vh265_event_cb(int type, void *data, void *private_data);
 
 static void vh265_prot_init(void);
-static void vh265_local_init(void);
+static int vh265_local_init(void);
 static void vh265_put_timer_func(unsigned long arg);
 
 static const char vh265_dec_id[] = "vh265-dev";
@@ -1126,6 +1126,7 @@ static void dump_pic_list(hevc_stru_t* hevc)
 		pic = pic->next;
 	}
 }
+
 static PIC_t* output_pic(hevc_stru_t* hevc, unsigned char flush_flag)
 {
 	int num_pic_not_yet_display = 0;
@@ -2733,8 +2734,9 @@ static hevc_stru_t gHevc;
 
 static param_t  rpm_param;
 
-static void hevc_local_init(void)
+static int hevc_local_init(void)
 {
+    int ret = -1;
     BuffInfo_t* cur_buf_info = NULL;
     memset(&rpm_param, 0, sizeof(rpm_param));
 
@@ -2759,7 +2761,7 @@ static void hevc_local_init(void)
         gHevc.rpm_ptr = (unsigned short*)ioremap_nocache(cur_buf_info->rpm.buf_start, cur_buf_info->rpm.buf_size);
         if (!gHevc.rpm_ptr) {
                 printk("%s: failed to remap rpm.buf_start\n", __func__);
-                return;
+                return ret;
         }
     }
 
@@ -2767,18 +2769,19 @@ static void hevc_local_init(void)
         gHevc.lmem_ptr = (unsigned short*)ioremap_nocache(cur_buf_info->lmem.buf_start, cur_buf_info->lmem.buf_size);
         if (!gHevc.lmem_ptr) {
                 printk("%s: failed to remap lmem.buf_start\n", __func__);
-                return;
+                return ret;
         }
 
         gHevc.debug_ptr_size = 0x60; //cur_buf_info->pps.buf_size;
         gHevc.debug_ptr = (unsigned short*)ioremap_nocache(cur_buf_info->pps.buf_start, cur_buf_info->pps.buf_size);
         if (!gHevc.debug_ptr) {
                 printk("%s: failed to remap lmem.buf_start\n", __func__);
-                return;
+                return ret;
         }
 
     }
-
+    ret = 0;
+    return ret;
 }
 
 /********************************************
@@ -3061,6 +3064,8 @@ static void hevc_recover(hevc_stru_t* hevc)
         amhevc_stop();
 
         //reset
+        WRITE_MPEG_REG(PARSER_VIDEO_RP, READ_VREG(HEVC_STREAM_RD_PTR));
+        SET_MPEG_REG_MASK(PARSER_ES_CONTROL, ES_VID_MAN_RD_PTR);
 
         hevc_stream_start_addr = READ_VREG(HEVC_STREAM_START_ADDR);
         hevc_stream_end_addr = READ_VREG(HEVC_STREAM_END_ADDR);
@@ -3659,9 +3664,10 @@ static void vh265_prot_init(void)
 
 }
 
-static void vh265_local_init(void)
+static int vh265_local_init(void)
 {
     int i;
+    int ret;
 
 #ifdef DEBUG_PTS
     pts_missed = 0;
@@ -3697,9 +3703,9 @@ static void vh265_local_init(void)
 
     reserved_buffer = 0;
 
-    hevc_local_init();
+    ret = hevc_local_init();
 
-    return;
+    return ret;
 }
 
 extern unsigned char ucode_buf[4*1024*8];
@@ -3709,7 +3715,8 @@ static s32 vh265_init(void)
 
     stat |= STAT_TIMER_INIT;
 
-    vh265_local_init();
+    if(vh265_local_init()<0)
+       return -EBUSY;
 
     amhevc_enable();
 #if 0
