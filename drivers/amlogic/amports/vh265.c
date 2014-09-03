@@ -1047,7 +1047,7 @@ static void init_pic_list(hevc_stru_t* hevc)
 		    }
 		    if(m_PIC[i].alloc_pages == NULL){
 		    m_PIC[i].cma_page_count = PAGE_ALIGN((mc_buffer_size_u_v_h<<16)*3)/PAGE_SIZE;
-            m_PIC[i].alloc_pages = dma_alloc_from_contiguous(cma_dev, m_PIC[i].cma_page_count, 0);
+            m_PIC[i].alloc_pages = dma_alloc_from_contiguous(cma_dev, m_PIC[i].cma_page_count, 4);
             if(m_PIC[i].alloc_pages == NULL){
                 printk("allocate cma buffer[%d] fail\n", i);
                 m_PIC[i].cma_page_count = 0;
