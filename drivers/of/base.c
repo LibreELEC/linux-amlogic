@@ -136,6 +136,9 @@ int __of_add_property_sysfs(struct device_node *np, struct property *pp)
 	/* Important: Don't leak passwords */
 	bool secure = strncmp(pp->name, "security-", 9) == 0;
 
+	if (!IS_ENABLED(CONFIG_SYSFS))
+		return 0;
+
 	if (!of_kset || !of_node_is_attached(np))
 		return 0;
 
@@ -155,6 +158,9 @@ int __of_attach_node_sysfs(struct device_node *np)
 	const char *name;
 	struct property *pp;
 	int rc;
+
+	if (!IS_ENABLED(CONFIG_SYSFS))
+		return 0;
 
 	if (!of_kset)
 		return 0;
@@ -1637,6 +1643,9 @@ int __of_remove_property(struct device_node *np, struct property *prop)
 
 void __of_remove_property_sysfs(struct device_node *np, struct property *prop)
 {
+	if (!IS_ENABLED(CONFIG_SYSFS))
+		return;
+
 	/* at early boot, bail here and defer setup to of_init() */
 	if (of_kset && of_node_is_attached(np))
 		sysfs_remove_bin_file(&np->kobj, &prop->attr);
@@ -1701,6 +1710,9 @@ int __of_update_property(struct device_node *np, struct property *newprop,
 void __of_update_property_sysfs(struct device_node *np, struct property *newprop,
 		struct property *oldprop)
 {
+	if (!IS_ENABLED(CONFIG_SYSFS))
+		return;
+
 	/* At early boot, bail out and defer setup to of_init() */
 	if (!of_kset)
 		return;
