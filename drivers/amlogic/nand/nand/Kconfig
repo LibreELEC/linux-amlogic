@@ -1,0 +1,69 @@
+#
+# Amlogic NAND device configuration
+#
+
+menu "Meson NAND Device Support"
+
+config AM_NAND
+	bool "Meson NAND flash device"
+	default y
+	select MTD_NAND
+	select MTD_PARTITIONS
+	select MTD_BLOCK
+	select MTD_CHAR
+	select MTD
+	help
+	  Support for NAND flash on Amlogic Meson platforms
+
+config AM_NAND_RBPIN
+	bool "Meson NAND RB bit support"
+	depends on AM_NAND
+	depends on ARCH_MESON3 || ARCH_MESON6
+	default y
+	help
+	  Support NAND RB bit
+
+config AML_NAND_ENV
+	bool "Meson NAND environment variable device (dev/nand_env) support"
+	depends on AM_NAND
+	depends on ARCH_MESON3 || ARCH_MESON6
+	default y
+	help
+	  Support NAND environment variable device
+
+config AML_NAND_KEY
+	bool "Meson key data store in nand device(dev/nand_key) support"
+	depends on AM_NAND
+	depends on ARCH_MESON3 || ARCH_MESON6
+	default n
+	help
+	  Support   key variable store in NAND device
+
+config NAND_KEY_BLOCK_NUM
+	int "config nand key area block number"
+	depends on AML_NAND_KEY
+	range 2  16
+	default 8
+	help
+		config nand key block number, the number must be even number
+
+config AML_NFTL
+	tristate "Meson NAND FTL support"
+	depends on AM_NAND
+	default n
+	help
+	  Support NAND Flash Translation Layer
+
+config AML_NFTL_NEW
+	tristate "Meson NAND NEW_FTL support"
+	depends on AM_NAND
+	default m
+	help
+	  Support NAND Flash New Translation Layer
+config AML_NEXT_NAND
+	tristate "Meson NAND NEW_FTL support"
+	default y
+	help
+	  Support NAND Flash OLD Translation Layer
+
+endmenu
