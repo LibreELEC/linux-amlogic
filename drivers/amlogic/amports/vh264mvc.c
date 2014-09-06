@@ -32,6 +32,7 @@
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
+#include <linux/module.h>
 
 #include <mach/am_regs.h>
 #include "vdec_reg.h"
