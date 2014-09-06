@@ -678,6 +678,11 @@ struct aml_nand_chip {
 	struct aml_nandkey_info_t *aml_nandkey_info;
 	struct cdev				nand_key_cdev;
 
+#ifdef CONFIG_OF
+	struct pinctrl *nand_pinctrl;
+	struct pinctrl_state *nand_pinstate;
+#endif
+
 	struct early_suspend nand_early_suspend;
     struct class      cls;
 
