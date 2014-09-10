@@ -1782,7 +1782,7 @@ static int rt5631_resume(struct device *dev)
 #define RT5631_FORMAT	(SNDRV_PCM_FMTBIT_S16_LE | \
 			SNDRV_PCM_FMTBIT_S20_3LE | \
 			SNDRV_PCM_FMTBIT_S24_LE | \
-			SNDRV_PCM_FMTBIT_S8)
+			SNDRV_PCM_FMTBIT_S8|SNDRV_PCM_FMTBIT_S32_LE)
 
 static const struct snd_soc_dai_ops rt5631_ops = {
 	.hw_params = rt5631_hifi_pcm_params,
@@ -1799,7 +1799,7 @@ static struct snd_soc_dai_driver rt5631_dai[] = {
 		.playback = {
 			.stream_name = "HIFI Playback",
 			.channels_min = 1,
-			.channels_max = 2,
+			.channels_max = 8,
 			.rates = RT5631_STEREO_RATES,
 			.formats = RT5631_FORMAT,
 		},

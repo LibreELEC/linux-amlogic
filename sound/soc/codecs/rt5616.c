@@ -1680,7 +1680,7 @@ static int rt5616_resume(struct snd_soc_codec *codec)
 
 #define RT5616_STEREO_RATES SNDRV_PCM_RATE_8000_96000
 #define RT5616_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
-            SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S8)
+            SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S32_LE)
 
 
 struct snd_soc_dai_ops rt5616_aif_dai_ops = {
@@ -1700,7 +1700,7 @@ struct snd_soc_dai_driver rt5616_dai[] = {
         .playback = {
             .stream_name = "AIF1 Playback",
             .channels_min = 1,
-            .channels_max = 2,
+            .channels_max = 8,
             .rates = RT5616_STEREO_RATES,
             .formats = RT5616_FORMATS,
         },
