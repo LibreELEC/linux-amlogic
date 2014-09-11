@@ -3,7 +3,6 @@
 #
 #obj-$(CONFIG_AML_NEXT_GEN_NAND)		+= phy/
 KBUILD_CFLAGS += -Werror=declaration-after-statement \
-		 -Werror=maybe-uninitialized \
 		 -Werror=parentheses \
 		 -Werror=return-type \
 		 -Werror=strict-prototypes \
