@@ -2734,6 +2734,22 @@ static hevc_stru_t gHevc;
 
 static param_t  rpm_param;
 
+static void hevc_local_uninit(void)
+{
+    if(gHevc.rpm_ptr){
+        iounmap(gHevc.rpm_ptr);
+        gHevc.rpm_ptr = NULL;
+    }
+    if(gHevc.lmem_ptr){
+        iounmap(gHevc.lmem_ptr);
+        gHevc.lmem_ptr = NULL;
+    }
+    if(gHevc.debug_ptr){
+        iounmap(gHevc.debug_ptr);
+        gHevc.debug_ptr = NULL;
+    }
+}
+
 static int hevc_local_init(void)
 {
     int ret = -1;
@@ -2758,6 +2774,11 @@ static int hevc_local_init(void)
     bit_depth_chroma = 8;
 
     if((debug&H265_DEBUG_SEND_PARAM_WITH_REG)==0){
+        if(gHevc.rpm_ptr){
+            iounmap(gHevc.rpm_ptr);
+            gHevc.rpm_ptr = NULL;
+        }
+
         gHevc.rpm_ptr = (unsigned short*)ioremap_nocache(cur_buf_info->rpm.buf_start, cur_buf_info->rpm.buf_size);
         if (!gHevc.rpm_ptr) {
                 printk("%s: failed to remap rpm.buf_start\n", __func__);
@@ -2766,6 +2787,15 @@ static int hevc_local_init(void)
     }
 
     if(debug&H265_DEBUG_UCODE){
+        if(gHevc.lmem_ptr){
+            iounmap(gHevc.lmem_ptr);
+            gHevc.lmem_ptr = NULL;
+        }
+        if(gHevc.debug_ptr){
+            iounmap(gHevc.debug_ptr);
+            gHevc.debug_ptr = NULL;
+        }
+
         gHevc.lmem_ptr = (unsigned short*)ioremap_nocache(cur_buf_info->lmem.buf_start, cur_buf_info->lmem.buf_size);
         if (!gHevc.lmem_ptr) {
                 printk("%s: failed to remap lmem.buf_start\n", __func__);
@@ -2934,6 +2964,7 @@ static void vh265_vf_put(vframe_t *vf, void* op_arg)
 static int vh265_event_cb(int type, void *data, void *private_data)
 {
     if(type & VFRAME_EVENT_RECEIVER_RESET){
+#if 0
         unsigned long flags;
         amhevc_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
@@ -2947,6 +2978,7 @@ static int vh265_event_cb(int type, void *data, void *private_data)
         vf_reg_provider(&vh265_vf_prov);
 #endif
         amhevc_start();
+#endif
     }
 
     return 0;
@@ -3830,6 +3862,8 @@ static int vh265_stop(void)
         stat &= ~STAT_VF_HOOK;
     }
 
+    //hevc_local_uninit();
+
     if(use_cma){
         uninit_list = 1;
         up(&h265_sema);
@@ -3881,6 +3915,7 @@ static int amvdec_h265_probe(struct platform_device *pdev)
 
     if (vh265_init() < 0) {
         printk("\namvdec_h265 init failed.\n");
+        hevc_local_uninit();
         mutex_unlock(&vh265_mutex);
         return -ENODEV;
     }

@@ -2353,6 +2353,8 @@ static int ppmgr_task(void *data)
             int process_type = TYPE_NONE;
             platform_type_t plarform_type;
             vf = ppmgr_vf_get_dec();
+            if(!vf)
+                break;
             if (vf && ppmgr_device.started) {
                 if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
@@ -2398,6 +2400,8 @@ static int ppmgr_task(void *data)
 #else
             int ret = 0;
             vf = ppmgr_vf_get_dec();
+            if(!vf)
+                break;
             if (vf && ppmgr_device.started) {
                 if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
