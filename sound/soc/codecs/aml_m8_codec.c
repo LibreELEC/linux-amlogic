@@ -359,9 +359,9 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     acodec_delay_us(20);
     WRITE_MPEG_REG_BITS(AIU_AUDAC_CTRL0, 0, 15, 1);
 
-    acodec_delay_us(30);
+    acodec_delay_us(2);
 
-    snd_soc_write(codec, 1, 5);
+    snd_soc_write(codec, 1, 5); // fs_clk_ext
     snd_soc_write(codec, 4, 64);
     snd_soc_write(codec, 5, 4);
     snd_soc_write(codec, 6, 64);
@@ -373,12 +373,20 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     data32 |= 0 << 0;   // [    0] rstdacdpz
     snd_soc_write(codec, 0, data32);
 
-	acodec_delay_us(20);
+	acodec_delay_us(1);
 
     data32  = 0;
     data32 |= 1 << 1;   // [    1] rstadcdpz
     data32 |= 1 << 0;   // [    0] rstdacdpz
     snd_soc_write(codec, 0, data32);
+
+	data32  = 0;
+    data32 |= 1 << 4;   // [    4] pd_micb2z
+    data32 |= 1 << 3;   // [    3] pd_micb1z
+    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
+    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
+    data32 |= 1 << 0;   // [    0] pdz
+    snd_soc_write(codec, 21, data32);
 
 	//set the nominal current
 	snd_soc_write(codec, 0x12, 0x0);
@@ -391,6 +399,8 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     data32 |= 3 << 2;   // [ 3: 2] dem_cfg
     data32 |= 0 << 0;   // [ 1: 0] cfg_adc_dither
     snd_soc_write(codec, 0xF3, data32);
+	snd_soc_write(codec, 24, 0xf3);
+
 }
 
 void acodec_config(unsigned int clk_ext_sel,           // [3:0]: 0=1.958M~2.65M; 1=2.6M~3.5M; 2=3.9M~5.3M; 3=5.2M~7.06M; 4=10.2M~13.8M;
@@ -575,23 +585,7 @@ static void start_codec(struct snd_soc_codec *codec)
                     0,      // ctr[2:0]: test mode sel. 0=Normal, 1=Digital filter loopback, 2=Digital filter bypass, 3=Digital audio I/F loopback, 4=Shaping filters loop-back.
                     1);     // enhp: Record channel high pass filter enable.
 
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] rstadcdpz
-    data32 |= 0 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
 
-    data32  = 0;
-    data32 |= 1 << 1;   // [    1] rstadcdpz
-    data32 |= 1 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
-	snd_soc_write(codec, 24, 0xf3);
-    data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
 	acodec_reserved_reg_set(codec);
 
 }
