@@ -713,7 +713,7 @@ void root_func(){
 		reg = <0xc1108d20 0x20>;
 		device_id = <4>;
 		pinctrl-names="default";
-		pinctrl-0=<&d_i2c_master>;
+//		pinctrl-0=<&d_i2c_master>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		use_pio = <0>;
@@ -1853,11 +1853,10 @@ sdhc_sd_clk_cmd_pins:sdhc_sd_clk_cmd_pins{
 // MATCH "I2C_D_pin_match" = "&d_i2c_master"
 // L2 PROP_U32 2 = "amlogic,setmask"
 // L2 PROP_STR 2 = "amlogic,pins"
-		d_i2c_master:d_i2c{
-			amlogic,setmask=<4 0xc>;
-			amlogic,clrmask=<6 0x3000>;
-			amlogic,pins="GPIOH_7","GPIOH_8";
-		};
+//		d_i2c_master:d_i2c{
+//			amlogic,setmask=<4 0xc>;
+//			amlogic,pins="GPIOH_7","GPIOH_8";
+//		};
 
 //$$ MATCH "remote_pin_0_match" = "&remote_pins"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
@@ -1897,27 +1896,6 @@ sdhc_sd_clk_cmd_pins:sdhc_sd_clk_cmd_pins{
 			amlogic,pins="GPIODV_9";
 		};
 
-//$$ MATCH "dvb_p_ts0_pins_match" = "&dvb_p_ts0_pins"
-//$$ L2 PROP_U32 1 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
-//$$ L2 PROP_STR 11 = "amlogic,pins"
-		dvb_p_ts0_pins: dvb_p_ts0_pins {
-			amlogic,setmask = <3 0x37>;
-			amlogic,clrmask = <5 0xC0
-								9 0x37C>;
-			amlogic,pins = "GPIOY_9","GPIOY_10","GPIOY_11","GPIOY_12","GPIOY_13","GPIOY_14","GPIOY_6","GPIOY_7","GPIOY_0","GPIOY_1","GPIOY_8";
-		};
-
-//$$ MATCH "dvb_s_ts0_pins_match" = "&dvb_s_ts0_pins"
-//$$ L2 PROP_U32 1 = "amlogic,setmask"
-//$$ L2 PROP_U32 1 = "amlogic,clrmask"
-//$$ L2 PROP_STR 4 = "amlogic,pins"
-		dvb_s_ts0_pins: dvb_s_ts0_pins {
-			amlogic,setmask = <3 0x17>;
-			amlogic,clrmask = <9 0x378>;
-			amlogic,pins = "GPIOY_9","GPIOY_0","GPIOY_1","GPIOY_8";
-		};
-
 	};
 /// ***************************************************************************************
 ///	-	Ethernet
@@ -1932,71 +1910,5 @@ sdhc_sd_clk_cmd_pins:sdhc_sd_clk_cmd_pins{
 		interruptnum = <40>;
 		new_maclogic = <1>;
 	};
-
-/// ***************************************************************************************
-///	-	RNG
-//$$ MODULE="RNG"
-//$$ DEVICE="meson-rng"
-//$$ L2 PROP_STR = "status"
-	meson-rng{
-		compatible = "amlogic,meson-rng";
-		status = "ok";
-	};
-///	-	DVB
-//$$ MODULE="DVB"
-
-//$$ DEVICE="dvb"
-//$$ L2 PROP_STR = "ts0"
-//$$ L2 PROP_U32 = "ts0_invert"
-//$$ L2 PROP_U32 = "ts0_control"
-//$$ L2 PROP_STR 6 = "pinctrl-names"
-//$$ L2 PROP_CHOICE "dvb_p_ts0_pins_match" = "pinctrl-0"
-//$$ L2 PROP_CHOICE "dvb_s_ts0_pins_match" = "pinctrl-1"
-	dvb{
-		compatible = "amlogic,dvb";
-		/*"parallel","serial","disable"*/
-		ts0 = "parallel";
-		ts0_control = <0>;
-		ts0_invert = <0>;
-		pinctrl-names = "p_ts0", "s_ts0";
-		pinctrl-0 = <&dvb_p_ts0_pins>;
-		pinctrl-1 = <&dvb_s_ts0_pins>;
-	};
-
-//$$ DEVICE="dvbfe"
-//$$ L2 PROP_STR = "dtv_demod0"
-//$$ L2 PROP_U32 = "dtv_demod0_i2c_adap_id"
-//$$ L2 PROP_U32 = "dtv_demod0_i2c_addr"
-//$$ L2 PROP_U32 = "dtv_demod0_reset_value"
-//$$ L2 PROP_STR = "dtv_demod0_reset_gpio"
-//$$ L2 PROP_U32 = "fe0_dtv_demod"
-//$$ L2 PROP_U32 = "fe0_ts"
-//$$ L2 PROP_U32 = "fe0_dev"
-//$$ L2 PROP_STR 6 = "pinctrl-names"
-//$$ L2 PROP_CHOICE "dvb_fe_pins_match" = "pinctrl-0"
-	dvbfe{
-		compatible = "amlogic,dvbfe";
-		dtv_demod0 = "Si2168";
-		dtv_demod0_i2c_adap_id = <4>;
-		dtv_demod0_i2c_addr = <0x64>;
-		dtv_demod0_reset_value = <0>;
-		dtv_demod0_reset_gpio = "GPIOY_3";
-		fe0_dtv_demod = <0>;
-		fe0_ts = <0>;
-		fe0_dev = <0>;
-	};
-
-/*	dvbfe{
-		compatible = "amlogic,dvbfe";
-		dtv_demod0 = "Mxl101";
-		dtv_demod0_i2c_adap_id = <4>;
-		dtv_demod0_i2c_addr = <0x60>;
-		dtv_demod0_reset_value = <0>;
-		dtv_demod0_reset_gpio = "GPIOY_3";
-		fe0_dtv_demod = <0>;
-		fe0_ts = <0>;
-		fe0_dev = <0>;
-	};
-*/
 
 }; /* end of / */

@@ -48,6 +48,11 @@
 
 #include "../amports/streambuf.h"
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#include <mach/mod_gate.h>
+#include <mach/power_gate.h>
+#endif
+
 #define ENABLE_SEC_BUFF_WATCHDOG
 #define USE_AHB_MODE
 
@@ -2379,6 +2384,11 @@ int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo)
 
 	/*Async FIFO initialize*/
 	spin_lock_irqsave(&dvb->slock, flags);
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	CLK_GATE_ON(ASYNC_FIFO);
+#endif
+
 	ret = async_fifo_init(afifo);
 	spin_unlock_irqrestore(&dvb->slock, flags);
 
@@ -2392,6 +2402,11 @@ int aml_asyncfifo_hw_deinit(struct aml_asyncfifo *afifo)
 	int ret;
 	spin_lock_irqsave(&dvb->slock, flags);
 	ret = async_fifo_deinit(afifo);
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	CLK_GATE_OFF(ASYNC_FIFO);
+#endif
+
 	spin_unlock_irqrestore(&dvb->slock, flags);
 
 	return ret;

@@ -212,4 +212,17 @@ config AM_AVL6211
 	help
 		select the AVL6211 DVB-S2 demod.
 
+config AM_SI2168
+	tristate "SI2168 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable SI2168 demod driver.
+
+config AM_MXL101
+	tristate "MXL101 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable MXL101 demod driver.
 endmenu
