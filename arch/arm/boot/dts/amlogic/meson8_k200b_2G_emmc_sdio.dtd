@@ -4,6 +4,7 @@
 //$$ REMOVE 1
 void root_func(){
 //$$ ADD /{
+	amlogic-dt-id = "m8_k200_2gsdio";
 	compatible = "AMLOGIC,8726_M8";
 	model = "AMLOGIC";
 	interrupt-parent = <&gic>;
