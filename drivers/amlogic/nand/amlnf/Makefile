@@ -7,7 +7,6 @@ KBUILD_CFLAGS += -Werror=declaration-after-statement \
 		 -Werror=return-type \
 		 -Werror=strict-prototypes \
 		 -Werror=uninitialized \
-		 -Werror=unused-function \
 		 -Werror=unused-value \
 		 -Werror=array-bounds \
 		 -Werror=comment \
@@ -17,7 +16,6 @@ KBUILD_CFLAGS += -Werror=declaration-after-statement \
 		 -Werror=unused-label \
 		 -Werror=unused-result \
 		 -Werror=unused-value \
-		 -Werror=unused-variable \
 		 -Werror=builtin-macro-redefined
 
 
@@ -34,7 +32,7 @@ aml_nftl_dev-objs =
 aml_nftl_dev-objs += block/aml_nftl_block.o
 aml_nftl_dev-objs += block/aml_nftl_init.o
 aml_nftl_dev-objs += block/aml_nftl_hw_interface.o
-aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core_20140806.z
+aml_nftl_dev-objs += nftl/aml_nftl_core_20140806.z
 
 #aml_nftl_dev-objs += nftl/aml_nftl_phy.o
 #aml_nftl_dev-objs  += nftl/aml_nftl_list.o
