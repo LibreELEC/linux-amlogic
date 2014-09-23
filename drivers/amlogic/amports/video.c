@@ -794,11 +794,11 @@ int ge2d_store_frame(ulong yaddr,ulong uaddr,u32 ydupindex,u32 udupindex)
     canvas_config(ydupindex,
         (ulong)yaddr,
         cs0.width, cs0.height,
-        CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+        CANVAS_ADDR_NOWRAP, cs0.blkmode);
     canvas_config(udupindex,
         (ulong)uaddr,
         cs1.width, cs1.height,
-        CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+        CANVAS_ADDR_NOWRAP, cs1.blkmode);
 
     canvas_read(ydupindex,&cyd);
 
