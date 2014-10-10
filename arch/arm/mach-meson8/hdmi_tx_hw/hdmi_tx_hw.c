@@ -2263,7 +2263,7 @@ static Cts_conf_tab cts_table_192k[] = {
     {24576, 108000, 108000},
     {24576,  74250,  74250},
     {24576, 148500, 148500},
-    {24576, 297000, 297000},
+    {24576, 297000, 247500},
 };
 
 static unsigned int get_cts(unsigned int clk)
@@ -2303,10 +2303,10 @@ static Vic_attr_map vic_attr_map_table[] = {
     {HDMI_1080p30,          74250 },
     {HDMI_480p60_16x9_rpt,  108000},
     {HDMI_576p50_16x9_rpt,  108000},
-    {HDMI_4k2k_24,          247500},
-    {HDMI_4k2k_25,          247500},
-    {HDMI_4k2k_30,          247500},
-    {HDMI_4k2k_smpte_24,    247500},
+    {HDMI_4k2k_24,          297000},
+    {HDMI_4k2k_25,          297000},
+    {HDMI_4k2k_30,          297000},
+    {HDMI_4k2k_smpte_24,    297000},
 };
 
 static unsigned int vic_map_clk(HDMI_Video_Codes_t vic)
