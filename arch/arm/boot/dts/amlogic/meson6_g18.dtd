@@ -756,7 +756,6 @@ void root_func(){
 
 /// ***************************************************************************************
 ///	-	Nand
-//$$ MODULE="Nand"
 //$$ DEVICE="aml_nand"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2 ="reg"
@@ -766,7 +765,7 @@ void root_func(){
 //$$ L3 PROP_STR 2 ="plat-names"
 //$$ L2 PROP_U32 = "plat-num"
 //$$ L2 PROP_CHOICE "plat-part-0_match" = "plat-part-0"
-// L2 PROP_CHOICE "plat-part-1_match" = "plat-part-1"
+//$$ L2 PROP_CHOICE "plat-part-1_match" = "plat-part-1"
 	nand{
 		compatible = "amlogic,aml_nand";
 		dev_name = "nand";
@@ -780,11 +779,34 @@ void root_func(){
 									&nand_ce0 &nand_ce1
 									&nand_ce2 &nand_ce3>;
 		device_id = <0>;
-		plat-names = "nandnormal";
-		plat-num = <1>;
-		plat-part-0 = <&normal>;
+		plat-names = "bootloader","nandnormal";
+		plat-num = <2>;
+		plat-part-0 = <&bootload>;
+		plat-part-1 = <&normal>;
 
-//$$ MATCH "plat-part-0_match" = <&normal>
+//$$ MATCH "plat-part-0_match" = <&bootload>
+//$$ L2 PROP_STR = "enable_pad"
+//$$ L2 PROP_STR = "busy_pad"
+//$$ L2 PROP_STR = "timming_mode"
+//$$ L2 PROP_STR = "bch_mode"
+//$$ L2 PROP_U32 = "t_rea"
+//$$ L2 PROP_U32 = "t_rhoh"
+//$$ L2 PROP_U32 = "chip_num"
+//$$ L2 PROP_U32 = "part_num"
+//$$ L2 PROP_U32 = "rb_detect"
+		bootload: bootload{
+			enable_pad ="ce0";
+			busy_pad = "rb0";
+			timming_mode = "mode5";
+			bch_mode = "bch60_1k";
+			t_rea = <20>;
+			t_rhoh = <15>;
+			chip_num = <1>;
+			part_num = <0>;
+			rb_detect = <1>;
+		};
+
+//$$ MATCH "plat-part-1_match" = <&normal>
 //$$ L2 PROP_STR 2 = "enable_pad"
 //$$ L2 PROP_STR 2 = "busy_pad"
 //$$ L2 PROP_STR = "timming_mode"
@@ -804,7 +826,7 @@ void root_func(){
 			t_rea = <20>;
 			t_rhoh = <15>;
 			chip_num = <2>;
-			part_num = <8>;
+			part_num = <7>;
 			partition = <&nand_partitions>;
 			rb_detect = <1>;
 		};
@@ -833,6 +855,10 @@ void root_func(){
 			cache{
 				offset=<0x0 0x4a800000>;
 				size=<0x0 0x20000000>;
+			};
+			backup{
+				offset=<0x0 0x6a800000>;
+				size=<0x0 0x10000000>;
 			};
 			userdata{
 				offset=<0xffffffff 0xffffffff>;
