@@ -1,5 +1,6 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
+#include <linux/mutex.h>
 #include <linux/amlogic/vout/vinfo.h>
 #include <mach/register.h>
 #include <mach/am_regs.h>
@@ -470,12 +471,16 @@ static enc_clk_val_t setting_enc_clk_val[] = {
 #endif
 };
 
+static DEFINE_MUTEX(setclk_mutex);
+
 void set_vmode_clk(vmode_t mode)
 {
     enc_clk_val_t *p_enc =NULL;
 
     int i = 0;
     int j = 0;
+
+    mutex_lock(&setclk_mutex);
 	if(IS_MESON_M8M2_CPU){
 		p_enc=&setting_enc_clk_val_m8m2[0];
 		i = sizeof(setting_enc_clk_val_m8m2) / sizeof(enc_clk_val_t);
@@ -512,7 +517,7 @@ void set_vmode_clk(vmode_t mode)
         WRITE_CBUS_REG(HHI_VID_PLL_CNTL4, 0x42000101);
     }
 #endif
-
+    mutex_unlock(&setclk_mutex);
 // For debug only
 #if 0
     printk("hdmi debug tag\n%s\n%s[%d]\n", __FILE__, __FUNCTION__, __LINE__);
