@@ -17,5 +17,6 @@ config AM_WIFI_USB
 	depends on AM_WIFI
 	default n
 
+source "drivers/amlogic/wifi/rtl8xxx_EU_MP/Kconfig"
 
 endif # AM_WIFI
