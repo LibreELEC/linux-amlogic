@@ -4,7 +4,7 @@
 #include <linux/i2c.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
-#include "../../../../hardware/tvin/tvin_frontend.h"
+#include "../../tvin/tvin_frontend.h"
 
 #define SII9233A_DRV_VER "2013Nov12"
 

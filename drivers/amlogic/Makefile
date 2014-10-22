@@ -53,9 +53,8 @@ obj-$(CONFIG_I2C) += i2c/
 obj-$(CONFIG_EFUSE)+=efuse/
 obj-$(CONFIG_AM_INPUT)		+= input/
 
-ifneq ($(wildcard $(srctree)/../hardware/amlogic/touch),)
-obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += ../../../hardware/amlogic/touch/
-endif
+obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
+
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
 #obj-$(CONFIG_CARDREADER) += cardreader/
@@ -69,14 +68,10 @@ obj-$(CONFIG_AML_RTC)+= rtc/
 
 obj-y += power/
 
-ifneq ($(wildcard $(srctree)/../hardware/amlogic/pmu),)
-    obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += ../../../hardware/amlogic/pmu/
-endif
+obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
 
 obj-y += tvin_v4l2/
-ifneq ($(wildcard $(srctree)/../hardware/tvin),)
-	obj-$(CONFIG_TVIN) += ../../../hardware/tvin/
-endif
+obj-$(CONFIG_TVIN) += tvin/
 
 obj-$(CONFIG_AML_EXT_HDMIIN) += ext_hdmiin/
 
