@@ -1,0 +1,62 @@
+config SDIO_DHD_CDC_WIFI_40181_MODULE
+	tristate "Broadcom 4329/4330 wireless cards support"
+	depends on AM_WIFI_SD_MMC || SD_MMC
+#        select WIRELESS_EXT
+#        select WEXT_PRIV
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4329/30 chipset.
+
+config BCMDHD_FW_PATH
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	string "Firmware path"
+	default "/system/etc/wifi/fw_bcmdhd.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_NVRAM_PATH
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	string "NVRAM path"
+	default "/system/etc/wifi/nvram.txt"
+	---help---
+	  Path to the calibration file.
+
+config BCMDHD_CONFIG_PATH
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	string "Config path"
+	default "/system/etc/wifi/config.txt"
+	---help---
+	  Path to the driver configuration file.
+
+config BCMDHD_POWER_OFF_IN_SUSPEND
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+    bool "Power off in suspend"
+	default n
+    ---help---
+	  Shut down Wi-Fi power in suspend.
+
+config BCMDHD_WEXT
+	bool "Enable WEXT support"
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE && CFG80211 = n
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	help
+	  Enables WEXT support
+
+choice
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	prompt "Interrupt type"
+	---help---
+	  Interrupt type
+config BCMDHD_OOB
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	bool "Out-of-Band Interrupt"
+	default y
+	---help---
+	  Interrupt from WL_HOST_WAKE.
+config SDIO_HARD_IRQ
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+	bool "In-Band Interrupt"
+	---help---
+	  Interrupt from SDIO DAT[1]
+endchoice
