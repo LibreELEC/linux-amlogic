@@ -18,7 +18,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                \
 	-DPROP_TXSTATUS -DPROP_TXSTATUS_VSDB                                  \
 	-DDHDTCPACK_SUPPRESS                                                  \
 	-DWL_SUPPORT_BACKPORTED_KPATCHES                                      \
-	-I../hardware/wifi/broadcom/drivers/ap6xxx/broadcm_40181/ -I../hardware/wifi/broadcom/drivers/ap6xxx/broadcm_40181/include
+	-Idrivers/amlogic/wifi/broadcm_40181 -Idrivers/amlogic/wifi/broadcm_40181/include
 
 DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	dhd_linux_sched.o bcmwifi_channels.o dhd_sdio.o bcmevent.o dhd_bta.o hndpmu.o  \
@@ -56,7 +56,7 @@ DHDCFLAGS += -DBAND_AG
 endif
 
 ifneq ($(CONFIG_WIRELESS_EXT),)
-bcmdhd-objs += wl_iw.o
+dhd-objs += wl_iw.o
 DHDCFLAGS += -DSOFTAP -DWL_WIRELESS_EXT -DUSE_IW
 endif
 ifneq ($(CONFIG_CFG80211),)
