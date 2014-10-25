@@ -1624,32 +1624,41 @@ static int amhdmitx_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 {
-#if 0
-    pr_info("amhdmitx: hdmirx_suspend\n");
-    hdmitx_pre_display_init();
-    if(hdmi_pdata){
-        hdmi_pdata->hdmi_5v_ctrl ? hdmi_pdata->hdmi_5v_ctrl(0) : 0;
-        hdmi_pdata->hdmi_3v3_ctrl ? hdmi_pdata->hdmi_3v3_ctrl(1) : 0;   // prevent Voff leak current
-    }
-    if(hdmitx_device.HWOp.Cntl)
-        hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
+#ifndef CONFIG_HAS_EARLYSUSPEND
+    const vinfo_t *info = hdmi_get_current_vinfo();
+    if (info && (strncmp(info->name, "panel", 5) == 0 || strncmp(info->name, "null", 4) == 0))
+        return;
+    hdmitx_device.hpd_lock = 1;
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_EARLY_SUSPEND);
+    hdmitx_device.cur_VIC = HDMI_Unkown;
+    hdmitx_device.output_blank_flag = 0;
+    hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
+    hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, DDC_RESET_HDCP);
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_AVI_PACKET, 0);
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_VSDB_PACKET, 0);
+    hdmi_print(IMP, SYS "HDMITX: suspend\n");
 #endif
     return 0;
 }
 
 static int amhdmitx_resume(struct platform_device *pdev)
 {
-#if 0
-    pr_info("amhdmitx: resume module\n");
-    if(hdmi_pdata){
-        hdmi_pdata->hdmi_5v_ctrl ? hdmi_pdata->hdmi_5v_ctrl(1) : 0;
+#ifndef CONFIG_HAS_EARLYSUSPEND
+    const vinfo_t *info = hdmi_get_current_vinfo();
+    if (info && (strncmp(info->name, "panel", 5) == 0 || strncmp(info->name, "null", 4) == 0)) {
+        hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
+       return ;
+    } else {
+        hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_BLANK);
     }
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
+    hdmitx_device.hpd_lock = 0;
     hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_AUDIO_MUTE_OP, AUDIO_MUTE);
     hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
     hdmitx_device.internal_mode_change = 0;
     set_disp_mode_auto();
     pr_info("amhdmitx: resume module %d\n", __LINE__);
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_LATE_RESUME);
+    hdmi_print(INF, SYS "resume\n");
 #endif
     return 0;
 }
