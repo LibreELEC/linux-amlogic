@@ -239,6 +239,14 @@ static  int  set_disp_mode(const char *mode)
     else if(strncmp(mode, "4k2ksmpte", strlen("4k2ksmpte")) == 0) {
         vic = HDMI_4k2k_smpte_24;
     }
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	else if(strncmp(mode, "4k2k29hz", strlen("4k2k29hz")) == 0) {
+        vic = HDMI_4k2k_30;
+    }
+	else if(strncmp(mode, "4k2k23hz", strlen("4k2k23hz")) == 0) {
+        vic = HDMI_4k2k_24;
+    }
+#endif
     else {
         //nothing
     }
@@ -299,6 +307,63 @@ static void hdmitx_pre_display_init(void)
     hdmitx_device.internal_mode_change = 0;
 }
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+// judge whether the mode exchange is between similar vmode, such as between 1080p60 and 1080p59hz
+// "vic_old==HDMI_720P60" means old vic is HDMI_1080p60, but vmode maybe VMODE_1080P or VMODE_1080P_59HZ
+static int is_similar_hdmi_vic(HDMI_Video_Codes_t vic_old, vmode_t mode_new)
+{
+	if( (vic_old==HDMI_480p60_16x9) &&
+		( (mode_new==VMODE_480P) || (mode_new==VMODE_480P_59HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_720p60) &&
+		( (mode_new==VMODE_720P) || (mode_new==VMODE_720P_59HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_1080i60) &&
+		( (mode_new==VMODE_1080I) || (mode_new==VMODE_1080I_59HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_1080p60) &&
+		( (mode_new==VMODE_1080P) || (mode_new==VMODE_1080P_59HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_1080p24) &&
+		( (mode_new==VMODE_1080P_24HZ) || (mode_new==VMODE_1080P_23HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_4k2k_30) &&
+		( (mode_new==VMODE_4K2K_30HZ) || (mode_new==VMODE_4K2K_29HZ) ) )
+		return 1;
+	if( (vic_old==HDMI_4k2k_24) &&
+		( (mode_new==VMODE_4K2K_24HZ) || (mode_new==VMODE_4K2K_23HZ) ) )
+		return 1;
+
+	return 0;
+}
+
+//
+// input para: name of vmode, such as "1080p50hz"
+// return values:
+//		0: not supported in edid
+//		1: supported in edid
+//		2: no edid
+//
+int hdmitx_is_vmode_supported(char *mode_name)
+{
+	HDMI_Video_Codes_t vic;
+
+	if( hdmitx_device.tv_no_edid )
+		return 2;
+
+	vic = hdmitx_edid_get_VIC(&hdmitx_device, mode_name, 0);
+	if( vic != HDMI_Unkown )
+		return 1;
+	else
+		return 0;
+
+	return 0;
+}
+
+EXPORT_SYMBOL(hdmitx_is_vmode_supported);
+
+#endif
+
 static int set_disp_mode_auto(void)
 {
     int ret=-1;
@@ -326,7 +391,6 @@ static int set_disp_mode_auto(void)
     else {
         hdmi_print(IMP, VID "get current mode: %s\n", info->name);
     }
-
 // If info->name equals to cvbs, then set mode to I mode to hdmi
     if((strncmp(info->name, "480cvbs", 7) == 0) || (strncmp(info->name, "576cvbs", 7) == 0) ||
        (strncmp(info->name, "panel", 5) == 0) || (strncmp(info->name, "null", 4) == 0)) {
@@ -358,6 +422,11 @@ static int set_disp_mode_auto(void)
     else {
         //nothing
     }
+
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	if( is_similar_hdmi_vic(vic_ready, info->mode) )
+		vic_ready = HDMI_Unkown;
+#endif
 
     if((vic_ready != HDMI_Unkown) && (vic_ready == vic)) {
         hdmi_print(IMP, SYS "[%s] ALREADY init VIC = %d\n", __func__, vic);
@@ -879,11 +948,29 @@ static DEVICE_ATTR(cec_lang_config, S_IWUSR | S_IRUGO | S_IWGRP, show_cec_lang_c
 ******************************/
 static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long cmd , void *para)
 {
-    if(get_cur_vout_index()!=1)
+	const vinfo_t *info = NULL;
+	HDMI_Video_Codes_t vic_ready = HDMI_Unkown;
+	if(get_cur_vout_index()!=1)
         return 0;
 
     if (cmd != VOUT_EVENT_MODE_CHANGE)
         return 0;
+
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    // vic_ready got from IP
+    vic_ready = hdmitx_device.HWOp.GetState(&hdmitx_device, STAT_VIDEO_VIC, 0);
+	// get current vinfo
+    info = hdmi_get_current_vinfo();
+    if(info == NULL) {
+        hdmi_print(ERR, VID "cann't get valid mode\n");
+        return -1;
+    }
+    else {
+        hdmi_print(IMP, VID "get current mode: %s\n", info->name);
+    }
+	if( is_similar_hdmi_vic(vic_ready, info->mode) )
+		return 0;
+#endif
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;

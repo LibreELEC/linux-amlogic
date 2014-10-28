@@ -30,6 +30,9 @@ typedef enum {
     TVMODE_480I_RPT  ,
     TVMODE_480CVBS,
     TVMODE_480P  ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_480P_59HZ , // for framerate automation 480p 59.94hz
+#endif
     TVMODE_480P_RPT  ,
     TVMODE_576I  ,
     TVMODE_576I_RPT  ,
@@ -37,15 +40,33 @@ typedef enum {
     TVMODE_576P  ,
     TVMODE_576P_RPT  ,
     TVMODE_720P  ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_720P_59HZ , // for framerate automation 720p 59.94hz
+#endif
     TVMODE_1080I ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_1080I_59HZ , // for framerate automation 1080i 59.94hz
+#endif
     TVMODE_1080P ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_1080P_59HZ , // for framerate automation 1080p 59.94hz
+#endif
     TVMODE_720P_50HZ ,
     TVMODE_1080I_50HZ ,
     TVMODE_1080P_50HZ ,
     TVMODE_1080P_24HZ ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_1080P_23HZ , // for framerate automation 1080p 23.97hz
+#endif
     TVMODE_4K2K_30HZ ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_4K2K_29HZ , // for framerate automation 4k2k 29.97hz
+#endif
     TVMODE_4K2K_25HZ ,
     TVMODE_4K2K_24HZ ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	TVMODE_4K2K_23HZ , // for framerate automation 4k2k 23.97hz
+#endif
     TVMODE_4K2K_SMPTE ,
     TVMODE_VGA ,
     TVMODE_SVGA,

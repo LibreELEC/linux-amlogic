@@ -1633,6 +1633,54 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
     }
 }
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+//
+// func: hdmitx_set_pll_fr_auto
+// params: none
+// return:
+//		1: current vmode is special and clock setting handled
+//		0: current vmode is not special and clock setting not handled
+//
+// desc:
+//		special vmode has same hdmi vic with normal mode, such as 1080p59hz - 1080p60hz
+//	so pll should not only be set according hdmi vic.
+//
+extern const vinfo_t *get_current_vinfo(void);
+static int hdmitx_set_pll_fr_auto(void)
+{
+	int ret = 0;
+	const vinfo_t *pvinfo = get_current_vinfo();
+
+	if( strncmp(pvinfo->name, "480p59hz", strlen("480p59hz")) == 0 )
+	{
+		set_vmode_clk(VMODE_480P_59HZ);
+		ret = 1;
+	}
+	else if( strncmp(pvinfo->name, "720p59hz", strlen("720p59hz")) == 0 )
+	{
+		set_vmode_clk(VMODE_720P_59HZ);
+		ret = 1;
+	}
+	else if( strncmp(pvinfo->name, "1080i59hz", strlen("1080i59hz")) == 0 )
+	{
+		set_vmode_clk(VMODE_1080I_59HZ);
+		ret = 1;
+	}
+	else if( strncmp(pvinfo->name, "1080p59hz", strlen("1080p59hz")) == 0 )
+	{
+		set_vmode_clk(VMODE_1080P_59HZ);
+		ret = 1;
+	}
+	else if( strncmp(pvinfo->name, "1080p23hz", strlen("1080p23hz")) == 0 )
+	{
+		set_vmode_clk(VMODE_1080P_23HZ);
+		ret = 1;
+	}
+
+	return ret;
+}
+#endif
+
 static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 {
     hdmi_print(IMP, SYS "set pll\n");
@@ -1643,6 +1691,12 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     aml_write_reg32(P_HHI_VID_PLL_CNTL2, M6_VID_PLL_CNTL_2 );
     aml_write_reg32(P_HHI_VID_PLL_CNTL3, M6_VID_PLL_CNTL_3 );
     aml_write_reg32(P_HHI_VID_PLL_CNTL4, M6_VID_PLL_CNTL_4 );
+
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	if( hdmitx_set_pll_fr_auto() )
+		return ;
+#endif
+
     switch(param->VIC)
     {
         case HDMI_480p60:

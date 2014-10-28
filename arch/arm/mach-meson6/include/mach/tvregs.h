@@ -1270,6 +1270,9 @@ static const reg_t *tvregsTab[] = {
     tvregs_480i,        // For REPEAT MODE use, ENC setting is same
     tvregs_480cvbs,
     tvregs_480p,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    tvregs_480p,
+#endif
     tvregs_480p,        // For REPEAT MODE use, ENC setting is same
     tvregs_576i,
     tvregs_576i,        // For REPEAT MODE use, ENC setting is same
@@ -1277,12 +1280,24 @@ static const reg_t *tvregsTab[] = {
     tvregs_576p,
     tvregs_576p,        // For REPEAT MODE use, ENC setting is same
     tvregs_720p,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    tvregs_720p,
+#endif
     tvregs_1080i,       //Adjust tvregs_* sequences and match the enum define in tvmode.h
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    tvregs_1080i,
+#endif
     tvregs_1080p,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    tvregs_1080p,
+#endif
     tvregs_720p_50hz,
     tvregs_1080i_50hz,
     tvregs_1080p_50hz,
     tvregs_1080p_24hz,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    tvregs_1080p_24hz,
+#endif
     tvregs_vga_640x480,
     tvregs_svga_800x600,
     tvregs_xga_1024x768
@@ -1293,6 +1308,9 @@ static const tvinfo_t tvinfoTab[] = {
     {.xres =  720, .yres =  480, .id = "480i_rpt"},
     {.xres =  720, .yres =  480, .id = "480cvbs"},
     {.xres =  720, .yres =  480, .id = "480p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {.xres =  720, .yres =  480, .id = "480p59hz"},
+#endif
     {.xres =  720, .yres =  480, .id = "480p_rpt"},
     {.xres =  720, .yres =  576, .id = "576i"},
     {.xres =  720, .yres =  576, .id = "576i_rpt"},
@@ -1300,12 +1318,24 @@ static const tvinfo_t tvinfoTab[] = {
     {.xres =  720, .yres =  576, .id = "576p"},
     {.xres =  720, .yres =  576, .id = "576p_prt"},
     {.xres = 1280, .yres =  720, .id = "720p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {.xres = 1280, .yres =  720, .id = "720p59hz"},
+#endif
     {.xres = 1920, .yres = 1080, .id = "1080i"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {.xres = 1920, .yres = 1080, .id = "1080i59hz"},
+#endif
     {.xres = 1920, .yres = 1080, .id = "1080p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {.xres = 1920, .yres = 1080, .id = "1080p59hz"},
+#endif
     {.xres = 1280, .yres =  720, .id = "720p50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080i50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p24hz"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {.xres = 1920, .yres = 1080, .id = "1080p23hz"},
+#endif
     {.xres = 640, .yres = 480, .id = "vga"},
     {.xres = 800, .yres = 600, .id = "svga"},
     {.xres = 1024, .yres = 768, .id = "xga"},
