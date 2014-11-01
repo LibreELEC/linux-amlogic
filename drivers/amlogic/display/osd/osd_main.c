@@ -96,11 +96,7 @@ _find_color_format(struct fb_var_screeninfo * var)
 		lower_margin=COLOR_INDEX_24_6666_A;
 		break;
 		case 3:
-#ifdef CONFIG_FB_AMLOGIC_UMP
-        upper_margin=COLOR_INDEX_32_ARGB;
-#else
-		upper_margin=COLOR_INDEX_32_ABGR;
-#endif
+		upper_margin=COLOR_INDEX_32_ARGB;
 		lower_margin=COLOR_INDEX_32_BGRA;
 		break;
 		case 4:
