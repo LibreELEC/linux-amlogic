@@ -109,7 +109,7 @@
 	#endif
 
 
-	#define CONFIG_CONCURRENT_MODE
+	//#define CONFIG_CONCURRENT_MODE
 	#ifdef CONFIG_CONCURRENT_MODE
 		//#define CONFIG_HWPORT_SWAP				//Port0->Sec , Port1 -> Pri
 		#define CONFIG_TSF_RESET_OFFLOAD 			// For 2 PORT TSF SYNC.
