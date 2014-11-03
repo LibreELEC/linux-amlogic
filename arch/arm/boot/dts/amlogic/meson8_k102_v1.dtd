@@ -1832,7 +1832,7 @@ lcd_LD070WX4:lcd_LD070WX4{
         trip_point=<70 1608001 1608001 511 511 3 5
                     80 1200001 1200001 435 435 2 4
                     90  800001 800001  328 328 2 3
-                    110 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
+                    260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
         use_virtual_thermal;
