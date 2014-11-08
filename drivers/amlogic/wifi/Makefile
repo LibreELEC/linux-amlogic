@@ -1,6 +1,14 @@
 obj-$(CONFIG_AM_WIFI_SD_MMC) +=  wifi_dt.o
 obj-$(CONFIG_AM_WIFI) += wifi_power.o
 obj-$(CONFIG_DHD_USE_STATIC_BUF) += dhd_static_buf.o
+obj-$(CONFIG_RTL8189ES) += rtl8189ES/
+obj-$(CONFIG_RTL8192EU) += rtl8192EU/
+obj-$(CONFIG_RTL8723AU) += rtl8723AU/
+obj-$(CONFIG_RTL8723BS) += rtl8723BS/
+obj-$(CONFIG_RTL8811AU) += rtl8811AU/
+obj-$(CONFIG_RTL8812AU) += rtl8812AU/
+obj-$(CONFIG_RTL8188CU) += rtl8xxx_CU/
+obj-$(CONFIG_RTL8188DU) += rtl8xxx_DU/
 obj-$(CONFIG_RTL8188EU) += rtl8xxx_EU/
 obj-$(CONFIG_RTL8188EU_MP) += rtl8xxx_EU_MP/
 obj-$(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE) += broadcm_40181/
