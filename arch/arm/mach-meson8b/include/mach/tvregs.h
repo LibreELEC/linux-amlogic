@@ -1480,6 +1480,9 @@ static const tvinfo_t tvinfoTab[] = {
     {.xres =  720, .yres =  480, .id = "480i_rpt"},
     {.xres =  720, .yres =  480, .id = "480cvbs"},
     {.xres =  720, .yres =  480, .id = "480p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres =  720, .yres =  480, .id = "480p59hz"},
+#endif
     {.xres =  720, .yres =  480, .id = "480p_rpt"},
     {.xres =  720, .yres =  576, .id = "576i"},
     {.xres =  720, .yres =  576, .id = "576i_rpt"},
@@ -1487,15 +1490,33 @@ static const tvinfo_t tvinfoTab[] = {
     {.xres =  720, .yres =  576, .id = "576p"},
     {.xres =  720, .yres =  576, .id = "576p_prt"},
     {.xres = 1280, .yres =  720, .id = "720p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 1280, .yres =  720, .id = "720p59hz"},
+#endif
     {.xres = 1920, .yres = 1080, .id = "1080i"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 1920, .yres = 1080, .id = "1080i59hz"},
+#endif
     {.xres = 1920, .yres = 1080, .id = "1080p"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 1920, .yres = 1080, .id = "1080p59hz"},
+#endif
     {.xres = 1280, .yres =  720, .id = "720p50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080i50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p24hz"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 1920, .yres = 1080, .id = "1080p23hz"},
+#endif
     {.xres = 3840, .yres = 2160, .id = "4k2k30hz"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 3840, .yres = 2160, .id = "4k2k29hz"},
+#endif
     {.xres = 3840, .yres = 2160, .id = "4k2k25hz"},
     {.xres = 3840, .yres = 2160, .id = "4k2k24hz"},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	{.xres = 3840, .yres = 2160, .id = "4k2k23hz"},
+#endif
     {.xres = 4096, .yres = 2160, .id = "4k2ksmpte"},
     {.xres = 640, .yres = 480, .id = "vga"},
     {.xres = 800, .yres = 600, .id = "svga"},
