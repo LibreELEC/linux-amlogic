@@ -128,3 +128,4 @@ _PHY_MACSettingCalibration_92E(
 
 
 #endif	// #ifndef __HAL_PHY_RF_8188E_H__
+

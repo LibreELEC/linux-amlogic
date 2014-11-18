@@ -131,3 +131,4 @@ _PHY_MACSettingCalibration_8723B(
 	);
 
 #endif	// #ifndef __HAL_PHY_RF_8188E_H__
+
