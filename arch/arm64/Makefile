@@ -43,13 +43,19 @@ TEXT_OFFSET := 0x00080000
 export	TEXT_OFFSET GZFLAGS
 
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
+core-$(CONFIG_CRYPTO) += arch/arm64/crypto/
 core-$(CONFIG_KVM) += arch/arm64/kvm/
 core-$(CONFIG_XEN) += arch/arm64/xen/
 libs-y		:= arch/arm64/lib/ $(libs-y)
 libs-y		+= $(LIBGCC)
 
 # Default target when executing plain make
+ifeq ($(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE),y)
+KBUILD_IMAGE	:= Image.gz-dtb
+else
 KBUILD_IMAGE	:= Image.gz
+endif
+
 KBUILD_DTBS	:= dtbs
 
 all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
@@ -67,6 +73,9 @@ zinstall install: vmlinux
 
 dtbs: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts dtbs
+
+Image.gz-dtb: vmlinux scripts dtbs
+	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 PHONY += vdso_install
 vdso_install:
