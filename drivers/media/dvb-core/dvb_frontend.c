@@ -3223,7 +3223,7 @@ static ssize_t dvbc_lock_store(struct class *cls, struct class_attribute *attr, 
 
 static CLASS_ATTR(lock_time,0644,dvbc_lock_show,dvbc_lock_store);
 
-struct class *tongfang_clsp;
+struct class *tongfang_clsp = NULL;
 #define LOCK_DEVICE_NAME  "tongfang"
 
 int dvb_register_frontend(struct dvb_adapter* dvb,
@@ -3275,18 +3275,21 @@ int dvb_register_frontend(struct dvb_adapter* dvb,
 
 	dvb_register_device (fe->dvb, &fepriv->dvbdev, &dvbdev_template,
 			     fe, DVB_DEVICE_FRONTEND);
-	int ret;
-	printk("For tongfang\n");
-	ret=0;
-	tongfang_clsp = class_create(THIS_MODULE,LOCK_DEVICE_NAME);
+
 	if(!tongfang_clsp)
 	{
+		int ret = 0;
+		printk("For tongfang\n");
+		tongfang_clsp = class_create(THIS_MODULE,LOCK_DEVICE_NAME);
+		if(!tongfang_clsp)
+		{
 			 printk("[tongfang]%s:create class error.\n",__func__);
 			 return PTR_ERR(tongfang_clsp);
+		}
+		ret = class_create_file(tongfang_clsp, &class_attr_lock_time);
+		if(ret)
+			printk("[tongfang]%s create  class file error.\n",__func__);
 	}
-	ret = class_create_file(tongfang_clsp, &class_attr_lock_time);
-	if(ret)
-		printk("[tongfang]%s create  class file error.\n",__func__);
 
 	/*
 	 * Initialize the cache to the proper values according with the
