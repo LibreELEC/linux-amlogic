@@ -343,8 +343,7 @@ static void cpufreq_allstats_free(void)
 	int cpu;
 	struct all_cpufreq_stats *all_stat;
 
-	sysfs_remove_file(cpufreq_global_kobject,
-						&_attr_all_time_in_state.attr);
+	cpufreq_sysfs_remove_file(&_attr_all_time_in_state.attr);
 
 	for_each_possible_cpu(cpu) {
 		all_stat = per_cpu(all_cpufreq_stats, cpu);
@@ -591,8 +590,7 @@ static int __init cpufreq_stats_init(void)
 	}
 
 	create_all_freq_table();
-	ret = sysfs_create_file(cpufreq_global_kobject,
-			&_attr_all_time_in_state.attr);
+	ret = cpufreq_sysfs_create_file(&_attr_all_time_in_state.attr);
 	if (ret)
 		pr_warn("Error creating sysfs file for cpufreq stats\n");
 
