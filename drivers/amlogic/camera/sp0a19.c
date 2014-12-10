@@ -431,7 +431,7 @@ struct sp0a19_fh {
 
 static inline struct sp0a19_fh *to_fh(struct sp0a19_device *dev)
 {
-	return container_of(dev, struct sp0a19_fh, dev);
+	return container_of(&dev, struct sp0a19_fh, dev);
 }
 
 static struct v4l2_frmsize_discrete sp0a19_prev_resolution[]= //should include 320x240 and 640x480, those two size are used for recording
@@ -999,7 +999,7 @@ void set_SP0A19_param_wb(struct sp0a19_device *dev,enum  camera_wb_flip_e para)
 	//temp_reg=sp0a19_read_byte(0x22);
 	//buf[0]=0x22; //SP0A19 enable auto wb
 	buf[0]=0x32;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	temp_reg=i2c_get_byte_add8(client,buf[0]);
 
 	printk(" camera set_SP0A19_param_wb=%d. \n ",para);
 	switch (para)
@@ -1164,8 +1164,8 @@ void SP0A19_night_mode(struct sp0a19_device *dev,enum  camera_night_mode_flip_e 
 
 	unsigned char  temp_reg;
 	//temp_reg=sp0a19_read_byte(0x22);
-	//buf[0]=0x20;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	buf[0]=0x32;
+	temp_reg=i2c_get_byte_add8(client,buf[0]);
 	temp_reg=0xff;
 
     if(enable)
@@ -1434,7 +1434,7 @@ void SP0A19_night_mode(struct sp0a19_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void SP0A19_set_param_banding(struct sp0a19_device *dev,enum  camera_night_mode_flip_e banding)
+void SP0A19_set_param_banding(struct sp0a19_device *dev,enum camera_banding_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     unsigned char buf[4];
@@ -1705,6 +1705,8 @@ void SP0A19_set_param_banding(struct sp0a19_device *dev,enum  camera_night_mode_
 		i2c_put_byte_add8(client,buf,2);
                      #endif
             break;
+		default:
+			break;
     }
 }
 
@@ -1995,7 +1997,7 @@ static int sp0a19_setting(struct sp0a19_device *dev,int PROP_ID,int value )
 	return ret;
 
 }
-
+#if 0
 static void power_down_sp0a19(struct sp0a19_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
@@ -2010,7 +2012,7 @@ static void power_down_sp0a19(struct sp0a19_device *dev)
 	msleep(5);
 	return;
 }
-
+#endif
 /* ------------------------------------------------------------------
 	DMA and thread functions
    ------------------------------------------------------------------*/
@@ -2578,7 +2580,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	return 0;
 }

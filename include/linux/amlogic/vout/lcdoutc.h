@@ -86,23 +86,6 @@ typedef enum {
 #define	LCD_POWER_GPIO_OUTPUT_HIGH	1
 #define	LCD_POWER_GPIO_INPUT		2
 
-static const char* lcd_power_type_table[]={
-	"cpu",
-	"pmu",
-	"signal",
-	"init",
-	"null",
-};
-
-static const char* lcd_power_pmu_gpio_table[]={
-	"GPIO0",
-	"GPIO1",
-	"GPIO2",
-	"GPIO3",
-	"GPIO4",
-	"null",
-};
-
 typedef enum {
 	LCD_DIGITAL_MIPI = 0,
 	LCD_DIGITAL_LVDS,
@@ -111,15 +94,6 @@ typedef enum {
 	LCD_DIGITAL_MINILVDS,
 	LCD_TYPE_MAX,
 } Lcd_Type_t;
-
-static const char* lcd_type_table[]={
-	"MIPI",
-	"LVDS",
-	"eDP",
-	"TTL",
-	"miniLVDS",
-	"invalid",
-};
 
 typedef struct {
 	char *model_name;

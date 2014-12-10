@@ -345,6 +345,7 @@ static char isZStick(void){
 #endif /* ! MIR3DA_STK_TEMP_SOLUTION */
 
 #if FILTER_AVERAGE_ENHANCE
+#if 0
 static short filter_average(short preAve, short sample, int paramN, int* refNum)
 {
  #if FILTER_AVERAGE_EX
@@ -363,7 +364,6 @@ static short filter_average(short preAve, short sample, int paramN, int* refNum)
 
     return preAve + (sample - preAve)/paramN;
 }
-
 static int filter_average_enhance(FilterAverageContext* fac, short sample)
 {
     if (fac == 0){
@@ -384,6 +384,7 @@ static int filter_average_enhance(FilterAverageContext* fac, short sample)
 
     return fac->sample_h;
 }
+#endif
 #endif /* ! FILTER_AVERAGE_ENHANCE */
 
 int mir3da_register_read(MIR_HANDLE handle, short addr, unsigned char *data)

@@ -122,10 +122,10 @@ static const struct of_device_id amlogic_codec_dt_match[]={
 
 static int dummy_codec_platform_probe(struct platform_device *pdev)
 {
-    printk("dummy_codec_platform_probe\n");
 	struct dummy_codec_private *dummy_codec;
     int ret;
 
+    printk("dummy_codec_platform_probe\n");
 	dummy_codec = kzalloc(sizeof(struct dummy_codec_private), GFP_KERNEL);
 	if (dummy_codec == NULL) {
 		return -ENOMEM;
@@ -143,7 +143,7 @@ static int dummy_codec_platform_probe(struct platform_device *pdev)
 static int __exit dummy_codec_platform_remove(struct platform_device *pdev)
 {
     snd_soc_unregister_codec(&pdev->dev);
-	kfree(platform_get_drvdata(&pdev->dev));
+	kfree(platform_get_drvdata(pdev));
 	return 0;
 }
 

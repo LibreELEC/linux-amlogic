@@ -38,6 +38,7 @@
 #include <mach/lcd_reg.h>
 #include <mach/lcdoutc.h>
 #include <linux/amlogic/vout/lcdoutc.h>
+#include <linux/amlogic/vout/aml_lcd_common.h>
 #include <linux/amlogic/vout/lcd_aml.h>
 #include <mach/clock.h>
 #include <asm/fiq.h>
@@ -68,6 +69,23 @@ void lcd_print(const char *fmt, ...)
 	vprintk(fmt, args);
 	va_end(args);
 }
+
+static const char* lcd_power_type_table[]={
+	"cpu",
+	"pmu",
+	"signal",
+	"init",
+	"null",
+};
+
+static const char* lcd_power_pmu_gpio_table[]={
+	"GPIO0",
+	"GPIO1",
+	"GPIO2",
+	"GPIO3",
+	"GPIO4",
+	"null",
+};
 
 typedef struct {
 	Lcd_Config_t *pConf;

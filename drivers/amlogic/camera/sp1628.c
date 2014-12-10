@@ -964,7 +964,7 @@ void SP1628_init_regs(struct sp1628_device *dev)
 
 #endif
 
-
+#if 0
 static int set_flip(struct sp1628_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
@@ -982,7 +982,7 @@ static int set_flip(struct sp1628_device *dev)
         }
         return 0;
 }
-
+#endif
 
 static void sp1628_set_resolution(struct sp1628_device *dev,int height,int width)
 {
@@ -1165,6 +1165,7 @@ void set_SP1628_param_wb(struct sp1628_device *dev,enum  camera_wb_flip_e para)
 				break;
 
 			case CAM_WB_MANUAL:
+			default:
 					// TODO
 				break;
 		}
@@ -1573,7 +1574,7 @@ void SP1628_set_param_banding(struct sp1628_device *dev,enum  camera_banding_fli
 
 			break;
 
-			 //default:
+			default:
 
 				 break;
 
@@ -2472,7 +2473,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	return 0;
 }

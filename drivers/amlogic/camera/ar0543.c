@@ -613,7 +613,9 @@ struct ar0543_device {
 
 	struct vdin_v4l2_ops_s *vops;
 
-    unsigned int            is_vdin_start;
+	unsigned int            is_vdin_start;
+
+	int stream_on;
 
 	fe_arg_t fe_arg;
 
@@ -647,14 +649,9 @@ struct ar0543_fh {
 
 	enum v4l2_buf_type         type;
 	int			   input; 	/* Input Number on bars */
-	int  stream_on;
 	unsigned int		f_flags;
 };
 
-static inline struct ar0543_fh *to_fh(struct ar0543_device *dev)
-{
-	return container_of(dev, struct ar0543_fh, dev);
-}
 
 #define RAW10
 
@@ -3560,7 +3557,6 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
 	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	struct ar0543_fh *fh = to_fh(dev);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_ar0543(value));
@@ -3585,7 +3581,7 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(ar0543_qctrl[4].default_value!=value){
 			ar0543_qctrl[4].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0543_set_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 		}
@@ -3593,7 +3589,7 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 	case V4L2_CID_EXPOSURE:
 		if(ar0543_qctrl[5].default_value!=value){
 			ar0543_qctrl[5].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0543_set_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 		}
@@ -3608,7 +3604,7 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 	case V4L2_CID_COLORFX:
 		if(ar0543_qctrl[6].default_value!=value){
 			ar0543_qctrl[6].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0543_set_param_effect(dev,value);
 		}
 		break;
@@ -3637,7 +3633,7 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 		if(ar0543_qctrl[13].default_value!=value){
 			ar0543_qctrl[13].default_value=value;
 			printk(" set camera  focus zone =%d. \n ",value);
-			if(fh->stream_on)
+			if(dev->stream_on)
 		set_focus_zone(dev, value);
 		}
 		break;
@@ -3645,7 +3641,7 @@ static int ar0543_setting(struct ar0543_device *dev,int PROP_ID,int value )
 		printk("V4L2_CID_FOCUS_AUTO\n");
 		if(ar0543_qctrl[8].default_value!=value){
 			ar0543_qctrl[8].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0543_AutoFocus(dev,value);
 		}
 	case V4L2_CID_PRIVACY:
@@ -3703,7 +3699,7 @@ static void ar0543_thread_tick(struct ar0543_fh *fh)
 	unsigned long flags = 0;
 
 	dprintk(dev, 1, "Thread tick\n");
-	if(!fh->stream_on){
+	if(!dev->stream_on){
 		dprintk(dev, 1, "sensor doesn't stream on\n");
 		return ;
 	}
@@ -4249,7 +4245,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		printk("vidioc_streamon in capture process\n");
 		ret =  videobuf_streamon(&fh->vb_vidq);
 		if(ret == 0){
-			fh->stream_on        = 1;
+			dev->stream_on        = 1;
 		}
 
 		return 0;
@@ -4320,7 +4316,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	if(ret == 0){
 		dev->vops->start_tvin_service(0,&para);
         dev->is_vdin_start      = 1;
-		fh->stream_on        = 1;
+		dev->stream_on        = 1;
 	}
 	dev->vdin_arg.cmd = VDIN_CMD_SET_CM2;
 	dev->vdin_arg.cm2 = dev->configure->cm.export;
@@ -4346,13 +4342,13 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	ret = videobuf_streamoff(&fh->vb_vidq);
 	if (capture_proc) {
 		printk("vidioc_streamoff in capture process\n");
-		fh->stream_on        = 0;
+		dev->stream_on        = 0;
 		return 0;
 	}
 	if(ret == 0 ){
 	dev->vops->stop_tvin_service(0);
 		dev->is_vdin_start      = 0;
-        fh->stream_on        = 0;
+		dev->stream_on        = 0;
 	}
 	dev->ae_on = false;
 	return ret;
@@ -4693,7 +4689,7 @@ static int ar0543_open(struct file *file)
     fh->fmt      = &formats[0];
     fh->width    = 640;
     fh->height   = 480;
-    fh->stream_on = 0 ;
+    dev->stream_on = 0 ;
     fh->f_flags  = file->f_flags;
     /* Resets frame counters */
     dev->jiffies = jiffies;

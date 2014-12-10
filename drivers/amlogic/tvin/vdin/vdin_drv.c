@@ -860,7 +860,7 @@ static int vdin_func(int no, vdin_arg_t *arg)
 			}
 			vdin_set_vframe_prop_info(&devp->curr_wr_vfe->vf, devp);
 			vdin_backup_histgram(&devp->curr_wr_vfe->vf, devp);
-			vf = parm->private;
+			vf = (struct vframe_s *)parm->private;
 			if(vf && devp->curr_wr_vfe)
 				memcpy(&vf->prop,&devp->curr_wr_vfe->vf.prop,sizeof(vframe_prop_t));
 			break;
@@ -1963,7 +1963,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	                goto fail_get_resource_mem;
 	        }
 	        else {
-	                ret= find_reserve_block_by_name(name);
+	                ret= find_reserve_block_by_name((char *)name);
 	                if(ret<0) {
 	                        pr_err("\nvdin memory resource undefined2.\n");
 	                        ret = -EFAULT;

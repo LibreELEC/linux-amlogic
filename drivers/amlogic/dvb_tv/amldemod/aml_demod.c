@@ -301,7 +301,9 @@ static long aml_demod_ioctl(struct file *file,
 {
 	int i=0;
 	int step;
-	int strength=0;
+	int strength;
+
+	strength=0;
 
     switch (cmd) {
 

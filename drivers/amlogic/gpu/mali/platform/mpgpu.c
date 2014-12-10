@@ -29,6 +29,7 @@
 #include <common/mali_pmu.h>
 #include "meson_main.h"
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 static ssize_t domain_stat_read(struct class *class,
 			struct class_attribute *attr, char *buf)
 {
@@ -40,7 +41,7 @@ static ssize_t domain_stat_read(struct class *class,
 #endif
 	return sprintf(buf, "%x\n", val>>4);
 }
-
+#endif
 #if MESON_CPU_TYPE > MESON_CPU_TYPE_MESON6TVD
 #define PREHEAT_CMD "preheat"
 #define PLL2_CMD "mpl2"  /* mpl2 [11] or [0xxxxxxx] */

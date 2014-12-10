@@ -69,9 +69,6 @@ static struct file_operations btfcd_file_ops_g =
 
 #define VERSION "2.11"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 1)
-static bool reset = 0;
-#endif
 
 static struct usb_driver btusb_driver;
 static struct usb_device_id btusb_table[] = {

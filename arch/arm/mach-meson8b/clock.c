@@ -864,8 +864,8 @@ void meson_set_cpu_power_ctrl(uint32_t cpu,int is_power_on)
 		aml_set_reg32_bits(P_AO_RTI_PWR_A9_CNTL1, 0x0, ((cpu +1) << 1 ), 2);
 
 		udelay(10);
-		while(!(readl(P_AO_RTI_PWR_A9_CNTL1) & (1<<(cpu+16)))){
-			printk("wait power...0x%08x 0x%08x\n",readl(P_AO_RTI_PWR_A9_CNTL0),readl(P_AO_RTI_PWR_A9_CNTL1));
+		while(!(aml_read_reg32(P_AO_RTI_PWR_A9_CNTL1) & (1<<(cpu+16)))){
+			printk("wait power...0x%08x 0x%08x\n",aml_read_reg32(P_AO_RTI_PWR_A9_CNTL0),aml_read_reg32(P_AO_RTI_PWR_A9_CNTL1));
 			udelay(10);
 		};
 		/* Isolation disable */

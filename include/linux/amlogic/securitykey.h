@@ -65,31 +65,31 @@ extern aml_keybox_provider_t * aml_keybox_provider_get(char * name);
 extern int extenal_api_key_query(char *keyname,unsigned int *keystate);
 
 #else
-static int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag)
+static inline int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag)
 {
 	return -EINVAL;
 }
-static int extenal_api_key_set_version(char *devvesion)
+static inline int extenal_api_key_set_version(char *devvesion)
 {
 	return -EINVAL;
 }
-static int extenal_api_key_write(char *keyname,char *keydata,int dsize,int hexascii_flag)
+static inline int extenal_api_key_write(char *keyname,char *keydata,int dsize,int hexascii_flag)
 {
 	return -EINVAL;
 }
-static int extenal_api_key_read(char *keyname,char *keydata,int dsize,int hexascii_flag)
+static inline int extenal_api_key_read(char *keyname,char *keydata,int dsize,int hexascii_flag)
 {
 	return -EINVAL;
 }
-static int32_t aml_keybox_provider_register(aml_keybox_provider_t * provider)
+static inline int32_t aml_keybox_provider_register(aml_keybox_provider_t * provider)
 {
 	return -EINVAL;
 }
-static aml_keybox_provider_t * aml_keybox_provider_get(char * name)
+static inline aml_keybox_provider_t * aml_keybox_provider_get(char * name)
 {
 	return NULL;
 }
-static int extenal_api_key_query(char *keyname,unsigned int *keystate)
+static inline int extenal_api_key_query(char *keyname,unsigned int *keystate)
 {
 	return -EINVAL;
 }

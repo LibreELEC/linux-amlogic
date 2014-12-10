@@ -53,7 +53,7 @@
 
 struct gpio_key{
 	int code;	  /* input key code */
-	unsigned char *name;
+	const char *name;
 	int pin;    /*pin number*/
 	int status; /*0 up, 1 down*/
 };
@@ -130,19 +130,20 @@ static void update_work_func(struct work_struct *work)
 //we need do more things to adapt the gpio change.
 int det_pwr_key(void)
 {
-	return (readl(P_AO_IRQ_STAT) & (1<<8));
+	return (aml_read_reg32(P_AO_IRQ_STAT) & (1<<8));
 }
 /*Enable gpio interrupt for AO domain interrupt*/
 void set_pwr_key(void)
 {
-	writel(readl(P_AO_IRQ_GPIO_REG) | (1<<18) | (1<<16) | (0x3<<0),P_AO_IRQ_GPIO_REG);
-	writel(readl(P_AO_IRQ_MASK_FIQ_SEL) | (1<<8),P_AO_IRQ_MASK_FIQ_SEL);
-	writel(1<<8,P_AO_IRQ_STAT_CLR); //clear intr
+	aml_write_reg32(P_AO_IRQ_GPIO_REG,aml_read_reg32(P_AO_IRQ_GPIO_REG)|(1<<18) | (1<<16) | (0x3<<0));
+	aml_write_reg32(P_AO_IRQ_MASK_FIQ_SEL,aml_read_reg32(P_AO_IRQ_MASK_FIQ_SEL)|(1<<8));
+	aml_set_reg32_mask(P_AO_IRQ_STAT_CLR,1<<8);
+
 }
 
 void clr_pwr_key(void)
 {
-	writel(1<<8,P_AO_IRQ_STAT_CLR); //clear intr
+	aml_set_reg32_mask(P_AO_IRQ_STAT_CLR,1<<8);
 }
 
 extern int deep_suspend_flag;

@@ -35,6 +35,7 @@
 #include <mach/am_regs.h>
 #include <mach/lcd_reg.h>
 #include <linux/amlogic/vout/lcdoutc.h>
+#include <linux/amlogic/vout/aml_lcd_common.h>
 #include <mach/clock.h>
 #include <mach/vpu.h>
 #include <mach/mod_gate.h>
@@ -54,6 +55,15 @@ static struct class *lcd_video_class = NULL;
 static unsigned char lcd_gamma_init_err = 0;
 
 void lcd_config_init(Lcd_Config_t *pConf);
+
+#define SS_LEVEL_MAX	5
+static const char *lcd_ss_level_table[]={
+	"0",
+	"0.5%",
+	"1%",
+	"1.5%",
+	"2%",
+};
 
 static void print_lcd_driver_version(void)
 {
@@ -996,7 +1006,7 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
     unsigned m, n, od, div_pre, div_post, xd;
     unsigned od_sel, pre_div_sel;
     unsigned div_pre_sel_max, crt_xd_max;
-    unsigned pll_vco, fout_pll, div_pre_out, div_post_out, final_freq, iflogic_vid_clk_in_max;
+    unsigned pll_vco, fout_pll, div_pre_out, div_post_out, iflogic_vid_clk_in_max;
     unsigned od_fb=0;
     unsigned int dsi_bit_rate_min=0, dsi_bit_rate_max=0;
     unsigned clk_num = 0;

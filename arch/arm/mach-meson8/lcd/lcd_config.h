@@ -187,13 +187,4 @@ static const unsigned edp_div0_table[15] = {1,2,3,4,5,7,8,9,11,13,17,19,23,29,31
 static const unsigned edp_div1_table[8] = {1,2,4,5,6,7,9,13};
 //********************************************//
 
-#define SS_LEVEL_MAX	5
-static const char *lcd_ss_level_table[]={
-	"0",
-	"0.5%",
-	"1%",
-	"1.5%",
-	"2%",
-};
-
 #endif

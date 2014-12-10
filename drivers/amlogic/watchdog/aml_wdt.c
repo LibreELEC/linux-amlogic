@@ -263,15 +263,12 @@ static int aml_wdt_remove(struct platform_device *pdev)
 #ifdef	CONFIG_PM
 static int aml_wdt_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct watchdog_device *wdog = platform_get_drvdata(pdev);
 	reset_watchdog();
 	return 0;
 }
 
 static int aml_wdt_resume(struct platform_device *pdev)
 {
-	struct watchdog_device *wdog = platform_get_drvdata(pdev);
-	struct aml_wdt_dev *wdev = watchdog_get_drvdata(wdog);
 	reset_watchdog();
 	return 0;
 }

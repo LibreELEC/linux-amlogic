@@ -116,5 +116,6 @@ const char *cam_cmd_to_str(cam_command_t cmd)
 		default:
 			break;
 	}
+	return NULL;
 }
 EXPORT_SYMBOL(cam_cmd_to_str);

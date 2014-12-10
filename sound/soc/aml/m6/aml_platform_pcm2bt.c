@@ -576,7 +576,7 @@ static int aml_pcm2bt_new(struct snd_soc_pcm_runtime *rtd)
 	int ret = 0;
        struct snd_soc_card *card = rtd->card;
        struct snd_pcm *pcm =rtd->pcm ;
-       struct snd_soc_dai *dai =rtd->cpu_dai ;
+//       struct snd_soc_dai *dai =rtd->cpu_dai ;
        pcm_debug("enter %s dai->name: %s dai->id: %d\n", __FUNCTION__, dai->name, dai->id);
 
 	if (!card->dev->dma_mask)

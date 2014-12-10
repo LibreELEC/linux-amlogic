@@ -240,7 +240,7 @@ static inline u16 join_bytes(u8 a, u8 b)
 	ab = ab << 8 | b;
 	return ab;
 }
-
+#if 0
 static u32 gsl_read_interface(struct i2c_client *client, u8 reg, u8 *buf, u32 num)
 {
 	struct i2c_msg xfer_msg[2];
@@ -262,7 +262,7 @@ static u32 gsl_read_interface(struct i2c_client *client, u8 reg, u8 *buf, u32 nu
 
 	return i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg)) == ARRAY_SIZE(xfer_msg) ? 0 : -EFAULT;
 }
-
+#endif
 static u32 gsl_write_interface(struct i2c_client *client, const u8 reg, u8 *buf, u32 num)
 {
 	struct i2c_msg xfer_msg[1];
@@ -378,13 +378,13 @@ static void gsl_load_fw(struct i2c_client *client)
 	if (CHIP_1680E==chip_type)
 	{
 		printk("======gsl_load_1680E FW start==============\n");
-		ptr_fw =GSL1680E_FW;
+		ptr_fw =(struct fw_data *)GSL1680E_FW;
 		source_len = ARRAY_SIZE(GSL1680E_FW);
 	}
 	else
 	{
 		printk("======gsl_load_3670 FW start==============\n");
-		ptr_fw = GSL3670_FW;
+		ptr_fw =(struct fw_data *) GSL3670_FW;
 		source_len = ARRAY_SIZE(GSL3670_FW);
 	}
 
@@ -697,6 +697,12 @@ static void gslX680_ts_worker(struct work_struct *work)
 	u16 x, y;
 
 	struct gsl_ts *ts = container_of(work, struct gsl_ts,work);
+#ifdef GSL_NOID_VERSION
+	u32 tmp1;
+	u8 buf[4] = {0};
+	struct gsl_touch_info cinfo;
+	memset(&cinfo,0,sizeof(struct gsl_touch_info));
+#endif
 
 	print_info("=====gslX680_ts_worker=====\n");
 
@@ -707,12 +713,6 @@ static void gslX680_ts_worker(struct work_struct *work)
 		i2c_lock_flag = 1;
 #endif
 
-#ifdef GSL_NOID_VERSION
-	u32 tmp1;
-	u8 buf[4] = {0};
-	struct gsl_touch_info cinfo;
-	memset(&cinfo,0,sizeof(struct gsl_touch_info));
-#endif
 
 	rc = gsl_ts_read(ts->client, 0x80, ts->touch_data, ts->dd->data_size);
 	if (rc < 0)

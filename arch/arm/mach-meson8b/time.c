@@ -77,6 +77,10 @@ static cycle_t cycle_read_timerE(struct clocksource *cs)
     return (cycles_t) aml_read_reg32(P_ISA_TIMERE);
 }
 
+static unsigned long cycle_read_timerE1(void)
+{
+    return (unsigned long) aml_read_reg32(P_ISA_TIMERE);
+}
 static struct clocksource clocksource_timer_e = {
     .name   = "Timer-E",
     .rating = 300,
@@ -574,7 +578,7 @@ void __init meson_timer_init(void)
 #endif
 
 	/* using H/W counter for delay instead of CPU tick */
-	aml_delay_timer.read_current_timer = &cycle_read_timerE;
+	aml_delay_timer.read_current_timer = &cycle_read_timerE1;
 	aml_delay_timer.freq = 1000*1000;//1us resolution
 	register_current_timer_delay(&aml_delay_timer);
 }

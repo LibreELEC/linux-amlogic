@@ -1513,7 +1513,7 @@ int aml_cam_info_unreg(aml_cam_info_t* cam_info)
 		list_for_each_safe(p, n, &info_head) {
 			tmp_info = list_entry(p, aml_cam_info_t, info_entry);
 			if (tmp_info == cam_info) {
-				list_del(cam_info);
+				list_del(p);
 				return 0;
 			}
 		}

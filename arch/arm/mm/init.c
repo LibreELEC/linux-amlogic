@@ -468,6 +468,7 @@ free_memmap(unsigned long start_pfn, unsigned long end_pfn)
 /*
  * The mem_map array can get very big.  Free the unused area of the memory map.
  */
+#ifndef CONFIG_PLAT_MESON
 static void __init free_unused_memmap(struct meminfo *mi)
 {
 	unsigned long bank_start, prev_bank_end = 0;
@@ -518,7 +519,7 @@ static void __init free_unused_memmap(struct meminfo *mi)
 			    ALIGN(prev_bank_end, PAGES_PER_SECTION));
 #endif
 }
-
+#endif
 #ifdef CONFIG_HIGHMEM
 static inline void free_area_high(unsigned long pfn, unsigned long end)
 {

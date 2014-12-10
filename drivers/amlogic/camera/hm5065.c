@@ -816,6 +816,7 @@ void HM5065_set_param_wb(struct hm5065_device *dev,enum  camera_wb_flip_e para)/
 				break;
 
 			case CAM_WB_MANUAL:
+			default:
 					// TODO
 				break;
 		}
@@ -1034,6 +1035,8 @@ static void HM5065_set_param_banding(struct hm5065_device *dev,enum  camera_band
 							i2c_put_byte(client, 0x0190, 0x00);
 							i2c_put_byte(client, 0x019c, 0x4b);
 							i2c_put_byte(client, 0x019d, 0x20);
+				break;
+			default:
 				break;
 		}
 }
@@ -1842,12 +1845,12 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	//unsigned char gain = 0, exposurelow = 0, exposuremid = 0, exposurehigh = 0;
 	int cap_fps, pre_fps;
 
+	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
         f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN-1) ) & (~(CANVAS_WIDTH_ALIGN-1));
 	if ((f->fmt.pix.pixelformat==V4L2_PIX_FMT_YVU420) ||
             (f->fmt.pix.pixelformat==V4L2_PIX_FMT_YUV420)){
                 f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN*2-1) ) & (~(CANVAS_WIDTH_ALIGN*2-1));
         }
-	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
 	return ret;
 
@@ -2083,7 +2086,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
         return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	return 0;
 }

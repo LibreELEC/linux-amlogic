@@ -82,10 +82,12 @@ static struct of_device_id mxs_of_platform_bus_ids[] = {
 	{},
 };
 
+#ifdef CONFIG_OF_LM
 static struct of_device_id mxs_of_lm_bus_ids[] = {
 	{.compatible = "logicmodule-bus",},
 	{},
 };
+#endif
 
 static void meson6tv_power_off(void)
 {

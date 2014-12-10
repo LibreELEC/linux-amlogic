@@ -633,10 +633,10 @@ static int wm8960_hw_params(struct snd_pcm_substream *substream,
 
 static int wm8960_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
-    printk(KERN_DEBUG "enter : %s, mute=%d,stream=%d \n",__func__,mute,stream);
     struct snd_soc_codec *codec = dai->codec;
     u16 mute_reg = snd_soc_read(codec, WM8960_DACCTL1) & 0xfff7;
     u16 mute_reg1 = snd_soc_read(codec, WM8960_LINVOL) & 0xff7f;
+    printk(KERN_DEBUG "enter : %s, mute=%d,stream=%d \n",__func__,mute,stream);
     if(stream == SNDRV_PCM_STREAM_PLAYBACK){
         if (mute){
             snd_soc_write(codec, WM8960_DACCTL1, mute_reg | 0x8);

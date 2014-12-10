@@ -110,6 +110,7 @@ MODULE_PARM_DESC(cm_enable,"cm_enable");
 #define VDIN_MEAS_VSCNT_DIFF    0x50  // the diff value between normal/bad data
 
 #ifndef VDIN_DEBUG
+#undef pr_info
 #define pr_info(fmt, ...)
 #endif
 

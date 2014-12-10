@@ -679,7 +679,7 @@ static int noneseamless_play_clone_rate = 5;
 
 #ifdef CONFIG_GE2D_KEEP_FRAME
 static ge2d_context_t *ge2d_video_context = NULL;
-static int ge2d_videotask_init()
+static int ge2d_videotask_init(void)
 {
     if (ge2d_video_context == NULL)
             ge2d_video_context = create_ge2d_work_queue();
@@ -692,7 +692,7 @@ static int ge2d_videotask_init()
 
     return 0;
 }
-static int ge2d_videotask_release()
+static int ge2d_videotask_release(void)
 {
     if (ge2d_video_context) {
             destroy_ge2d_work_queue(ge2d_video_context);
@@ -704,9 +704,9 @@ static int ge2d_videotask_release()
 static int ge2d_canvas_dup(canvas_t *srcy ,canvas_t *srcu,canvas_t *des,
     int format,u32 srcindex,u32 desindex)
 {
-    printk("ge2d_canvas_dup ADDR srcy[0x%x] srcu[0x%x] des[0x%x]\n",srcy->addr,srcu->addr,des->addr);
 
     config_para_ex_t ge2d_config;
+    printk("ge2d_canvas_dup ADDR srcy[0x%lx] srcu[0x%lx] des[0x%lx]\n",srcy->addr,srcu->addr,des->addr);
     memset(&ge2d_config,0,sizeof(config_para_ex_t));
 
     ge2d_config.alu_const_color= 0;
@@ -758,10 +758,10 @@ static int ge2d_canvas_dup(canvas_t *srcy ,canvas_t *srcu,canvas_t *des,
     return 0;
 }
 
-int ge2d_show_frame(ulong yaddr,ulong uaddr)
+void ge2d_show_frame(ulong yaddr,ulong uaddr)
 {
     u32 cur_index;
-    u32 y_index, u_index,des_index,src_index;
+    u32 y_index, u_index;
     cur_index = READ_MPEG_REG(VD1_IF0_CANVAS0);
     y_index = cur_index & 0xff;
     u_index = (cur_index >> 8) & 0xff;
@@ -798,7 +798,7 @@ int ge2d_store_frame(ulong yaddr,ulong uaddr,u32 ydupindex,u32 udupindex)
     ge2d_canvas_dup(&cs0,&cs1,&cyd,GE2D_FORMAT_M24_NV21,src_index,des_index);
     return 0;
 }
-static void ge2d_keeplastframe_block()
+static void ge2d_keeplastframe_block(void)
 {
     mutex_lock(&video_module_mutex);
     ge2d_store_frame(keep_y_addr,keep_u_addr,DISPLAY_CANVAS_YDUP_INDEX,DISPLAY_CANVAS_UDUP_INDEX);
@@ -1214,8 +1214,9 @@ u32 property_changed_true=0;
 static void vsync_toggle_frame(vframe_t *vf)
 {
     u32 first_picture = 0;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     unsigned long flags;
-
+#endif
     frame_count++;
     if(debug_flag& DEBUG_FLAG_PRINT_TOGGLE_FRAME){
         printk("%s()\n", __func__);
@@ -1728,9 +1729,10 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     }
 #else
     /* picture 0/1 control */
-    if (((vf->type & VIDTYPE_INTERLACE) == 0) &&
+    if ((((vf->type & VIDTYPE_INTERLACE) == 0) &&
         ((vf->type & VIDTYPE_VIU_FIELD) == 0) &&
-        ((vf->type & VIDTYPE_MVC) == 0)||(frame_par->vpp_2pic_mode&0x3)) {
+        ((vf->type & VIDTYPE_MVC) == 0))||
+        (frame_par->vpp_2pic_mode&0x3)) {
         /* progressive frame in two pictures */
 	if(frame_par->vpp_2pic_mode&VPP_PIC1_FIRST) {
 	    VSYNC_WR_MPEG_REG(VD1_IF0_LUMA_PSEL+ cur_dev->viu_off,
@@ -2196,9 +2198,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     s32 i, vout_type;
     vframe_t *vf;
     unsigned long flags;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     vdin_v4l2_ops_t *vdin_ops = NULL;
     vdin_arg_t arg;
-
+#endif
 #ifdef CONFIG_AM_VIDEO_LOG
     int toggle_cnt;
 #endif
@@ -2897,7 +2900,7 @@ static int alloc_keep_buffer(void)
             goto err6;
         }
     }
-    printk("yaddr=%x,u_addr=%x,v_addr=%x\n",keep_y_addr,keep_u_addr,keep_v_addr);
+    printk("yaddr=%lx,u_addr=%lx,v_addr=%lx\n",keep_y_addr,keep_u_addr,keep_v_addr);
     return 0;
 
 err6:
@@ -3490,7 +3493,7 @@ static long amvideo_ioctl(struct file *file,
     case AMSTREAM_IOC_SET_OMX_VPTS:
         {
             u32 pts;
-            memcpy(&pts,arg,sizeof(u32));
+            get_user(pts,(unsigned long __user *)arg);
             omx_pts = pts;
         }
         break;

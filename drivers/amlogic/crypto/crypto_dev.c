@@ -95,7 +95,11 @@ int crypto_done(crypto_device_t * pcrypt_info)
     {
         return ret;
     }
-    copy_from_user((void *)key,(void*)pcrypt_info->keyaddr,keysize);
+    if(copy_from_user((void *)key,(void*)pcrypt_info->keyaddr,keysize))
+	{
+		kfree(key);
+		return ret;
+	}
 
     src = (char *)kmalloc(pcrypt_info->size,GFP_KERNEL);
     if(src==NULL)
@@ -103,7 +107,12 @@ int crypto_done(crypto_device_t * pcrypt_info)
         kfree(key);
         return ret;
     }
-    copy_from_user((void *)src,(void*)pcrypt_info->srcaddr,pcrypt_info->size);
+    if(copy_from_user((void *)src,(void*)pcrypt_info->srcaddr,pcrypt_info->size))
+	{
+		kfree(src);
+		kfree(key);
+		return ret;
+	}
 
     sg_init_table(sg, 1);
     sg_set_buf(&sg[0], src, pcrypt_info->size-pad_byte);
@@ -126,7 +135,8 @@ int crypto_done(crypto_device_t * pcrypt_info)
         goto out;
      }
 
-    copy_to_user((void *)pcrypt_info->dstaddr,src,pcrypt_info->size);
+    if(copy_to_user((void *)pcrypt_info->dstaddr,src,pcrypt_info->size))
+		goto out;
 
     ret = CRYPTO_STATUS_FINISH;
 out:

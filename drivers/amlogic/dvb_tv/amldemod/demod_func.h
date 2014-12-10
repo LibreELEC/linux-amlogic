@@ -151,7 +151,7 @@ void dtmb_reset(void);
 int dtmb_read_snr(void);
 
 void dtmb_write_reg(int reg_addr, int reg_data);
-long dtmb_read_reg(int reg_addr);
+unsigned int dtmb_read_reg(int reg_addr);
 void dtmb_register_reset(void);
 
 

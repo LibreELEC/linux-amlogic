@@ -291,6 +291,8 @@ static int amdemod_stat_islock(struct aml_fe_dev *dev, int mode)
 {
 	struct aml_demod_sts demod_sts;
 	int lock_status;
+	int dvbt_status1;
+	dvbt_status1=((apb_read_reg(DVBT_BASE+(0x0a<<2))>>20)&0x3ff);
 
 	if(mode==0){
 		/*DVBC*/
@@ -300,7 +302,7 @@ static int amdemod_stat_islock(struct aml_fe_dev *dev, int mode)
 	} else if (mode==1){
 		/*DVBT*/
 		lock_status=(apb_read_reg(DVBT_BASE+(0x2a<<2)))&0xf;
-		if((lock_status==9)||(lock_status==10)&&(((apb_read_reg(DVBT_BASE+(0x0a<<2))>>20)&0x3ff)!=0)){
+		if((((lock_status)==9)||((lock_status)==10))&&((dvbt_status1)!=0)){
 			return 1;
 		}else{
 			return 0;
@@ -986,8 +988,8 @@ static int m6_demod_dtmb_read_signal_strength(struct dvb_frontend *fe, u16 *stre
 
 static int m6_demod_dtmb_read_snr(struct dvb_frontend *fe, u16 * snr)
 {
-	struct aml_fe *afe = fe->demodulator_priv;
-	struct aml_fe_dev *dev = afe->dtv_demod;
+//	struct aml_fe *afe = fe->demodulator_priv;
+//	struct aml_fe_dev *dev = afe->dtv_demod;
 
 	int tmp,snr_avg;
 	tmp=snr_avg=0;

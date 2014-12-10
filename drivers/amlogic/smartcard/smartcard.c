@@ -109,6 +109,7 @@ typedef struct {
 	int 			(*reset)(void *, int);
 	u32                irq_num;
 	int                reset_level;
+	struct pinctrl     *pinctrl;
 } smc_dev_t;
 
 #define SMC_DEV_NAME     "smc"
@@ -521,6 +522,7 @@ static int smc_hw_deactive(smc_dev_t *smc)
 	return 0;
 }
 
+#if 0
 static int smc_hw_get(smc_dev_t *smc, int cnt, int timeout)
 {
 
@@ -566,6 +568,7 @@ static int smc_hw_get(smc_dev_t *smc, int cnt, int timeout)
 	pr_error("read atr failed\n");
 	return -1;
 }
+#endif
 
 #ifdef SMC_FIQ
 static void smc_print_data(char buf[], int cnt)
@@ -1477,7 +1480,7 @@ static int smc_dev_init(smc_dev_t *smc, int id)
 
 	smc->id = id;
 
-	devm_pinctrl_get_select_default(&smc->pdev->dev);
+	smc->pinctrl = devm_pinctrl_get_select_default(&smc->pdev->dev);
 
 	smc->reset_pin = smc0_reset;
 	if(smc->reset_pin==-1) {
@@ -1661,7 +1664,11 @@ static int smc_read(struct file *filp,char __user *buff, size_t size, loff_t *pp
                     printk(KERN_ALERT"<<<<==== to read %d data  from smartcard and received:%d.\n", size, smc_recv_bak_idx);
                 smc_print_data(temp_buf, size);
             }
-            copy_to_user(buff, temp_buf, size);
+            ret = copy_to_user(buff, temp_buf, size);
+		if(ret<0) {
+			printk("ret =%d \n",ret);
+			return ret;
+		}
         }else{
             //printk(KERN_ALERT"smc_read.......failed.\n");
             ret = 0;
@@ -1703,7 +1710,11 @@ static int smc_write(struct file *filp, const char __user *buff, size_t size, lo
     //printk(KERN_ALERT"ret is:0x%x.\n", ret);
 
     if(ret == 0){
-        copy_from_user(temp_buf, buff, size);
+        ret = copy_from_user(temp_buf, buff, size);
+	if(ret<0) {
+		printk("ret =%d \n",ret);
+		return ret;
+	}
 
         spin_lock_irqsave(&smc->slock, flags);
         if(smc_read_write_check(true, smc_read_fiq_idx, -1)) ret = -1;
@@ -1789,11 +1800,23 @@ static int smc_read(struct file *filp,char __user *buff, size_t size, loff_t *pp
 		pr_dbg("read %d bytes\n", ret);
 
 		if(cnt>=ret) {
-			copy_to_user(buff, smc->recv_buf+pos, ret);
+			ret = copy_to_user(buff, smc->recv_buf+pos, ret);
+			if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 		} else {
 			int cnt1 = ret-cnt;
-			copy_to_user(buff, smc->recv_buf+pos, cnt);
-			copy_to_user(buff+cnt, smc->recv_buf, cnt1);
+			ret = copy_to_user(buff, smc->recv_buf+pos, cnt);
+			if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
+			ret = copy_to_user(buff+cnt, smc->recv_buf, cnt1);
+			if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 		}
 	}
 
@@ -1842,11 +1865,23 @@ static int smc_write(struct file *filp, const char __user *buff, size_t size, lo
 		int cnt = SEND_BUF_SIZE-pos;
 
 		if(cnt>=ret) {
-			copy_from_user(smc->send_buf+pos, buff, ret);
+			ret = copy_from_user(smc->send_buf+pos, buff, ret);
+			 if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 		} else {
 			int cnt1 = ret-cnt;
-			copy_from_user(smc->send_buf+pos, buff, cnt);
-			copy_from_user(smc->send_buf, buff+cnt, cnt1);
+			ret = copy_from_user(smc->send_buf+pos, buff, cnt);
+			 if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
+			ret = copy_from_user(smc->send_buf, buff+cnt, cnt1);
+			 if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 		}
 
 		sc_int = SMC_READ_REG(INTR);
@@ -1868,7 +1903,7 @@ static int smc_write(struct file *filp, const char __user *buff, size_t size, lo
 }
 #endif
 
-static int smc_ioctl(struct file *file, unsigned int cmd, ulong arg)
+static long smc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	smc_dev_t *smc = (smc_dev_t*)file->private_data;
 	int ret = 0;
@@ -1881,7 +1916,11 @@ static int smc_ioctl(struct file *file, unsigned int cmd, ulong arg)
 
 			ret = smc_hw_reset(smc);
 			if(ret>=0) {
-				copy_to_user((void*)arg, &smc->atr, sizeof(struct am_smc_atr));
+				ret = copy_to_user((void*)arg, &smc->atr, sizeof(struct am_smc_atr));
+				if(ret<0) {
+					printk("ret =%d \n",ret);
+					return ret;
+				}
 			}
 
 			mutex_unlock(&smc->lock);
@@ -1892,7 +1931,11 @@ static int smc_ioctl(struct file *file, unsigned int cmd, ulong arg)
 			int status;
 			ret = smc_hw_get_status(smc, &status);
 			if(ret>=0) {
-				copy_to_user((void*)arg, &status, sizeof(int));
+				ret = copy_to_user((void*)arg, &status, sizeof(int));
+				if(ret<0) {
+					printk("ret =%d \n",ret);
+					return ret;
+				}
 			}
 		}
 		break;
@@ -1921,8 +1964,11 @@ static int smc_ioctl(struct file *file, unsigned int cmd, ulong arg)
 			ret = mutex_lock_interruptible(&smc->lock);
 			if(ret) return ret;
 
-			copy_to_user((void*)arg, &smc->param, sizeof(struct am_smc_param));
-
+			ret = copy_to_user((void*)arg, &smc->param, sizeof(struct am_smc_param));
+			if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 			mutex_unlock(&smc->lock);
 		}
 		break;
@@ -1931,7 +1977,11 @@ static int smc_ioctl(struct file *file, unsigned int cmd, ulong arg)
 			ret = mutex_lock_interruptible(&smc->lock);
 			if(ret) return ret;
 
-			copy_from_user(&smc->param, (void*)arg, sizeof(struct am_smc_param));
+			ret = copy_from_user(&smc->param, (void*)arg, sizeof(struct am_smc_param));
+			if(ret<0) {
+				printk("ret =%d \n",ret);
+				return ret;
+			}
 			ret = smc_hw_set_param(smc);
 
 			mutex_unlock(&smc->lock);
@@ -2038,12 +2088,15 @@ static int smc_remove(struct platform_device *pdev)
 
 	smc_dev_deinit(smc);
 
+	if(smc->pinctrl)
+		devm_pinctrl_put(smc->pinctrl);
+
 	mutex_unlock(&smc_lock);
 
 	return 0;
 }
 
-static int smc_suspend(struct platform_device *dev)
+static int smc_suspend(struct platform_device *dev, pm_message_t state)
 {
     unsigned long flags;
     smc_dev_t *smc = (smc_dev_t*)dev_get_drvdata(&dev->dev);

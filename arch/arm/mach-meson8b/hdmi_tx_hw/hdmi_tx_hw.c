@@ -1738,7 +1738,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     }
 }
 
-static int hdmitx_set_phy(hdmitx_dev_t* hdmitx_device)
+static void hdmitx_set_phy(hdmitx_dev_t* hdmitx_device)
 {
     switch(hdmitx_device->cur_video_param->VIC) {
         case HDMI_1080p60:

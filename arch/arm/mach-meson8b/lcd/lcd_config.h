@@ -179,13 +179,4 @@ static const unsigned od_table[4] = {1,2,4,8};
 static const unsigned div_pre_table[6] = {1,2,3,4,5,6};
 //********************************************//
 
-#define SS_LEVEL_MAX	5
-static const char *lcd_ss_level_table[]={
-	"0",
-	"0.5%",
-	"1%",
-	"1.5%",
-	"2%",
-};
-
 #endif

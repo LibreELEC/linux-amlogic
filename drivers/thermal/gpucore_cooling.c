@@ -104,7 +104,7 @@ static int gpucore_get_max_state(struct thermal_cooling_device *cdev,
 {
 	struct gpucore_cooling_device *gpucore_device = cdev->devdata;
 	*state=gpucore_device->max_gpu_core_num;
-	pr_debug( "max Gpu core=%d\n",*state);
+	pr_debug( "max Gpu core=%ld\n",*state);
 	return 0;
 }
 
@@ -123,7 +123,7 @@ static int gpucore_get_cur_state(struct thermal_cooling_device *cdev,
 {
 	struct gpucore_cooling_device *gpucore_device = cdev->devdata;
 	*state=gpucore_device->gpucore_state;
-	pr_debug( "current state=%d\n",*state);
+	pr_debug( "current state=%ld\n",*state);
 	return 0;
 }
 
@@ -155,7 +155,7 @@ static int gpucore_set_cur_state(struct thermal_cooling_device *cdev,
 	gpucore_device->gpucore_state=state;
 	set_max_num=gpucore_device->max_gpu_core_num-state;
 	gpucore_device->set_max_pp_num((unsigned int)set_max_num);
-	pr_debug( "need set max gpu num=%d,state=%d\n",set_max_num,state);
+	pr_debug( "need set max gpu num=%d,state=%ld\n",set_max_num,state);
 	return 0;
 }
 

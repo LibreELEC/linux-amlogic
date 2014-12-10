@@ -15,7 +15,7 @@
 MODULE_DESCRIPTION("Realtek PHY driver");
 MODULE_AUTHOR("Johnson Leung");
 MODULE_LICENSE("GPL");
-
+#if 0
 static int rtl821x_ack_interrupt(struct phy_device *phydev)
 {
 	int err;
@@ -36,7 +36,7 @@ static int rtl8211e_config_intr(struct phy_device *phydev)
 
 	return err;
 }
-
+#endif
 static int rtl8211e_config_init(struct phy_device *phydev)
 {
 	int val;

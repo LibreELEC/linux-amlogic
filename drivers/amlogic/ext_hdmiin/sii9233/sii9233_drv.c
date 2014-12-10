@@ -409,12 +409,11 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	kfree(p);
 	return count;
 }
-
+#if 0
 static ssize_t sii9233a_reset_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	return 0;
 }
-
 static ssize_t sii9233a_reset_store(struct class *class, struct class_attribute *attr,
 									const char *buf, size_t count)
 {
@@ -431,6 +430,7 @@ static ssize_t sii9233a_reset_store(struct class *class, struct class_attribute 
     return count;
 }
 
+#endif
 static ssize_t sii9233a_port_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	char port = 0xff;

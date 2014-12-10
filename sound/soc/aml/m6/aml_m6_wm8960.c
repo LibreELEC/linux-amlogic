@@ -364,7 +364,7 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
 #endif
 
 //p_aml_audio->dis_hp_det = of_property_read_bool(card->dev->of_node,"dis_hp_det");
-     ret = of_property_read_u32(card->dev->of_node,"dis_hp_det",&p_aml_audio->dis_hp_det);
+     ret = of_property_read_u32(card->dev->of_node,"dis_hp_det",(u32 *)&p_aml_audio->dis_hp_det);
      printk("******p_aml_audio->dis_hp_det=%d***\n",p_aml_audio->dis_hp_det);
     if(ret){
         printk("don't find match dis_hp_det\n");
@@ -478,8 +478,8 @@ static struct device_node * find_avaliable_asoc_device(struct device_node *pnode
 */
 static int aml_m6_audio_probe(struct platform_device *pdev)
 {
-    struct device_node *np = pdev->dev.of_node;
-    struct device_node *npc;
+//    struct device_node *np = pdev->dev.of_node;
+//    struct device_node *npc;
     struct snd_soc_card *card = &aml_snd_soc_card;
     struct aml_audio_private_data *p_aml_audio;
     int ret = 0;
@@ -549,8 +549,8 @@ err:
 static int aml_m6_audio_remove(struct platform_device *pdev)
 {
     int ret = 0;
-    struct device_node *np = pdev->dev.of_node;
-    struct device_node *npc;
+//    struct device_node *np = pdev->dev.of_node;
+//    struct device_node *npc;
     struct snd_soc_card *card;
     struct aml_audio_private_data *p_aml_audio;
 

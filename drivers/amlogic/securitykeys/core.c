@@ -1299,7 +1299,7 @@ static ssize_t key_name_store(struct device *dev, struct device_attribute *attr,
                              const char *buf, size_t count)
 {
 	aml_key_t * keys;
-	int i,cnt,suffix;
+	int i,cnt;
 	char *name;
 	char *cmd,*oldname=NULL,*newname;
 	if(keys_version == 0){

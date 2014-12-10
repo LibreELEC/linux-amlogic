@@ -745,7 +745,6 @@ static void lsm303d_irq1_work_func(struct work_struct *work)
 
 	lsm303d_interrupt_catch(stat,1);
 	pr_info("%s: IRQ1 triggered\n", LSM303D_DEV_NAME);
-exit:
 	enable_irq(stat->irq1);
 }
 
@@ -759,7 +758,6 @@ static void lsm303d_irq2_work_func(struct work_struct *work)
 
 	lsm303d_interrupt_catch(stat,2);
 	pr_info("%s: IRQ2 triggered\n", LSM303D_DEV_NAME);
-exit:
 	enable_irq(stat->irq2);
 }
 
@@ -1827,7 +1825,7 @@ static int write_gen_int(struct lsm303d_status *stat,
 	atomic_set(&ie->enable, val);
 	return err;
 }
-
+#if 0
 static int write_duration_threshold_int(struct lsm303d_status *stat,
 					struct interrupt_value *ie, int val)
 {
@@ -1877,7 +1875,6 @@ static int write_threshold_mag_int(struct lsm303d_status *stat,
 
 	return err;
 }
-
 static ssize_t attr_get_gen1_status(struct kobject *kobj,
 						struct kobj_attribute *attr,
 						char *buf)
@@ -2157,7 +2154,8 @@ static ssize_t attr_set_gen_mag_threshold(struct kobject *kobj,
 
 	return size;
 }
-
+#endif
+#if 0
 static int get_axis(struct lsm303d_status *stat,
 					int generator, const char *name) {
 
@@ -2234,7 +2232,6 @@ static int set_axis(struct lsm303d_status *stat, int generator,
 
 	return err;
 }
-
 static ssize_t attr_get_gen1_axis(struct kobject *kobj,
 						struct kobj_attribute *attr,
 						char *buf)
@@ -2389,7 +2386,7 @@ static ssize_t attr_set_gen2_and_or(struct kobject *kobj,
 
 	return size;
 }
-
+#endif
 static ssize_t attr_set_pin_conf(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t size)
@@ -2451,7 +2448,7 @@ static ssize_t attr_get_interrupt_polarity(struct device *dev,
 	val = atomic_read(&stat->interrupt->interrupt_polarity.enable);
 	return sprintf(buf, "%d\n", val);
 }
-
+#if 0
 static struct kobj_attribute gen1_interrupt_pin1_enable =
 __ATTR(pin1_enable, 0664, attr_get_gen1_status, attr_set_gen1_status);
 static struct kobj_attribute gen1_interrupt_pin2_enable =
@@ -2564,7 +2561,7 @@ static struct attribute *attributes_mag_interrupt[] = {
 	&gen_mag_z.attr,
 	NULL,
 };
-
+#endif
 static struct attribute *attributes_acc[] = {
 	&poll_attr_acc.attr,
 	&enable_attr_acc.attr,
@@ -2622,11 +2619,11 @@ static int create_sysfs_interfaces(struct lsm303d_status *stat)
 	int i=0;
 //	struct lsm303d_status *stat = dev_get_drvdata(dev);
 
+	struct kobject *mag_kobj = &stat->input_dev_mag->dev.kobj ;
 	struct kobject *acc_kobj = &stat->input_dev_acc->dev.kobj ;
 	if(!acc_kobj)
 		return -ENOMEM;
 
-	struct kobject *mag_kobj = &stat->input_dev_mag->dev.kobj ;
 	if(!mag_kobj)
 		return -ENOMEM;
 

@@ -295,25 +295,7 @@ static const remotereg_t RDECODEMODE_SANYO[] = {
 };
 
 
-static const remotereg_t *remoteregsTab[] = {
-	RDECODEMODE_NEC,
-	RDECODEMODE_DUOKAN,
-	RDECODEMODE_MITSUBISHI,
-	RDECODEMODE_THOMSON,
-	RDECODEMODE_TOSHIBA,
-	RDECODEMODE_SONYSIRC,
-	RDECODEMODE_RC5,
-	RDECODEMODE_RESERVED,
-	RDECODEMODE_RC6,
-	RDECODEMODE_RCMM,
-	RDECODEMODE_COMCAST,
-	RDECODEMODE_SANYO,
-	RDECODEMODE_SKIPLEADER,
-	RDECODEMODE_SW,
-	RDECODEMODE_SW_NEC,
-	NULL,
-	RDECODEMODE_SW_DUOKAN
-};
+
 
 extern unsigned int g_remote_base;
 #define am_remote_write_reg(x,val) aml_write_reg32(g_remote_base +x ,val)
@@ -325,9 +307,6 @@ extern unsigned int g_remote_base;
 #define am_remote_clear_mask(x,val) aml_clr_reg32_mask(g_remote_base +x,val)
 void setremotereg(const remotereg_t *r);
 
-static bool key_pointer_switch = true;
-static unsigned int FN_KEY_SCANCODE = 0x3ff;
-static unsigned int OK_KEY_SCANCODE = 0x3ff;
 
 //remote config  ioctl  cmd
 #define REMOTE_IOC_INFCODE_CONFIG	    _IOW_BAD('I',13,sizeof(short))
@@ -492,65 +471,6 @@ extern int register_fiq_bridge_handle(bridge_item_t * c_item);
 extern int unregister_fiq_bridge_handle(bridge_item_t * c_item);
 extern int fiq_bridge_pulse_trigger(bridge_item_t * c_item);
 
-static  irqreturn_t (*remote_bridge_sw_isr[])(int irq, void *dev_id)={
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	remote_bridge_isr,
-	remote_bridge_isr,
-};
-
-static  int (*remote_report_key[])(struct remote *remote_data)={
-	remote_hw_reprot_key,
-	remote_hw_reprot_key,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	remote_sw_reprot_key
-};
-
-static  void (*remote_report_release_key[])(struct remote *remote_data)={
-	remote_nec_report_release_key,
-	remote_duokan_report_release_key,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	remote_sw_reprot_release_key
-};
 
 
 #endif //_REMOTE_H

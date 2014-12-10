@@ -337,7 +337,7 @@ exit_power_on_bl:
     mutex_unlock(&bl_power_mutex);
 }
 
-static void bl_delayd_on(void) //bl_delayed_work for LCD_BL_FLAG control
+static void bl_delayd_on(struct work_struct *work) //bl_delayed_work for LCD_BL_FLAG control
 {
     power_on_bl(LCD_BL_FLAG);
 }
@@ -470,7 +470,7 @@ void bl_power_off(int bl_flag)
     printk("backlight power off\n");
     mutex_unlock(&bl_power_mutex);
 }
-
+#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON6TV)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESON6TVD)
 static DEFINE_MUTEX(bl_level_mutex);
 static void set_backlight_level(unsigned level)
 {
@@ -671,6 +671,7 @@ unsigned get_backlight_level(void)
     DPRINT("%s: %d\n", __FUNCTION__, bl_level);
     return bl_level;
 }
+#endif
 #endif
 
 struct aml_bl {

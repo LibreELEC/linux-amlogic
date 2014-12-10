@@ -149,7 +149,7 @@ static const char vh264_dec_id[] = "vh264-dev";
 
 #define PROVIDER_NAME   "decoder.h264"
 
-static const struct vframe_operations_s vh264_vf_provider = {
+static const struct vframe_operations_s vh264_vf_provider_ops = {
     .peek = vh264_vf_peek,
     .get = vh264_vf_get,
     .put = vh264_vf_put,
@@ -253,7 +253,7 @@ extern u32 get_blackout_policy(void);
 #ifdef CONFIG_GE2D_KEEP_FRAME
 static ge2d_context_t *ge2d_videoh264_context = NULL;
 
-static int ge2d_videoh264task_init()
+static int ge2d_videoh264task_init(void)
 {
     if (ge2d_videoh264_context == NULL)
             ge2d_videoh264_context = create_ge2d_work_queue();
@@ -264,7 +264,7 @@ static int ge2d_videoh264task_init()
     }
     return 0;
 }
-static int ge2d_videoh264task_release()
+static int ge2d_videoh264task_release(void)
 {
     if (ge2d_videoh264_context) {
             destroy_ge2d_work_queue(ge2d_videoh264_context);
@@ -275,9 +275,9 @@ static int ge2d_videoh264task_release()
 static int ge2d_canvas_dup(canvas_t *srcy ,canvas_t *srcu,canvas_t *des,
     int format,u32 srcindex,u32 desindex)
 {
-    printk("ge2d_canvas_dupvh264 ADDR srcy[0x%x] srcu[0x%x] des[0x%x]\n",srcy->addr,srcu->addr,des->addr);
 
     config_para_ex_t ge2d_config;
+    printk("ge2d_canvas_dupvh264 ADDR srcy[0x%lx] srcu[0x%lx] des[0x%lx]\n",srcy->addr,srcu->addr,des->addr);
     memset(&ge2d_config,0,sizeof(config_para_ex_t));
 
     ge2d_config.alu_const_color= 0;
@@ -463,14 +463,14 @@ static int vh264_event_cb(int type, void *data, void *private_data)
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vh264_vf_provider);
+        vf_light_unreg_provider(&vh264_vf_prov);
 #endif
         spin_lock_irqsave(&lock, flags);
         vh264_local_init();
         vh264_prot_init();
         spin_unlock_irqrestore(&lock, flags);
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vh264_vf_provider);
+        vf_reg_provider(&vh264_vf_prov);
 #endif
         amvdec_start();
     }
@@ -622,7 +622,7 @@ static void vh264_set_params(void)
     last_mb_width = mb_width;
     last_mb_height = mb_height;
 
-    if (frame_width == 0 || frame_height == 0 ||crop_infor && frame_height &&frame_width) {
+    if ((frame_width == 0) ||( frame_height == 0) ||(crop_infor && frame_height &&frame_width)) {
         frame_width = mb_width << 4;
         frame_height = mb_height << 4;
         if (frame_mbs_only_flag) {
@@ -1731,11 +1731,11 @@ static s32 vh264_init(void)
 
 
  #ifdef CONFIG_POST_PROCESS_MANAGER
-    vf_provider_init(&vh264_vf_prov, PROVIDER_NAME, &vh264_vf_provider, NULL);
+    vf_provider_init(&vh264_vf_prov, PROVIDER_NAME, &vh264_vf_provider_ops, NULL);
     vf_reg_provider(&vh264_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else
-    vf_provider_init(&vh264_vf_prov, PROVIDER_NAME, &vh264_vf_provider, NULL);
+    vf_provider_init(&vh264_vf_prov, PROVIDER_NAME, &vh264_vf_provider_ops, NULL);
     vf_reg_provider(&vh264_vf_prov);
  #endif
     stat |= STAT_VF_HOOK;
@@ -1850,7 +1850,7 @@ static void stream_switching_done(void)
         spin_unlock_irqrestore(&lock, flags);
     }
 }
-
+#if !defined(NV21)|| !defined(CONFIG_GE2D_KEEP_FRAME)
 static int canvas_dup(u8 *dst, ulong src_paddr, ulong size)
 {
     void __iomem *p = ioremap_wc(src_paddr, size);
@@ -1861,7 +1861,7 @@ static int canvas_dup(u8 *dst, ulong src_paddr, ulong size)
     }
     return 0;
 }
-
+#endif
 static void stream_switching_do(struct work_struct *work)
 {
     vframe_t *vf_prev, *vf_curr;

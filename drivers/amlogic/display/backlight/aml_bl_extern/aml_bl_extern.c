@@ -58,7 +58,7 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
     unsigned int bl_para[2];
     const char *str;
 
-    ret = of_property_read_string(of_node, "dev_name", &pdata->name);
+    ret = of_property_read_string(of_node, "dev_name", (const char **)&pdata->name);
     if (ret) {
         pdata->name = "aml_bl_extern";
         printk("warning: get dev_name failed\n");

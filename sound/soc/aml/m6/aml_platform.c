@@ -443,19 +443,19 @@ static struct snd_pcm_ops aml_platform_ops = {
 
 static int aml_platform_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
-    printk("rtd %x \n",	(unsigned)rtd);
 
     struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-    printk("cpu_dai %x \n",	(unsigned)cpu_dai);
 
     struct snd_soc_dai *codec_dai = rtd->codec_dai;
-    printk("codec_dai %x \n",	(unsigned)codec_dai);
 
     struct aml_audio_interface *aud_interface = NULL;
-    struct snd_pcm *pcm =rtd->pcm ;
-    struct snd_soc_card *card = rtd->card;
+//    struct snd_pcm *pcm =rtd->pcm ;
+//    struct snd_soc_card *card = rtd->card;
 
 	int ret = 0;
+    printk("rtd %x \n",	(unsigned)rtd);
+    printk("cpu_dai %x \n",	(unsigned)cpu_dai);
+    printk("codec_dai %x \n",	(unsigned)codec_dai);
 
     printk(KERN_DEBUG"enter %s (codec_dai: %s %d cpu_dai: %s %d)\n",
                     __FUNCTION__, codec_dai->name, codec_dai->id, cpu_dai->name, cpu_dai->id);

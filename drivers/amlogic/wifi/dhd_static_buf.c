@@ -77,12 +77,12 @@ void *bcmdhd_mem_prealloc(int section, unsigned long size)
 	}
 
 	if (wlan_mem_array[section].size < size) {
-		printk("6 %s: wlan_mem_array[section].size=%d, size=%d\n",
+		printk("6 %s: wlan_mem_array[section].size=%lu, size=%lu\n",
 			__FUNCTION__, wlan_mem_array[section].size, size);
 		return NULL;
 	}
-	printk("7 %s: wlan_mem_array[section].mem_ptr=%p, size=%d\n",
-		__FUNCTION__, wlan_mem_array[section], size);
+	printk("7 %s: wlan_mem_array[section].mem_ptr=%p, size=%lu\n",
+		__FUNCTION__, &wlan_mem_array[section], size);
 
 	return wlan_mem_array[section].mem_ptr;
 }
@@ -98,7 +98,7 @@ int bcmdhd_init_wlan_mem(void)
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_1PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
-		printk("1 %s: wlan_static_skb[%d]=%p, size=%d\n",
+		printk("1 %s: wlan_static_skb[%d]=%p, size=%lu\n",
 			__FUNCTION__, i, wlan_static_skb[i], DHD_SKB_1PAGE_BUFSIZE);
 	}
 
@@ -106,14 +106,14 @@ int bcmdhd_init_wlan_mem(void)
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_2PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
-		printk("2 %s: wlan_static_skb[%d]=%p, size=%d\n",
+		printk("2 %s: wlan_static_skb[%d]=%p, size=%lu\n",
 			__FUNCTION__, i, wlan_static_skb[i], DHD_SKB_2PAGE_BUFSIZE);
 	}
 
 	wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_4PAGE_BUFSIZE);
 	if (!wlan_static_skb[i])
 		goto err_skb_alloc;
-	printk("3 %s: wlan_static_skb[%d]=%p, size=%d\n",
+	printk("3 %s: wlan_static_skb[%d]=%p, size=%lu\n",
 		__FUNCTION__, i, wlan_static_skb[i], DHD_SKB_4PAGE_BUFSIZE);
 
 	for (i = 0 ; i < PREALLOC_WLAN_SEC_NUM ; i++) {
@@ -122,7 +122,7 @@ int bcmdhd_init_wlan_mem(void)
 
 		if (!wlan_mem_array[i].mem_ptr)
 			goto err_mem_alloc;
-		printk("4 %s: wlan_mem_array[%d]=%p, size=%d\n",
+		printk("4 %s: wlan_mem_array[%d]=%p, size=%lu\n",
 			__FUNCTION__, i, wlan_static_skb[i], wlan_mem_array[i].size);
 	}
 

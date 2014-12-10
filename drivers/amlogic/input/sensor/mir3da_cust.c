@@ -252,7 +252,7 @@ static long mir3da_misc_ioctl( struct file *file,unsigned int cmd, unsigned long
     int             interval = 0;
     char            bEnable = 0;
     int             z_dir = 0;
-    int             range = 0;
+//    int             range = 0;
     short           xyz[3] = {0};
     MIR_HANDLE      handle = mir_handle;
 
@@ -442,7 +442,7 @@ static ssize_t mir3da_axis_data_show(struct device *dev,
 
     return count;
 }
-
+#if 0
 static ssize_t mir3da_odr_show(struct device *dev,
                    struct device_attribute *attr, char *buf)
 {
@@ -458,7 +458,6 @@ static ssize_t mir3da_odr_show(struct device *dev,
 
     return ret;
 }
-
 static ssize_t mir3da_odr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t count)
 {
     int ret;
@@ -475,6 +474,7 @@ static ssize_t mir3da_odr_store(struct device *dev,struct device_attribute *attr
 
     return ret;
 }
+#endif
 
 static ssize_t mir3da_reg_data_store(struct device *dev,
            struct device_attribute *attr, const char *buf, size_t count)

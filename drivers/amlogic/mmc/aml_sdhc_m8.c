@@ -1687,11 +1687,11 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
 	                    for(i=0; i< STAT_POLL_TIMEOUT; i++){
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
 				    if(IS_MESON_M8_CPU){
-		                        dmc_sts = readl((unsigned int *)P_MMC_CHAN_STS);
+		                        dmc_sts = aml_read_reg32(P_MMC_CHAN_STS);
 		                        dmc_sts = (dmc_sts >> 11)&1;
 				    }
 				    else{
-		                        dmc_sts = readl(P_DMC_CHAN_STS);
+		                        dmc_sts = aml_read_reg32(P_DMC_CHAN_STS);
 		                        dmc_sts = (dmc_sts >> 15)&1;
 				    }
 #endif

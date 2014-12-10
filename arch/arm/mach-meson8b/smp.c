@@ -224,7 +224,7 @@ typedef enum _ENUM_SMP_FLAG {
 static void smp_wait(void * info)
 {
 /*This function is call under automic context. So, need not irq protect.*/
-	unsigned long cpu;
+	unsigned int cpu;
 
 	cpu = smp_processor_id();
 

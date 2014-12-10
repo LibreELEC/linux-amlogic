@@ -170,7 +170,7 @@ static u32 get_limit_mali_freq(void)
 {
 	return mali_plat_data.scale_info.maxclk;
 }
-
+#if 0
 static u32 set_limit_pp_num(u32 num)
 {
 	u32 ret = -1;
@@ -185,7 +185,7 @@ static u32 set_limit_pp_num(u32 num)
 quit:
 	return ret;
 }
-
+#endif
 void mali_gpu_utilization_callback(struct mali_gpu_utilization_data *data);
 int mali_meson_init_start(struct platform_device* ptr_plt_dev)
 {

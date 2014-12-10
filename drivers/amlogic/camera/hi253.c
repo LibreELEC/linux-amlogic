@@ -2673,7 +2673,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	return 0;
 }
@@ -2777,7 +2777,7 @@ static int hi253_open(struct file *file)
 	struct hi253_device *dev = video_drvdata(file);
 	struct hi253_fh *fh = NULL;
 	int retval = 0;
-#if CONFIG_CMA
+#ifdef CONFIG_CMA
     retval = vm_init_buf(16*SZ_1M);
     if(retval <0)
         return -1;

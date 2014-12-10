@@ -88,7 +88,7 @@ static int phy_interface = 1;
 static int reset_delay = 0;
 static int reset_pin_num = 0;
 static int reset_pin_enable = 0;
-static char *reset_pin;
+static const char *reset_pin;
 static unsigned int MDCCLK = ETH_MAC_4_GMII_Addr_CR_100_150;
 
 module_param_named(amlog_level, g_debug, int, 0664);
@@ -667,15 +667,15 @@ void net_tasklet(unsigned long dev_instance)
 	}
 	if (result & 2) {
 		struct _rx_desc *c_rx, *rx = NULL;
+		int rx_cnt = 0;
 		c_rx = (void *)readl((void*)(np->base_addr + ETH_DMA_19_Curr_Host_Re_Descriptor));
 		c_rx = np->rx_ring + (c_rx - np->rx_ring_dma);
 		rx = np->last_rx->next;
-		int rx_cnt = 0;
 		while (rx != NULL) {
 			CACHE_RSYNC(rx, sizeof(struct _rx_desc));
 			if (!(rx->status & (DescOwnByDma))) {
-				rx_cnt++;
 				int ip_summed = CHECKSUM_UNNECESSARY;
+				rx_cnt++;
 				len = (rx->status & DescFrameLengthMask) >> DescFrameLengthShift;
 				if (unlikely(len < 18 || len > np->rx_buf_sz)) {	//here is fatal error we drop it ;
 					np->stats.rx_dropped++;
@@ -895,6 +895,26 @@ static int mac_pmt_enable(unsigned int enable)
 extern int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag);
 extern int extenal_api_key_set_version(char *devvesion);
 static char print_buff[1025];
+void read_mac_from_nand(struct net_device *ndev)
+{
+	int ret;
+	u8 mac[ETH_ALEN];
+	char *endp;
+	int j;
+	ret = get_aml_key_kernel("mac", print_buff, 0);
+	extenal_api_key_set_version("nand3");
+	printk("ret = %d\nprint_buff=%s\n", ret, print_buff);
+	if (ret >= 0) {
+		strcpy(ndev->dev_addr, print_buff);
+	for(j=0; j < ETH_ALEN; j++)
+	{
+		mac[j] = simple_strtol(&ndev->dev_addr[3 * j], &endp, 16);
+		printk("%d : %d\n", j, mac[j]);
+	}
+	memcpy(ndev->dev_addr, mac, ETH_ALEN);
+	}
+
+}
 #endif
 static int aml_mac_init(struct net_device *ndev)
 {
@@ -907,23 +927,7 @@ static int aml_mac_init(struct net_device *ndev)
 
 	data_dump(ndev->dev_addr, 6);
 #ifdef CONFIG_AML_NAND_KEY
-	int ret;
-	int use_nand_mac=0;
-	u8 mac[ETH_ALEN];
-	char *endp;
-	int j;
-	extenal_api_key_set_version("nand3");
-	ret = get_aml_key_kernel("mac", print_buff, 0);
-	printk("ret = %d\nprint_buff=%s\n", ret, print_buff);
-	if (ret >= 0) {
-		strcpy(ndev->dev_addr, print_buff);
-	for(j=0; j < ETH_ALEN; j++)
-	{
-		mac[j] = simple_strtol(&ndev->dev_addr[3 * j], &endp, 16);
-		printk("%d : %d\n", j, mac[j]);
-	}
-	memcpy(ndev->dev_addr, mac, ETH_ALEN);
-	}
+	read_mac_from_nand(ndev);
 #endif
 	printk("--2--write mac add to:");
 	data_dump(ndev->dev_addr, 6);
@@ -1226,9 +1230,9 @@ static int netdev_open(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	unsigned long val;
+	int res;
 	np->refcnt++;
 	switch_mod_gate_by_name("ethernet",1);
-	int res;
 	if (running) {
 		return 0;
 	}
@@ -1732,8 +1736,8 @@ static void set_multicast_list(struct net_device *dev)
 	}
 }
 static int set_mac_addr_n(struct net_device *dev, void *addr){
-	printk("mac addr come in\n");
 	struct sockaddr *sa = addr;
+	printk("mac addr come in\n");
 
 	if (!is_valid_ether_addr(sa->sa_data))
 		return -EADDRNOTAVAIL;
@@ -1891,9 +1895,11 @@ M8baby
 G9TV
  28
 */
+#if 0
 static unsigned int get_cpuid(){
 	return READ_CBUS_REG(0x1f53)&0xff;
 }
+#endif
 /* --------------------------------------------------------------------------*/
 /**
  * @brief  probe_init
@@ -2701,7 +2707,7 @@ static const char *g_pwol_help = {
 	"    1. enable PHY  WOL, Magic Packet.\n"
 
 };
-static void eth_pwol_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t eth_pwol_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	struct am_net_private *np = netdev_priv(my_ndev);
 	int ret;
@@ -2714,7 +2720,7 @@ static void eth_pwol_show(struct class *class, struct class_attribute *attr, cha
 	printk("Current PHY WOL: %d\n", syswol.wolopts);
 	return ret;
 }
-static int eth_pwol_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
+static ssize_t eth_pwol_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
 {
 	struct am_net_private *np = netdev_priv(my_ndev);
 	int err;
@@ -2756,8 +2762,8 @@ static int am_net_cali(int argc, char **argv,int gate)
 	int cali_start = 0;
 	int cali_time = 0;
 	int ii=0;
-	cali_start = gate;
 	unsigned int value;
+	cali_start = gate;
 	if ((argc < 4) || (argv == NULL) || (argv[0] == NULL)
 			|| (argv[1] == NULL) || (argv[2] == NULL)|| (argv[3] == NULL)) {
 		printk("Invalid syntax\n");
@@ -2766,11 +2772,11 @@ static int am_net_cali(int argc, char **argv,int gate)
 	cali_rise = simple_strtol(argv[1], NULL, 0);
 	cali_sel = simple_strtol(argv[2], NULL, 0);
 	cali_time = simple_strtol(argv[3], NULL, 0);
-	writel((readl(P_PREG_ETH_REG0)&(~(0x1f << 25))),P_PREG_ETH_REG0);
-	writel((readl(P_PREG_ETH_REG0)|(cali_start << 25)|(cali_rise << 26)|(cali_sel << 27)),P_PREG_ETH_REG0);
-	printk("rise :%d   sel: %d  time: %d   start:%d  cbus2050 = %x\n",cali_rise,cali_sel,cali_time,cali_start,readl(P_PREG_ETH_REG0));
+	aml_write_reg32(P_PREG_ETH_REG0,aml_read_reg32(P_PREG_ETH_REG0)&(~(0x1f << 25)));
+	aml_write_reg32(P_PREG_ETH_REG0,aml_read_reg32(P_PREG_ETH_REG0)|(cali_start << 25)|(cali_rise << 26)|(cali_sel << 27));
+	printk("rise :%d   sel: %d  time: %d   start:%d  cbus2050 = %x\n",cali_rise,cali_sel,cali_time,cali_start,aml_read_reg32(P_PREG_ETH_REG0));
 	for(ii=0;ii < cali_time;ii++){
-		value = readl(P_PREG_ETH_REG1);
+		value = aml_read_reg32(P_PREG_ETH_REG1);
 		if((value>>15) & 0x1){
 			printk("value == %x,  cali_len == %d, cali_idx == %d,  cali_sel =%d,  cali_rise = %d\n",value,(value>>5)&0x1f,(value&0x1f),(value>>11)&0x7,(value>>14)&0x1);
 		}
@@ -2905,6 +2911,7 @@ static int ethernet_probe(struct platform_device *pdev)
 {
         int ret;
 	int res;
+	struct am_net_private *np=NULL;
 	printk("ethernet_driver probe!\n");
 #ifdef CONFIG_OF
 	if (!pdev->dev.of_node) {
@@ -2972,7 +2979,7 @@ static int ethernet_probe(struct platform_device *pdev)
 		res = am_eth_class_init();
 
 	eth_pdata = (struct aml_eth_platdata *)pdev->dev.platform_data;
-	struct am_net_private *np = netdev_priv(my_ndev);
+	np = netdev_priv(my_ndev);
 	if(np->phydev && savepowermode)
 		np->phydev->drv->suspend(np->phydev);
 	//switch_mod_gate_by_name("ethernet",0);
@@ -3014,13 +3021,14 @@ static int ethernet_remove(struct platform_device *pdev)
  * @return
  */
 /* --------------------------------------------------------------------------*/
+#ifndef  CONFIG_PM
 static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 {
 	printk("ethernet_suspend!\n");
 	netdev_close(my_ndev);
 	return 0;
 }
-
+#endif
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -3031,6 +3039,7 @@ static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
  * @return
  */
 /* --------------------------------------------------------------------------*/
+#if 0
 static int ethernet_resume(struct platform_device *dev)
 {
 	int res = 0;
@@ -3043,6 +3052,7 @@ static int ethernet_resume(struct platform_device *dev)
 
 	return 0;
 }
+#endif
 #ifdef CONFIG_OF
 static const struct of_device_id eth_dt_match[]={
 	{	.compatible 	= "amlogic,meson-eth",

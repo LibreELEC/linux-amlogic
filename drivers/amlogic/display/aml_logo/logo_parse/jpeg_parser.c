@@ -55,7 +55,9 @@ static const struct vframe_operations_s jpeglogo_vf_provider_op =
 	.get  = jpeglogo_vf_get,
 	.put  = NULL,
 };
+#ifdef CONFIG_AM_VIDEO
 static struct vframe_provider_s jpeglogo_vf_prov;
+#endif
 static inline u32 index2canvas(u32 index)
 {
     const u32 canvas_tab[4] = {
@@ -342,7 +344,9 @@ static inline void feed_vb(s32 s)
 
 static int hardware_init(logo_object_t *plogo,int logo_size)
 {
+#ifdef CONFIG_AM_STREAMING
 	u32	*mc_addr_aligned = (u32 *)vmjpeg_mc;
+#endif
 	int ret = 0;
 	if(plogo->para.output_dev_type  <=LOGO_DEV_VID ) //now only support display on video layer.
 	{

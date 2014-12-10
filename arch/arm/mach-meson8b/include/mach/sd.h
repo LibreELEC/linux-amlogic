@@ -12,7 +12,7 @@
 #include <linux/device.h>
 #include <linux/mmc/host.h>
 #include <linux/earlysuspend.h>
-
+#include <mach/am_regs.h>
 #define     AML_ERROR_RETRY_COUNTER         10
 #define     AML_TIMEOUT_RETRY_COUNTER       2
 

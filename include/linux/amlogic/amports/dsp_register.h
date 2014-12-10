@@ -170,8 +170,8 @@ int len;
 #define MB2_CLR VDEC_ASSIST_MBOX2_CLR_REG
 #define MB2_MSK VDEC_ASSIST_MBOX2_MASK
 
-#define READ_VREG(r) (__raw_readl(DOS_REG_ADDR(r)))
-#define WRITE_VREG(r, val) __raw_writel(val, DOS_REG_ADDR(r))
+#define READ_VREG(r) (aml_read_reg32(DOS_REG_ADDR(r)))
+#define WRITE_VREG(r, val) aml_write_reg32( DOS_REG_ADDR(r),val)
 #define WRITE_VREG_BITS(r, val, start, len) \
     WRITE_VREG(r, (READ_VREG(r) & ~(((1L<<(len))-1)<<(start)))|((unsigned)((val)&((1L<<(len))-1)) << (start)))
 #define SET_VREG_MASK(r, mask) WRITE_VREG(r, READ_VREG(r) | (mask))

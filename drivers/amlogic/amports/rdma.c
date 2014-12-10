@@ -149,7 +149,7 @@ void rdma_table_prepare_write(unsigned long reg_adr, unsigned long val)
         rmda_item_count++;
     }
     else{
-        printk("%s fail: %d, %x %x\n",__func__, rmda_item_count, reg_adr, val);
+        printk("%s fail: %d, %lx %lx\n",__func__, rmda_item_count, reg_adr, val);
     }
 }
 
@@ -162,7 +162,7 @@ void rdma_table_prepare_read(unsigned long reg_adr)
         rmda_rd_item_count++;
     }
     else{
-        printk("%s fail: %d, %x %x\n",__func__, rmda_rd_item_count, reg_adr);
+        printk("%s fail: %d, %lx\n",__func__, rmda_rd_item_count, reg_adr);
     }
 }
 #endif
@@ -257,7 +257,7 @@ static int rdma_config(unsigned char type)
         for(i=0; i<rmda_item_count; i++){
             Wr(rmda_table_addr_remap[i<<1], rmda_table_addr_remap[(i<<1)+1]);
             if(debug_flag&1)
-                printk("VSYNC_WR(%x)<=%x\n", rmda_table_addr_remap[i<<1], rmda_table_addr_remap[(i<<1)+1]);
+                printk("VSYNC_WR(%lx)<=%lx\n", rmda_table_addr_remap[i<<1], rmda_table_addr_remap[(i<<1)+1]);
         }
     }
     else if(type == 3){
@@ -265,7 +265,7 @@ static int rdma_config(unsigned char type)
         for(i=0; i<rmda_item_count; i++){
             Wr(rmda_table[i<<1], rmda_table[(i<<1)+1]);
             if(debug_flag&1)
-                printk("VSYNC_WR(%x)<=%x\n", rmda_table[i<<1], rmda_table[(i<<1)+1]);
+                printk("VSYNC_WR(%lx)<=%lx\n", rmda_table[i<<1], rmda_table[(i<<1)+1]);
         }
     }
     //printk("%s %d\n", __func__, rmda_item_count);
@@ -388,7 +388,6 @@ static irqreturn_t rdma_isr(int irq, void *dev_id)
 #endif
     return IRQ_HANDLED;
 }
-
 static int __init rmda_early_init(void)
 {
     ulong rmda_table_addr;
@@ -432,15 +431,17 @@ static int __init rmda_early_init(void)
 #endif
 
 #ifdef CONFIG_RDMA_IN_RDMAIRQ
-    request_irq(INT_RDMA, &rdma_isr,
+    if(request_irq(INT_RDMA, &rdma_isr,
                     IRQF_SHARED, "rdma",
-                    (void *)"rdma");
+                    (void *)"rdma"))
+		return -1;
 
 #else
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
-    request_irq(INT_RDMA, &rdma_isr,
+    if(request_irq(INT_RDMA, &rdma_isr,
                     IRQF_SHARED, "rdma",
-                    (void *)"rdma");
+                    (void *)"rdma"))
+		return -1;
 #endif
 #endif
     //printk("%s phy_addr %x remap %x table %x\n", __func__, rmda_table_phy_addr, rmda_table_addr_remap, rmda_table);
@@ -510,14 +511,14 @@ int VSYNC_WR_MPEG_REG(unsigned long adr, unsigned long val)
     int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
     if((enable_!=0)&&rdma_start){
         if(debug_flag&1)
-            printk("RDMA_WR %d(%x)<=%x\n", rmda_item_count, adr, val);
+            printk("RDMA_WR %d(%lx)<=%lx\n", rmda_item_count, adr, val);
 
         rdma_table_prepare_write(adr, val);
     }
     else{
         Wr(adr,val);
         if(debug_flag&1)
-            printk("VSYNC_WR(%x)<=%x\n", adr, val);
+            printk("VSYNC_WR(%lx)<=%lx\n", adr, val);
     }
     return 0;
 }
@@ -546,7 +547,7 @@ int VSYNC_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long s
         }
         write_val = (read_val & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start));
         if(debug_flag&1)
-            printk("RDMA_WR %d(%x)<=%x\n", rmda_item_count, adr, write_val);
+            printk("RDMA_WR %d(%lx)<=%lx\n", rmda_item_count, adr, write_val);
 
         rdma_table_prepare_write(adr, write_val);
     }
@@ -555,7 +556,7 @@ int VSYNC_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long s
         unsigned long write_val = (read_val & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start));
         Wr(adr, write_val);
         if(debug_flag&1)
-            printk("VSYNC_WR(%x)<=%x\n", adr, write_val);
+            printk("VSYNC_WR(%lx)<=%lx\n", adr, write_val);
         //Wr_reg_bits(adr, val, start, len);
     }
     return 0;
@@ -587,7 +588,7 @@ int RDMA_SET_READ(unsigned long adr)
     int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
     if((enable_!=0)&&rdma_start){
         if(debug_flag&1)
-            printk("RDMA_SET_READ %d(%x)\n", rmda_rd_item_count, adr);
+            printk("RDMA_SET_READ %d(%lx)\n", rmda_rd_item_count, adr);
 
         rdma_table_prepare_read(adr);
     }

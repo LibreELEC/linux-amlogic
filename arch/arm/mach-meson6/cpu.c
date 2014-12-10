@@ -29,7 +29,7 @@
 static int meson_cpu_version[MESON_CPU_VERSION_LVL_MAX+1];
 int __init meson_cpu_version_init(void)
 {
-	unsigned int version,ver=0xa;
+	unsigned int ver=0xa;
 	unsigned int  *version_map;
 
 	meson_cpu_version[MESON_CPU_VERSION_LVL_MAJOR] =

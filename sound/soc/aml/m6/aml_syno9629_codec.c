@@ -124,22 +124,22 @@ static void set_acodec_source (unsigned int src)
     while ( (((Rd(AIU_CODEC_CLK_DATA_CTRL)) >> 12) & 0x3) != src) {}
 } /* set_acodec_source */
 
-static void adac_wr_reg (unsigned long addr, unsigned long data)
+static void adac_wr_reg (unsigned addr, unsigned data)
 {
     WRITE_APB_REG((APB_BASE+(addr<<2)), data);
     acodec_regbank[addr] = data;
 } /* adac_wr_reg */
 
-static unsigned long adac_rd_reg (unsigned long addr)
+static unsigned int adac_rd_reg (unsigned long addr)
 {
-    unsigned long data;
+    unsigned int data;
     data = READ_APB_REG((APB_BASE+(addr<<2)));
     return (data);
 } /* adac_rd_reg */
 
-static void adac_rd_check_reg (unsigned long addr, unsigned long exp_data, unsigned long mask)
+static void adac_rd_check_reg (unsigned int addr, unsigned int exp_data, unsigned int mask)
 {
-    unsigned long rd_data;
+    unsigned int rd_data;
     rd_data = adac_rd_reg(addr);
     if ((rd_data | mask) != (exp_data | mask)) {
         stimulus_print("[TEST.C] Error: audio CODEC register read data mismatch!\n");
@@ -339,14 +339,7 @@ static void latch (void)
     adac_wr_reg(ADAC_LATCH, latch);
     adac_rd_check_reg(ADAC_LATCH, latch, 0);
 } /* latch */
-static void latch_ (struct snd_soc_codec* codec)
-{
-    int latch;
-    latch = 1;
-    snd_soc_write(codec, ADAC_LATCH, latch);
-    latch = 0;
-    snd_soc_write(codec, ADAC_LATCH, latch);
-}
+
 static void acodec_delay_us (int us)
 {
 	msleep(us/1000);
@@ -357,26 +350,6 @@ static void aml_reset_path(struct snd_soc_codec* codec, AML_PATH_SET_TYPE type)
     CODEC_DEBUG( "enter %s\n", __func__);
 
     return ;
-#if 0
-    unsigned int pwr_reg2 = snd_soc_read(codec, ADAC_POWER_CTRL_REG2);
-    latch_(codec);
-    snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2&(~(1<<7)));
-    latch_(codec);
-    snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2|(1<<7));
-    latch_(codec);
-
-    if (AML_PWR_DOWN == type)
-    {
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2&(~(1<<7)));
-        latch_(codec);
-    }
-
-    if (AML_PWR_KEEP == type)
-    {
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2);
-        latch_(codec);
-    }
-#endif
 }
 
 static void aml_syno9629_reset(struct snd_soc_codec* codec, bool first_time)
@@ -469,28 +442,6 @@ static void aml_syno9629_reset(struct snd_soc_codec* codec, bool first_time)
 
 		stimulus_print("[TEST.C] ... Done audio CODEC power-up bypass fast charge\n");
 	}
-}
-
-
-static int audio_dac_set(unsigned freq)
-{
-	return 0;
-}
-
-static int post_reset(struct snd_soc_dapm_widget *w,
-	    struct snd_kcontrol *kcontrol, int event)
-{
-	CODEC_DEBUG( "enter %s\n", __func__);
-
-	struct snd_soc_codec *codec = w->codec;
-
-	if (SND_SOC_DAPM_POST_PMU == event)
-	{
-		aml_syno9629_reset(codec,false);
-	}
-	else if (SND_SOC_DAPM_POST_PMD == event && codec->active == 0)
-		aml_reset_path(codec, AML_PWR_DOWN);
-	return 0;
 }
 
 static int aml_switch_get_enum(struct snd_kcontrol *kcontrol,
@@ -612,8 +563,6 @@ static int aml_switch_put_enum(struct snd_kcontrol *kcontrol,
 static int aml_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
     struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
     int err = snd_soc_put_volsw_2r(kcontrol, ucontrol);
     if (err < 0)
@@ -769,86 +718,7 @@ static const struct snd_kcontrol_new amlsyno9629_snd_controls[] = {
 					DAC_PLYBACK_MIXER_MSB_CTRL, 1, 1, 0),
 	SOC_SINGLE("Left Right Line Out Mute",ADAC_MUTE_CTRL0,0,0xff,0)
 };
-#if 0
-static const struct snd_kcontrol_new lineoutl_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG1, 0, 1, 1);
-static const struct snd_kcontrol_new lineoutr_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG1, 1, 1, 1);
-static const struct snd_kcontrol_new hsl_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG1, 6, 1, 1);
-static const struct snd_kcontrol_new hsr_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG1, 7, 1, 1);
-static const struct snd_kcontrol_new spk_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG2, 2, 1, 1);
 
-static const struct snd_kcontrol_new lineinl_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG2, 4, 1, 1);
-static const struct snd_kcontrol_new lineinr_switch_controls =
-	SOC_DAPM_SINGLE("Switch", ADAC_MUTE_CTRL_REG2, 5, 1, 1);
-
-static const struct snd_soc_dapm_widget aml_syno9629_dapm_widgets[] = {
-	SND_SOC_DAPM_OUTPUT("LINEOUTL"),
-	SND_SOC_DAPM_OUTPUT("LINEOUTR"),
-	SND_SOC_DAPM_OUTPUT("HP_L"),
-	SND_SOC_DAPM_OUTPUT("HP_R"),
-	SND_SOC_DAPM_OUTPUT("SPEAKER"),
-
-	SND_SOC_DAPM_INPUT("LINEINL"),
-	SND_SOC_DAPM_INPUT("LINEINR"),
-
-	SND_SOC_DAPM_DAC("DACL", "Left DAC Playback", ADAC_POWER_CTRL_REG1, 0, 0),
-	SND_SOC_DAPM_DAC("DACR", "Right DAC Playback", ADAC_POWER_CTRL_REG1, 1, 0),
-	SND_SOC_DAPM_ADC("ADCL", "Left ADC Capture", ADAC_POWER_CTRL_REG2, 0, 0),
-	SND_SOC_DAPM_ADC("ADCR", "Right ADC Capture", ADAC_POWER_CTRL_REG2, 1, 0),
-
-	SND_SOC_DAPM_SWITCH("LINEOUTL Switch", ADAC_POWER_CTRL_REG1, 6, 0,
-			    &lineoutl_switch_controls),
-	SND_SOC_DAPM_SWITCH("LINEOUTR Switch", ADAC_POWER_CTRL_REG1, 7, 0,
-			    &lineoutr_switch_controls),
-	SND_SOC_DAPM_SWITCH("HP_L Switch", ADAC_POWER_CTRL_REG1, 4, 0,
-			    &hsl_switch_controls),
-	SND_SOC_DAPM_SWITCH("HP_R Switch", ADAC_POWER_CTRL_REG1, 5, 0,
-			    &hsr_switch_controls),
-	SND_SOC_DAPM_SWITCH("SPEAKER Switch", ADAC_POWER_CTRL_REG1, 2, 0,
-			    &spk_switch_controls),
-
-	SND_SOC_DAPM_SWITCH("LINEINL Switch", ADAC_POWER_CTRL_REG2, 2, 0,
-			    &lineinl_switch_controls),
-	SND_SOC_DAPM_SWITCH("LINEINR Switch", ADAC_POWER_CTRL_REG2, 3, 0,
-			    &lineinr_switch_controls),
-
-       SND_SOC_DAPM_POST("RESET", post_reset),
-
-	//SND_SOC_DAPM_PGA("HSL", ADAC_POWER_CTRL_REG1, 4, 0, NULL, 0),
-	//SND_SOC_DAPM_PGA("HSR", ADAC_POWER_CTRL_REG1, 5, 0, NULL, 0),
-
-	//SND_SOC_DAPM_PGA("PDZ", ADAC_POWER_CTRL_REG2, 7, 0, NULL, 0),
-	SND_SOC_DAPM_MICBIAS("MICBIAS", ADAC_POWER_CTRL_REG2, 5, 0)
-};
-
-/* Target, Path, Source */
-
-static const struct snd_soc_dapm_route aml_syno9629_audio_map[] = {
-	{"LINEOUTL", NULL, "LINEOUTL Switch"},
-	{"LINEOUTL Switch", NULL, "DACL"},
-	{"LINEOUTR", NULL, "LINEOUTR Switch"},
-	{"LINEOUTR Switch", NULL, "DACR"},
-
-	{"HP_L", NULL, "HP_L Switch"},
-	{"HP_L Switch", NULL, "DACL"},
-	{"HP_R", NULL, "HP_R Switch"},
-	{"HP_R Switch", NULL, "DACR"},
-
-	{"SPEAKER", NULL, "SPEAKER Switch"},
-	{"SPEAKER Switch", NULL, "DACL"},
-	{"SPEAKER Switch", NULL, "DACR"},
-
-       {"ADCL", NULL, "LINEINL Switch"},
-       {"LINEINL Switch", NULL, "LINEINL"},
-	{"ADCR", NULL, "LINEINR Switch"},
-	{"LINEINR Switch", NULL, "LINEINR"},
-};
-#endif
 static int aml_syno9629_write(struct snd_soc_codec *codec, unsigned int reg,
 							unsigned int value)
 {
@@ -860,7 +730,7 @@ static int aml_syno9629_write(struct snd_soc_codec *codec, unsigned int reg,
 	reg_cache[reg] = value;
 	latch();
 
-      CODEC_DEBUG("Read back reg is %#x value=%#x\n", reg, READ_APB_REG(APB_BASE+(reg<<2)));
+      //CODEC_DEBUG("Read back reg is %#x value=%#x\n", reg, (READ_APB_REG(APB_BASE+(reg<<2))));
 
 	return 0;
 }
@@ -872,7 +742,7 @@ static unsigned int aml_syno9629_read(struct snd_soc_codec *codec,
 	if (reg >= codec->reg_size/sizeof(u16))
 		return -EINVAL;
 
-	return READ_APB_REG(APB_BASE+(reg<<2));
+	return READ_APB_REG((APB_BASE+(reg<<2)));
 	//return reg_cache[reg];
 }
 
@@ -880,10 +750,7 @@ static int aml_syno9629_codec_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
 	struct snd_soc_codec *codec = dai->codec;
-	unsigned int i2sfs;
 	unsigned long rate = params_rate(params);
 	int rate_idx = 0;
 
@@ -920,8 +787,6 @@ static int aml_syno9629_codec_pcm_prepare(struct snd_pcm_substream *substream,
 static void aml_syno9629_codec_shutdown(struct snd_pcm_substream *substream,
 			    struct snd_soc_dai *dai)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
 	struct snd_soc_codec *codec = dai->codec;
 	/* deactivate */
 	if (!codec->active) {
@@ -933,8 +798,6 @@ static void aml_syno9629_codec_shutdown(struct snd_pcm_substream *substream,
 
 static int aml_syno9629_codec_mute(struct snd_soc_dai *dai, int mute)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
 	struct snd_soc_codec *codec = dai->codec;
 	u16 reg;
 	// TODO
@@ -954,9 +817,6 @@ static int aml_syno9629_codec_mute(struct snd_soc_dai *dai, int mute)
 static int aml_syno9629_codec_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
-	//struct snd_soc_codec *codec = codec_dai->codec;
 	unsigned long data = 0;
 
 	switch (freq) {
@@ -985,9 +845,6 @@ static int aml_syno9629_codec_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 static int aml_syno9629_codec_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
-	CODEC_DEBUG( "enter %s\n", __func__);
-
-	//struct snd_soc_codec *codec = codec_dai->codec;
 	u16 iface = 0;
 	/* set master/slave audio interface */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
@@ -1098,8 +955,6 @@ static int aml_syno9629_set_bias_level(struct snd_soc_codec *codec,
 }
 
 static int aml_syno9629_soc_probe(struct snd_soc_codec *codec){
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	CODEC_DEBUG( "enter %s\n", __func__);
 	aml_syno9629_reset(codec, true);
 	aml_syno9629_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -1117,7 +972,7 @@ static int aml_syno9629_soc_probe(struct snd_soc_codec *codec){
 static int aml_syno9629_soc_remove(struct snd_soc_codec *codec){
 	return 0;
 }
-static int aml_syno9629_soc_suspend(struct snd_soc_codec *codec,	pm_message_t state){
+static int aml_syno9629_soc_suspend(struct snd_soc_codec *codec){
 	CODEC_DEBUG( "enter %s\n", __func__);
 	WRITE_MPEG_REG( HHI_GCLK_MPEG1, READ_MPEG_REG(HHI_GCLK_MPEG1)&~(1 << 2));
 	aml_reset_path(codec, AML_PWR_DOWN);

@@ -372,11 +372,11 @@ int if_audio_in_i2s_enable()
 
 void audio_in_spdif_enable(int flag)
 {
-  int rd = 0, start=0;
+//  int rd = 0, start=0;
 
 	if(flag){
-reset_again:
 #if 0
+reset_again:
 	     WRITE_MPEG_REG_BITS(AUDIN_FIFO1_CTRL, 1, 1, 1); // reset FIFO 0
             WRITE_MPEG_REG(AUDIN_FIFO1_PTR, 0);
             rd = READ_MPEG_REG(AUDIN_FIFO1_PTR);
@@ -490,7 +490,7 @@ void audio_util_set_dac_958_format(unsigned format)
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,3,4,2);// 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
 #else
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,1,4,2);// 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
-#endif.
+#endif
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,1,1,1);// enable 958 clock
 }
 
@@ -1017,7 +1017,7 @@ int if_audio_out_enable()
 {
 	return READ_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 2);
 }
-int if_958_audio_out_enable()
+int if_958_audio_out_enable(void)
 {
 	return READ_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL,1,2);
 }

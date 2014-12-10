@@ -656,6 +656,7 @@ static int __init cvbs_performance_setup(char* line)
 	cfg = simple_strtoul(line, NULL, 10);
 
 	cvbs_performance_config(cfg);
+	return 0;
 }
 __setup("cvbsdrv=", cvbs_performance_setup);
 

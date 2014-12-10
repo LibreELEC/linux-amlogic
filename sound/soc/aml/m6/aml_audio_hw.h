@@ -194,6 +194,8 @@ unsigned int audio_hdmi_init_ready(void);
 /*IEC958 overclock is used after M8*/
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #define IEC958_OVERCLOCK 1
+#else
+#define IEC958_OVERCLOCK 0
 #endif
 
 #if (OVERCLOCK == 1)

@@ -180,10 +180,10 @@ static int aml_m8_codec_hw_params(struct snd_pcm_substream *substream,
 
 static int aml_m8_codec_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
-    printk(KERN_DEBUG "enter:%s, mute=%d, stream=%d \n",__func__,mute,stream);
     struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = snd_soc_read(codec, AMLM8_MUTE_2) & 0xfc;
     u16 mic_mute_reg = snd_soc_read(codec, AMLM8_MUTE_0) & 0xfc;
+    printk(KERN_DEBUG "enter:%s, mute=%d, stream=%d \n",__func__,mute,stream);
 
     if(stream == SNDRV_PCM_STREAM_PLAYBACK){
 	if (mute){

@@ -135,7 +135,7 @@ int is_ionvideo_active(void) {
     return is_actived;
 }
 EXPORT_SYMBOL(is_ionvideo_active);
-
+#if 0
 static void videoc_omx_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
     if (vf->pts) {
         timestamp_vpts_set(vf->pts);
@@ -150,7 +150,7 @@ static void videoc_omx_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf
         dev->pts = timestamp_vpts_get();
     }
 }
-
+#endif
 static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
 
     struct vframe_s* vf;
@@ -671,7 +671,7 @@ static int vidioc_synchronization_dqbuf(struct file *file, void *priv, struct v4
 
 	buf = container_of(vb, struct ionvideo_buffer, vb);
 	if(dev->is_video_started == 0){
-		printk("Execute the VIDEO_START cmd. pts=%x\n", buf->pts);
+		printk("Execute the VIDEO_START cmd. pts=%llx\n", buf->pts);
 		tsync_avevent_locked(VIDEO_START, buf->pts ? buf->pts : timestamp_vpts_get());
 		d = 0;
 		dev->is_video_started=1;
@@ -943,7 +943,7 @@ static ssize_t vframe_states_show(struct class *class, struct class_attribute* a
 {
     int ret = 0;
     vframe_states_t states;
-    unsigned long flags;
+//    unsigned long flags;
 
     if (ionvideo_vf_get_states(&states) == 0) {
         ret += sprintf(buf + ret, "vframe_pool_size=%d\n", states.vf_pool_size);

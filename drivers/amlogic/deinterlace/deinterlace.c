@@ -127,6 +127,7 @@ static DEFINE_SPINLOCK(di_lock2);
 #ifdef ENABLE_SPIN_LOCK_ALWAYS
 static DEFINE_SPINLOCK(di_lock2);
 #define di_lock_irqfiq_save(irq_flag, fiq_flag) \
+				fiq_flag=0; \
                 spin_lock_irqsave(&di_lock2, irq_flag);
 
 #define di_unlock_irqfiq_restore(irq_flag, fiq_flag) \
@@ -3293,8 +3294,9 @@ static void config_di_mif(DI_MIF_t* di_mif, di_buf_t*di_buf)
 static void pre_de_process(void)
 {
   int chan2_field_num = 1;
+#ifdef NEW_DI_V1
   int cont_rd = 1;
-
+#endif
 #ifdef DI_DEBUG
     di_print("%s: start\n", __func__);
 #endif
@@ -3927,7 +3929,7 @@ static unsigned char pre_de_buf_config(void)
 	    vdin_arg_t vdin_arg;
 	    vdin_v4l2_ops_t *vdin_ops = get_vdin_v4l2_ops();
 	    vdin_arg.cmd = VDIN_CMD_GET_HISTGRAM;
-	    vdin_arg.private = vframe;
+	    vdin_arg.private = (unsigned int)vframe;
 	    if(vdin_ops->tvin_vdin_func)
 	        vdin_ops->tvin_vdin_func(0,&vdin_arg);
 	}
@@ -4421,8 +4423,8 @@ static irqreturn_t det3d_irq(int irq, void *dev_instance)
 #endif
 static irqreturn_t de_irq(int irq, void *dev_instance)
 {
-   unsigned int data32;
 #ifndef CHECK_DI_DONE
+   unsigned int data32;
    data32 = Rd(DI_INTR_CTRL);
    //if ( (data32 & 0xf) != 0x1 ) {
    //     printk("%s: error %x\n", __func__, data32);
@@ -5254,8 +5256,8 @@ static int pulldown_process(di_buf_t* di_buf, int buffer_count)
             pattern_check_pre_2(0, &di_buf->di_buf_dup_p[3]->field_pd_info,
                  &di_buf->di_buf_dup_p[2]->field_pd_info,
                 &di_buf->di_buf_dup_p[1]->field_pd_info,
-                &di_buf->di_buf_dup_p[2]->pulldown_mode,
-                &di_buf->di_buf_dup_p[1]->pulldown_mode,
+                (int *)&di_buf->di_buf_dup_p[2]->pulldown_mode,
+                (int *)&di_buf->di_buf_dup_p[1]->pulldown_mode,
                 &pulldown_type, &field_pd_th
               );
 
@@ -5276,7 +5278,7 @@ static int pulldown_process(di_buf_t* di_buf, int buffer_count)
             pattern_check_pre_2(0, &di_buf->di_buf_dup_p[2]->field_pd_info,
                  &di_buf->di_buf_dup_p[1]->field_pd_info,
                 &di_buf->di_buf_dup_p[0]->field_pd_info,
-                &di_buf->di_buf_dup_p[1]->pulldown_mode,
+                (int *)&di_buf->di_buf_dup_p[1]->pulldown_mode,
                 NULL, &pulldown_type, &field_pd_th);
 
               for(ii=0;ii<MAX_WIN_NUM; ii++){
@@ -5519,6 +5521,7 @@ static int process_post_vframe(void)
     di_buf_t *p = NULL;//, *ptmp;
     int itmp;
     int ready_count = list_count(QUEUE_PRE_READY);
+    bool check_drop = false;
     if(queue_empty(QUEUE_POST_FREE)){
         return 0;
     }
@@ -5793,7 +5796,6 @@ static int process_post_vframe(void)
                     }
 #endif
                     di_lock_irqfiq_save(irq_flag2, fiq_flag);
-                    bool check_drop = false;
                     if((check_start_drop_prog && is_progressive(ready_di_buf->vframe))||
 			  !is_progressive(ready_di_buf->vframe))
                         check_drop = true;
@@ -5988,7 +5990,6 @@ di task
 */
 static void di_unreg_process(void)
 {
-    ulong flags=0,fiq_flag=0, irq_flag2=0;
         if((di_pre_stru.unreg_req_flag||di_pre_stru.force_unreg_req_flag||di_pre_stru.disable_req_flag)&&
             (di_pre_stru.pre_de_busy==0)){
             //printk("===unreg_req_flag\n");
@@ -6009,6 +6010,7 @@ static void di_unreg_process(void)
 #else
 /* !RUN_REG_IN_IRQ*/
 
+			ulong flags=0,fiq_flag=0, irq_flag2=0;
             if(di_pre_stru.force_unreg_req_flag||di_pre_stru.disable_req_flag){
 #ifdef DI_DEBUG
                 di_print("%s: force_unreg\n", __func__);
@@ -6768,7 +6770,9 @@ static vframe_t *di_vf_get(void* arg)
     else
 #endif
     if (!queue_empty(QUEUE_POST_READY)){
+#ifdef SUPPORT_START_FRAME_HOLD
 get_vframe:
+#endif
         log_buffer_state("ge_");
         di_lock_irqfiq_save(irq_flag2, fiq_flag);
 

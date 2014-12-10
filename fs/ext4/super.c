@@ -4042,8 +4042,8 @@ no_journal:
 		descr = "out journal";
 
 	if (test_opt(sb, DISCARD)) {
-	    printk("checked enable EXT4 DISCARD here\n");
 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
+	    printk("checked enable EXT4 DISCARD here\n");
 		if (!blk_queue_discard(q))
 			ext4_msg(sb, KERN_WARNING,
 				 "mounting with \"discard\" option, but "

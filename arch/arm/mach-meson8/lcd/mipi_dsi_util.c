@@ -16,7 +16,7 @@
 #include "mipi_dsi_util.h"
 
 #define DPRINT(...)		printk(__VA_ARGS__)
-
+//#define MIPI_DSI_COMMAND_READ
 //===============================================================================
 // Define MIPI DSI Default config
 //===============================================================================
@@ -237,6 +237,7 @@ static void set_mipi_dcs(int trans_type,        // 0: high speed, 1: low power
         WRITE_LCD_REG( MIPI_DSI_TOP_MEAS_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_MEAS_CNTL) | (0x1<<BIT_VSYNC_MEAS_EN | (0x1<<BIT_TE_MEAS_EN))));
     }
 }
+#if 0
 // -----------------------------------------------------------------------------
 //                     Function: set_mipi_int
 // Configure relative registers for mipi interrupt
@@ -246,7 +247,7 @@ static void set_mipi_int(void)
     WRITE_LCD_REG( MIPI_DSI_DWC_INT_MSK0_OS, 0);
     WRITE_LCD_REG( MIPI_DSI_DWC_INT_MSK1_OS, 0);
 }
-
+#endif
 // ----------------------------------------------------------------------------
 // Function: wait_bta_ack
 // Poll to check if the BTA ack is finished
@@ -282,7 +283,7 @@ static void wait_cmd_fifo_empty(void)
     } while((((cmd_status >> BIT_GEN_CMD_EMPTY) & 0x1) != 0x1) && (i>0));
     print_mipi_cmd_status(i, cmd_status);
 }
-
+#ifdef MIPI_DSI_COMMAND_READ
 // ----------------------------------------------------------------------------
 // Function: wait_for_generic_read_response
 // Wait for generic read response
@@ -309,7 +310,7 @@ static unsigned int wait_for_generic_read_response(void)
     data_out = READ_LCD_REG( MIPI_DSI_DWC_GEN_PLD_DATA_OS );
     return data_out;
 }
-
+#endif
 // ----------------------------------------------------------------------------
 // Function: generic_if_wr
 // Generic interface write, address has to be MIPI_DSI_DWC_GEN_PLD_DATA_OS and
@@ -326,7 +327,7 @@ static unsigned int generic_if_wr(unsigned int address, unsigned int data_in)
 
     return 0;
 }
-
+#ifdef MIPI_DSI_COMMAND_READ
 // ----------------------------------------------------------------------------
 //                           Function: generic_if_rd
 // Generic interface read, address has to be MIPI_DSI_DWC_GEN_PLD_DATA_OS
@@ -365,7 +366,7 @@ static unsigned int generic_read_packet_0_para(unsigned char data_type, unsigned
 
     return read_data;
 }
-
+#endif
 // ----------------------------------------------------------------------------
 //                           Function: generic_write_short_packet
 // Generic Write Short Packet with Generic Interface

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// Copyright © 2007, Silicon Image, Inc.  All rights reserved.
+// Copyright ? 2007, Silicon Image, Inc.  All rights reserved.
 //
 // No part of this work may be reproduced, modified, distributed, transmitted,
 // transcribed, or translated into any language or computer format, in any form
@@ -36,7 +36,7 @@ static void AutoVideoSetup(void)
 {
 
 	const uint8_t unmuteTimeConf[] = {0xFF,0x00,0x00,0xFF,0x00,0x00};
-	RegisterWriteBlock(REG__WAIT_CYCLE, &unmuteTimeConf[0],6);	//video unmute wait
+	RegisterWriteBlock(REG__WAIT_CYCLE, (uint8_t *)&unmuteTimeConf[0],6);	//video unmute wait
 
     RegisterWrite(REG__VID_CTRL,  (BIT__IVS   & CONF__VSYNC_INVERT) |
                                   (BIT__IHS   & CONF__HSYNC_INVERT) );  //set HSYNC,VSNC polarity
@@ -227,7 +227,7 @@ static void SystemInit(void)
 
     RegisterWrite(REG__FACTORY_ABB,0x04);              //4.desable DEC_CON
 
-    RegisterWriteBlock(REG__FACTORY_A92,&EQTable[0],4);//5.Repgrogram EQ table
+    RegisterWriteBlock(REG__FACTORY_A92,(uint8_t *)&EQTable[0],4);//5.Repgrogram EQ table
     RegisterWrite(REG__FACTORY_AB5,0x40);              //EnableEQ
 
     RegisterWrite(REG__FACTORY_9E5, 0x02);             //6. DLL by pass

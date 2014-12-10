@@ -324,7 +324,7 @@ int aml1216_get_vsys_voltage(void)
     return result;
 }
 
-int aml1216_get_otp_version()
+int aml1216_get_otp_version(void)
 {
     uint8_t val = 0;
     int  otp_version = 0;
@@ -1345,7 +1345,7 @@ static int aml1216_update_state(struct aml_charger *charger)
         aml1216_set_charge_enable(1);
     }
     if (aml1216_get_otp_version() == 0) {
-        if ((vsys_voltage > charger->vbat) && (vsys_voltage - charger->vbat < 500) || charger->vbat > 3950) {
+        if (((vsys_voltage > charger->vbat) && (vsys_voltage - charger->vbat < 500)) || (charger->vbat > 3950)) {
             printk("%s, vsys is not large, or vbat is too large, vsys:%d, vbat:%d\n", __func__, vsys_voltage, charger->vbat);
             aml1216_set_charge_enable(0);
         } else {

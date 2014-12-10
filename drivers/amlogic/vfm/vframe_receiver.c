@@ -74,10 +74,10 @@ struct vframe_receiver_s * vf_get_receiver(const char *provider_name)
 }
 EXPORT_SYMBOL(vf_get_receiver);
 
-struct vframe_provider_s * vf_get_receiver_by_name(const char *receiver_name)
+struct vframe_receiver_s * vf_get_receiver_by_name(const char *receiver_name)
 {
-    struct vframe_receiver_s *r = NULL;
-    int i;
+    vframe_receiver_t *r = NULL;
+    int i = 0;
     if(receiver_name){
         for(i=0; i<MAX_RECEIVER_NUM; i++){
             r = receiver_table[i];

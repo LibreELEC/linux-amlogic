@@ -53,6 +53,7 @@
 extern int mali_PP0_int_cnt(void);
 extern int mali_PP1_int_cnt(void);
 
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
 static ulong * mali_mm1_regs = NULL;
 static ulong * mali_mm2_regs = NULL;
 static struct timer_list timer;
@@ -114,6 +115,7 @@ int malifix_get_mmu_int_process_state(int index)
 		return mali_mmu_int_process_state[index];
 	return 0;
 }
+#endif
 
 void malifix_init(void)
 {
@@ -164,6 +166,7 @@ void malifix_exit(void)
 	return;
 }
 
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
 module_param(mali_pp1_int_count, uint, 0664);
 MODULE_PARM_DESC(mali_pp1_int_count, "Mali PP1 interrupt count\n");
 
@@ -175,6 +178,7 @@ MODULE_PARM_DESC(mali_pp1_mmu_int_count, "Mali PP1 mmu interrupt count\n");
 
 module_param(mali_pp2_mmu_int_count, uint, 0664);
 MODULE_PARM_DESC(mali_pp2_mmu_int_count, "Mali PP2 mmu interrupt count\n");
+#endif
 
 MODULE_DESCRIPTION("AMLOGIC mali fix driver");
 MODULE_LICENSE("GPL");

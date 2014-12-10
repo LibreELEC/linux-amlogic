@@ -15,7 +15,7 @@ struct temp_sensor{
 	int efuse_flag;
 };
 struct temp_sensor *temps;
-int thermal_firmware_init()
+int thermal_firmware_init(void)
 {
 	int err;
 	char buf[4]={0};

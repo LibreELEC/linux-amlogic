@@ -828,9 +828,9 @@ static int amvdec_real_probe(struct platform_device *pdev)
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)&&(HAS_HDEC)
     if(IS_MESON_M8_CPU){
         // disable vdec2 dblk when miracast.
+        int count = 0;
         if(get_vdec2_usage() != USAGE_NONE)
             AbortEncodeWithVdec2(1);
-        int count = 0;
         while((get_vdec2_usage() != USAGE_NONE)&&(count < 10)){
             msleep(50);
             count++;

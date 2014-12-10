@@ -41,7 +41,7 @@ void v4l_reg_provider(struct vframe_provider_s *prov)
     spin_lock_irqsave(&lock, flags);
 
     if (vfp) {
-        vf_unreg_provider(&vfp);
+        vf_unreg_provider(vfp);
     }
     vfp = prov;
     spin_unlock_irqrestore(&lock, flags);

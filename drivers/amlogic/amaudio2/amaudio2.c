@@ -187,7 +187,7 @@ error:
 
 static int amaudio_release(struct inode *inode, struct file *file)
 {
-	unsigned long irqflags;
+	//unsigned long irqflags;
 
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 

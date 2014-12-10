@@ -1382,8 +1382,6 @@ extern void AbortEncodeWithVdec2(int abort);
 static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 {
     struct resource *mem;
-    int count = 0;
-
     printk("amvdec_h264_4k2k probe start.\n");
     mutex_lock(&vh264_4k2k_mutex);
 
@@ -1407,9 +1405,9 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     if (!H264_4K2K_SINGLE_CORE) {
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)&&(HAS_HDEC)
+        int count = 0;
         if(get_vdec2_usage() != USAGE_NONE)
             AbortEncodeWithVdec2(1);
-        int count = 0;
         while((get_vdec2_usage() != USAGE_NONE)&&(count < 10)){
             msleep(50);
             count++;

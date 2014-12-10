@@ -349,7 +349,7 @@ static int mxc622x_acc_misc_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int mxc622x_acc_misc_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
+static long mxc622x_acc_misc_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int err;

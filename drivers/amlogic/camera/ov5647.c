@@ -2365,9 +2365,9 @@ bool OV5647_set_af_new_step(void *priv, unsigned int af_step){
 
 void OV5647_set_new_format(void *priv,int width,int height,int fr){
     int index = 0;
-    current_fr = fr;
     camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
     configure_t *configure = camera_priv_data->configure;
+    current_fr = fr;
     if(camera_priv_data == NULL)
 	return;
     printk("sum:%d,mode:%d,fr:%d\n",configure->aet.sum,ov5647_work_mode,fr);
@@ -2495,9 +2495,9 @@ static ssize_t dg_manual_store(struct class *cls,struct class_attribute *attr, c
 		printk("wrong param\n");
 		return len;
 	}
-	sscanf(param[0],"%x",&dg.r);
-	sscanf(param[1],"%x",&dg.g);
-	sscanf(param[2],"%x",&dg.b);
+	sscanf(param[0],"%x",(unsigned int *)&dg.r);
+	sscanf(param[1],"%x",(unsigned int *)&dg.g);
+	sscanf(param[2],"%x",(unsigned int *)&dg.b);
 	adapter = i2c_get_adapter(4);
 	my_i2c_put_byte(adapter,0x36,0x5186, (unsigned char)((dg.r >> 8) & 0x000f));
 	my_i2c_put_byte(adapter,0x36,0x5187, (unsigned char)((dg.r >> 0) & 0x00ff));
@@ -2887,7 +2887,7 @@ void OV5647_set_night_mode(struct ov5647_device *dev,enum  camera_night_mode_fli
 
 }   /* OV5647_NightMode */
 
-static void OV5647_set_param_banding(struct ov5647_device *dev,enum  camera_night_mode_flip_e banding)
+static void OV5647_set_param_banding(struct ov5647_device *dev,enum  camera_banding_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     switch(banding){
@@ -3062,6 +3062,12 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     //int rc = -1;
     int i=0;
     unsigned char t = dev->cam_info.interface;
+	int default_sensor_data[4] = {0x00000668,0x00000400,0x00000400,0x00000878};
+    int *sensor_data;
+    int addr_start = 0x5186;
+    int data = 0;
+    int index = 0;
+
     if(i_index != -1 && ov5647_work_mode != CAMERA_CAPTURE){
 	printk("i_index is %d\n", i_index);
         res_param = &debug_prev_resolution_array[i_index];
@@ -3086,11 +3092,6 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
 
     set_flip(dev);
 
-    int default_sensor_data[4] = {0x00000668,0x00000400,0x00000400,0x00000878};
-    int *sensor_data;
-    int addr_start = 0x5186;
-    int data = 0;
-    int index = 0;
     if(dev->configure->wb_sensor_data_valid == 1){
         sensor_data = dev->configure->wb_sensor_data.export;
     }else

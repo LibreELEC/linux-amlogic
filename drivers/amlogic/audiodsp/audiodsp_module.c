@@ -934,8 +934,8 @@ static ssize_t ac3_drc_control_store(struct class* class, struct class_attribute
 }
 static ssize_t dts_dec_control_show(struct class*cla, struct class_attribute* attr, char* buf)
 {
-	char *dmxmode[] = {"Lo/Ro","Lt/Rt"};
-	char *dialnorm[] = {"disable","enable"};
+	//char *dmxmode[] = {"Lo/Ro","Lt/Rt"};
+	//char *dialnorm[] = {"disable","enable"};
 	char *pbuf = buf;
 	pbuf += sprintf(pbuf, "%d\n",dts_dec_control);
 	return (pbuf-buf);

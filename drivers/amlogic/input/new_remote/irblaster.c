@@ -91,7 +91,7 @@ static void send_all_frame(struct blaster_window * creat_window){
 	irblaster_dbg("The all frame finished !!\n");
 
 }
-
+#if 0
 static void send_nec_frame(struct blaster_window * creat_window){
 	int i;
 	// set init_high valid and enable the ir_blaster
@@ -256,6 +256,7 @@ static void send_duokan_frame(struct blaster_window *creat_window){
 
 }
 
+#endif
 
 static ssize_t dbg_operate(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
@@ -415,7 +416,7 @@ static void ir_hardware_init(void)
 	ret = request_irq(INT_REMOTE, irblaster_interrupt, IRQF_SHARED, "irblaster", (void *)irblaster_interrupt);
 	if (ret < 0) {
 		printk(KERN_ERR "Irblaster: request_irq failed, ret=%d.\n", ret);
-		return ret;
+		return;
 	}
 }
 static void ir_hardware_release(void)

@@ -248,7 +248,7 @@ int cec_ll_tx(const unsigned char *msg, unsigned char len)
 {
     int ret = 0;
     if(cec_int_disable_flag)
-        return;
+        return 2;
 
     mutex_lock(&cec_mutex);
     //aml_write_reg32(P_AO_CEC_INTR_MASKN, aml_read_reg32(P_AO_CEC_INTR_MASKN) & ~(1 << 2));

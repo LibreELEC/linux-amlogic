@@ -355,8 +355,11 @@ static void vcck_pwm_init(struct device * dev) {
 static
 int meson_cs_probe(struct platform_device *pdev)
 {
+	struct meson_cs_pdata_t *meson_cs_pdata  = pdev->dev.platform_data;
+	struct meson_cs_regulator_dev *meson_cs_regulator;
+	int error = 0, i, cur_idx;
+	struct regulator_config *meson_regulator_config;
 
-	printk("======================enter %s done!\n",__func__);
 #ifdef CONFIG_USE_OF
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *np_init_data;
@@ -379,7 +382,7 @@ int meson_cs_probe(struct platform_device *pdev)
 			goto err;
 		}
 
-		ret = of_property_read_u32_array(np,"voltage_step_table",&(vcck_pdata->voltage_step_table),(MESON_CS_MAX_STEPS)*sizeof(int)/sizeof(&vcck_pdata->voltage_step_table));
+		ret = of_property_read_u32_array(np,"voltage_step_table",(u32 *)&(vcck_pdata->voltage_step_table),(MESON_CS_MAX_STEPS)*sizeof(int)/sizeof(&vcck_pdata->voltage_step_table));
 		if(ret){
 			printk("don't find  match voltage_step_table\n");
 			goto err;
@@ -438,11 +441,8 @@ int meson_cs_probe(struct platform_device *pdev)
 	}
 #endif
 
-	struct meson_cs_pdata_t *meson_cs_pdata  = pdev->dev.platform_data;
-	struct meson_cs_regulator_dev *meson_cs_regulator;
-	int error = 0, i, cur_idx;
-	struct regulator_config *meson_regulator_config;
-       g_vcck_voltage = meson_cs_pdata;
+	printk("======================enter %s done!\n",__func__);
+	       g_vcck_voltage = meson_cs_pdata;
 	meson_cs_regulator = kzalloc(sizeof(struct meson_cs_regulator_dev), GFP_KERNEL);
 	if (!meson_cs_regulator)
 		return -ENOMEM;
@@ -542,7 +542,9 @@ static int  meson_cs_remove(struct platform_device *pdev)
 		regulator_put(meson_cs_regulator->regulator);
 
 #ifdef CONFIG_USE_OF
-	meson_cs_pdata = container_of(meson_cs_regulator->voltage_step_table,struct meson_cs_pdata_t,voltage_step_table);
+	//meson_cs_pdata = container_of(meson_cs_regulator->voltage_step_table,struct meson_cs_pdata_t,voltage_step_table);
+	meson_cs_pdata =  (struct meson_cs_pdata_t *)((char *)meson_cs_regulator->voltage_step_table -
+												  offsetof(struct meson_cs_pdata_t, voltage_step_table));
 	kfree(meson_cs_pdata->meson_cs_init_data->consumer_supplies);
 	kfree(meson_cs_pdata->meson_cs_init_data);
 	kfree(meson_cs_pdata);
@@ -630,6 +632,7 @@ static int dvfs_get_voltage_step(void)
 		}
         return reg_val & 0xf;
     }
+	return -1;
 }
 
 static int dvfs_set_voltage(int from, int to)
@@ -814,7 +817,7 @@ static int meson_cs_dvfs_probe(struct platform_device *pdev)
     }
     ret = of_property_read_u32_array(np,
                                      "cs_voltage_table",
-                                     g_table,
+                                     (u32 *)g_table,
                                      (sizeof(struct cs_voltage) * g_table_cnt) / sizeof(int));
     if (ret < 0) {
         printk("%s, failed to read 'cs_voltage_table', ret:%d\n", __func__, ret);
@@ -825,7 +828,6 @@ static int meson_cs_dvfs_probe(struct platform_device *pdev)
         printk("%2d, %08x, %7d\n", i, g_table[i].pwm_value, g_table[i].voltage);
     }
 
-next:
     if (use_pwm) {
         dvfs_vcck_pwm_init(&pdev->dev);
     }

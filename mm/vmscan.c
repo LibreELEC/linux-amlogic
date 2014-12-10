@@ -1064,7 +1064,7 @@ int __isolate_lru_page(struct page *page, isolate_mode_t mode, gfp_t gfp_mask)
 		}
 #endif
 
-		if((allocflags_to_migratetype(gfp_mask) & MIGRATE_MOVABLE == 0) \
+		if(((allocflags_to_migratetype(gfp_mask) & MIGRATE_MOVABLE) == 0) \
 			&& is_migrate_cma(get_pageblock_migratetype(page))){
 			return -EBUSY;
 		}

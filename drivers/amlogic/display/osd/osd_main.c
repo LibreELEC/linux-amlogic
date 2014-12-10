@@ -1638,8 +1638,10 @@ osd_probe(struct platform_device *pdev)
 	int  logo_osd_index=0,i;
 	myfb_dev_t 	*fbdev = NULL;
 	vmode_t current_mode = VMODE_MASK;
+#ifdef CONFIG_AM_HDMI_ONLY
 	vmode_t cvbs_mode = VMODE_MASK;
 	int hpd_state = 0;
+#endif
 	const void *prop;
 	int prop_idx=0;
 	int rotation = 0;
@@ -1779,8 +1781,8 @@ osd_probe(struct platform_device *pdev)
 		mydef_var[index].height=vinfo->screen_real_height;
 		if( init_logo_obj && index==logo_osd_index ) //adjust default var info
 		{
-			printk("don't find to display_size_default from mesonfb-dts\n");
 			int  bpp=init_logo_obj->dev->output_dev.osd.color_depth;//bytes per pixel
+			printk("don't find to display_size_default from mesonfb-dts\n");
 			mydef_var[index].xres=init_logo_obj->dev->vinfo->width;
 			mydef_var[index].yres=init_logo_obj->dev->vinfo->height;
 			mydef_var[index].xres_virtual=init_logo_obj->dev->vinfo->width;

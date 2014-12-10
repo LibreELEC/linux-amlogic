@@ -51,12 +51,6 @@ struct aml_audio_private_data {
 };
 
 #define CODEC_DEBUG  printk
-static void m6tv_audio_dev_init(void)
-{
-    if (m6tv_audio_snd_pdata->device_init) {
-        m6tv_audio_snd_pdata->device_init();
-    }
-}
 
 static void m6tv_audio_dev_uninit(void)
 {

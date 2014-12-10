@@ -70,7 +70,7 @@ extern vmode_t validate_vmode(char *);
 extern int vout_suspend(void);
 extern int vout_resume(void);
 
-extern int get_power_level();
+extern int get_power_level(void);
 
 
 #define VOUT_EVENT_MODE_CHANGE		0x00010000

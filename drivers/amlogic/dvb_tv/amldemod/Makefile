@@ -22,5 +22,10 @@ aml_fe-objs += amlfrontend.o
 aml_fe-objs	+= aml_demod.o
 ##endif
 
+ifeq ($(CONFIG_AM_SI2177), y)
+##EXTRA_CFLAGS += -I../../../../hardware/dvb/silabs/drivers/si2177/
+endif
+
+
 EXTRA_CFLAGS += -I.
 EXTRA_CFLAGS += -Idrivers/media/dvb-core

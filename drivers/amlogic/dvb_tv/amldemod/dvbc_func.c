@@ -12,11 +12,12 @@ int cciflag=0;
 struct timer_list mytimer;
 static void dvbc_cci_timer(unsigned long data)
 {
-	printk("%s\n", (char *)data);
 
 #if 1
-	int count=100;
+	int count;
 	int maxCCI_p,re,im,j,i,times,maxCCI,sum,sum1,reg_0xf0,tmp1,tmp,tmp2,reg_0xa8,reg_0xac;
+	int reg_0xa8_t, reg_0xac_t;
+	count=100;
 //	while(1){
 		    // search cci((si2176_get_strength()-256)<(-85))
 		if((((apb_read_reg(QAM_BASE+0x18))&0x1)==1)){
@@ -39,7 +40,6 @@ static void dvbc_cci_timer(unsigned long data)
 		    tmp = 0x2be2be3; //0x2ae4772;  IF = 6M, fs = 35M, dec2hex(round(8*IF/fs*2^25))
 		    tmp2 = 0x2000;
 		    tmp1 = 8;
-		    int reg_0xa8_t, reg_0xac_t;
 		    reg_0xa8 = 0xc0000000; // bypass CCI
 		    reg_0xac = 0xc0000000; // bypass CCI
 
@@ -134,8 +134,10 @@ void  dvbc_timer_exit(void)
 
 void dvbc_cci_task(void)
 {
-	int count=100;
+	int count;
 	int maxCCI_p,re,im,j,i,times,maxCCI,sum,sum1,reg_0xf0,tmp1,tmp,tmp2,reg_0xa8,reg_0xac;
+	int reg_0xa8_t, reg_0xac_t;
+	count=100;
 	while(1){
 			msleep(200);
 		    // search cci((si2176_get_strength()-256)<(-85))
@@ -160,7 +162,6 @@ void dvbc_cci_task(void)
 		    tmp = 0x2be2be3; //0x2ae4772;  IF = 6M, fs = 35M, dec2hex(round(8*IF/fs*2^25))
 		    tmp2 = 0x2000;
 		    tmp1 = 8;
-		    int reg_0xa8_t, reg_0xac_t;
 		    reg_0xa8 = 0xc0000000; // bypass CCI
 		    reg_0xac = 0xc0000000; // bypass CCI
 
@@ -252,11 +253,12 @@ int dvbc_get_cci_task(void)
 void dvbc_create_cci_task(void)
 {
 
-	int i,ret;
+	int ret;
 	//apb_write_reg(QAM_BASE+0xa8, 0x42b2ebe3); // enable CCI
     // apb_write_reg(QAM_BASE+0xac, 0x42b2ebe3); // enable CCI
 //     if(dvbc.mode == 4) // 256QAM
     // apb_write_reg(QAM_BASE+0x54, 0xa25705fa); //
+    ret=0;
 	cci_task=kthread_create(dvbc_cci_task,NULL,"cci_task");
 	if(ret!=0)
 	{

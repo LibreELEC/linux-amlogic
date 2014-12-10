@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// Copyright © 2007, Silicon Image, Inc.  All rights reserved.
+// Copyright ? 2007, Silicon Image, Inc.  All rights reserved.
 //
 // No part of this work may be reproduced, modified, distributed, transmitted,
 // transcribed, or translated into any language or computer format, in any form
@@ -64,7 +64,7 @@ void SetupInterruptMasks(void)
 
 #if(PEBBLES_ES1_ZONE_WORKAROUND == ENABLE)
 
-static void ResetZoneControl()
+static void ResetZoneControl(void)
 {
     {
         RegisterWrite(REG__FACTORY_A87,0x03);

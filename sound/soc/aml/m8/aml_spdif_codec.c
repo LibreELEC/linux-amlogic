@@ -101,11 +101,11 @@ static DEVICE_ATTR(spdif_mute, 0660, spdif_mute_show, spdif_mute_set);
 
 static int spdif_dit_probe(struct platform_device *pdev)
 {
+    int ret = device_create_file(&pdev->dev, &dev_attr_spdif_mute);
 	printk("enter spdif_dit_probe \n");
     spdif_dev = &pdev->dev;
 
     aml_spdif_pinmux_init(&pdev->dev);
-    int ret = device_create_file(&pdev->dev, &dev_attr_spdif_mute);
     if (ret < 0)
 		printk("spdif: failed to add spdif_mute sysfs: %d\n",ret);
 	return snd_soc_register_codec(&pdev->dev, &soc_codec_spdif_dit,

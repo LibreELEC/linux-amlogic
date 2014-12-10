@@ -764,10 +764,9 @@ static long regd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case IOC_WR_SGR_GAMMA:
 	{
 		int gamma_val = 0;
-		int i;
 		unsigned int gammaR[256] = {0};
 		char parm[10];
-        if(copy_from_user(&gamma_val, argp, sizeof(int))){
+		if(copy_from_user(&gamma_val, argp, sizeof(int))){
 			ret = EFAULT;
 			break;
 		}
@@ -778,17 +777,16 @@ static long regd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(gammaR[0] > 598){
 			gammaR[0] = 598;
 		}
-		set_lcd_gamma_table(gammaR, H_SEL_R);
+		set_lcd_gamma_table((u16 *)gammaR, H_SEL_R);
 		break;
 	}
 
 	case IOC_WR_SGG_GAMMA:
 	{
 		int gamma_val = 0;
-		int i;
 		unsigned int gammaR[256] = {0};
 		char parm[10];
-        if(copy_from_user(&gamma_val, argp, sizeof(int))){
+		if(copy_from_user(&gamma_val, argp, sizeof(int))){
 			ret = EFAULT;
 		break;
 		}
@@ -798,19 +796,18 @@ static long regd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(gammaR[0] > 598){
 			gammaR[0] = 598;
 		}
-		set_lcd_gamma_table(gammaR, H_SEL_G);
+		set_lcd_gamma_table((u16 *)gammaR, H_SEL_G);
 		break;
 	}
 
 	case IOC_WR_SGB_GAMMA:
 	{
 		int gamma_val = 0;
-		int i;
 		unsigned int gammaR[256] = {0};
 		char parm[10];
-        if(copy_from_user(&gamma_val, argp, sizeof(int))){
+		if(copy_from_user(&gamma_val, argp, sizeof(int))){
 			ret = EFAULT;
-		break;
+			break;
 		}
 		sprintf(parm, "%x", (int)gamma_val);
 		sscanf(parm, "%x", gammaR);
@@ -818,7 +815,7 @@ static long regd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(gammaR[0] > 598){
 			gammaR[0] = 598;
 		}
-		set_lcd_gamma_table(gammaR, H_SEL_B);
+		set_lcd_gamma_table((u16 *)gammaR, H_SEL_B);
 		break;
 	}
 

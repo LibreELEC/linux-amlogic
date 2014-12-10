@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// Copyright © 2007, Silicon Image, Inc.  All rights reserved.
+// Copyright ? 2007, Silicon Image, Inc.  All rights reserved.
 //
 // No part of this work may be reproduced, modified, distributed, transmitted,
 // transcribed, or translated into any language or computer format, in any form
@@ -9,7 +9,7 @@
 #ifndef __AMF_H__
 #define __AMF_H__
 
-
+#include "config.h"
 
 //------------------------------------------------------------------------------
 // Constants
@@ -82,10 +82,10 @@ void TurnAudioMute (uint8_t qOn);
 void TurnVideoMute(uint8_t qOn);
 void TurnPowerDown(uint8_t qOn);
 void PollInterrupt(void);
-void ProgramEDID();
-uint8_t ResetVideoControl();
+void ProgramEDID(void);
+uint8_t ResetVideoControl(void);
 #if (PEBBLES_VIDEO_STATUS_2ND_CHECK==ENABLE)
-uint8_t PclkCheck();
+uint8_t PclkCheck(void);
 #endif
 
 

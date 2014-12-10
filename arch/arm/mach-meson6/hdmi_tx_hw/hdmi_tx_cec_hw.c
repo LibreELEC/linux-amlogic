@@ -135,7 +135,7 @@ int cec_ll_tx_polling(const unsigned char *msg, unsigned char len)
     int i;
     unsigned int ret = 0xf;
     unsigned int n;
-	unsigned int j = 30;
+//	unsigned int j = 30;
     int pos;
 
     for (i = 0; i < len; i++) {

@@ -167,9 +167,9 @@ static ssize_t bl_extern_debug(struct class *class, struct class_attribute *attr
 {
 #ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU
     struct aml_pmu_driver *pmu_driver;
-#endif
     unsigned char temp;
     unsigned int t[2];
+#endif
     int ret = 0;
 
 #ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU

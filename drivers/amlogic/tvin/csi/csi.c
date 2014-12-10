@@ -470,7 +470,7 @@ static int amcsi_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
 #endif
 
         init_timer (&csi_devp->t);
-        csi_devp->t.data = csi_devp;
+        csi_devp->t.data = (unsigned long)csi_devp;
         csi_devp->t.function = csi2_timer_func;
         csi_devp->t.expires = jiffies + WDG_STEP_JIFFIES; //reset after 50ms=5jiffies
         if(0 == csi_devp->min_frmrate){

@@ -1027,6 +1027,7 @@ static int aml_i2c_probe(struct platform_device *pdev)
 	resource_size_t *res_start;
 	struct aml_i2c *i2c = kzalloc(sizeof(struct aml_i2c), GFP_KERNEL);
 
+		struct aml_i2c_platform *aml_i2c_property = kzalloc(sizeof(struct aml_i2c_platform), GFP_KERNEL);
 	//printk(KERN_DEBUG "%s : %s\n", __FILE__, __FUNCTION__);
 
 	if (!pdev->dev.of_node) {
@@ -1042,7 +1043,6 @@ static int aml_i2c_probe(struct platform_device *pdev)
 
 	pdev->id = device_id;
 
-		struct aml_i2c_platform *aml_i2c_property = kzalloc(sizeof(struct aml_i2c_platform), GFP_KERNEL);
 
 		if(!aml_i2c_property)
 			printk("can't alloc mem for i2c_property\n");

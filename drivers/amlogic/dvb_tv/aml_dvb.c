@@ -1005,8 +1005,8 @@ static ssize_t stb_store_hw_setting(struct class *class, struct class_attribute 
 		}
 
 		ts->pinctrl  = devm_pinctrl_get_select(&dvb->pdev->dev, pname);
-		if(IS_ERR_VALUE(ts->pinctrl))
-			ts->pinctrl = NULL;
+//		if(IS_ERR_VALUE(ts->pinctrl))
+//			ts->pinctrl = NULL;
 		ts->mode     = mode;
 		ts->control  = ctrl;
 
@@ -1173,8 +1173,8 @@ static int aml_dvb_probe(struct platform_device *pdev)
 					advb->ts[i].pinctrl = NULL;
 				}
 
-				if(IS_ERR_VALUE(advb->ts[i].pinctrl))
-					advb->ts[i].pinctrl = NULL;
+		//		if(IS_ERR_VALUE(advb->ts[i].pinctrl))
+		//			advb->ts[i].pinctrl = NULL;
 
 				control_ts_on_csi_port(i, (advb->ts[i].mode == AM_TS_DISABLE)? 0 : 1);
 			}

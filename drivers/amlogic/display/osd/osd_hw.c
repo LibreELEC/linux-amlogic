@@ -217,7 +217,9 @@ static const struct vframe_operations_s osd_vf_provider =
 	.put  = NULL,
 };
 
+#ifdef CONFIG_AM_VIDEO
 static unsigned char osd_vf_prov_init = 0;
+#endif
 
 static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
 {
@@ -237,6 +239,7 @@ static inline void wait_vsync_wakeup(void)
 	wake_up_interruptible(&osd_vsync_wq);
 }
 
+#ifdef CONFIG_VSYNC_RDMA
 static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 {
 #define  	VOUT_ENCI	1
@@ -341,6 +344,7 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static inline void  walk_through_update_list(void)
 {

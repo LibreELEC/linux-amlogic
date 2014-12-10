@@ -15,7 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/wait.h>
 #include <linux/slab.h>
-#include <linux/mm.h>f
+#include <linux/mm.h>
 #include <linux/ioport.h>
 #include <linux/init.h>
 #include <linux/sched.h>
@@ -3142,7 +3142,7 @@ static int vidioc_enum_framesizes(struct file *file, void *priv, struct v4l2_frm
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	//printk("----------- %s \n",__func__);
 

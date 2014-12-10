@@ -40,12 +40,12 @@ extern int aml_nftl_erase_part(struct aml_nftl_part_t *part);
 extern int aml_nftl_set_status(struct aml_nftl_part_t *part,unsigned char status);
 uint32 _nand_read(struct aml_nftl_dev *nftl_dev,unsigned long start_sector,unsigned len,unsigned char *buf);
 uint32 _nand_write(struct aml_nftl_dev *nftl_dev,unsigned long  start_sector,unsigned len,unsigned char *buf);
-uint32 _nand_discard(struct aml_nftl_dev *nftl_dev,uint32 start_sector,uint32 len);
+uint32 _nand_discard(struct aml_nftl_dev *nftl_dev,unsigned int start_sector,uint32 len);
 uint32 _nand_flush_write_cache(struct aml_nftl_dev *nftl_dev);
 uint32 _nand_flush_discard_cache(struct aml_nftl_dev *nftl_dev);
 uint32 _blk_nand_flush_write_cache(struct aml_nftl_blk *nftl_blk);
 uint32 _blk_nand_write(struct aml_nftl_blk *nftl_blk,unsigned long start_sector,unsigned  len,unsigned char *buf);
-uint32 _blk_nand_discard(struct aml_nftl_blk *nftl_blk,uint32 start_sector,uint32 len);
+uint32 _blk_nand_discard(struct aml_nftl_blk *nftl_blk,unsigned int start_sector,uint32 len);
 uint32 _blk_nand_read(struct aml_nftl_blk *nftl_blk,unsigned long start_sector,unsigned len,unsigned char *buf);
 
 void *aml_nftl_malloc(uint32 size);
@@ -54,7 +54,7 @@ void aml_nftl_free(const void *ptr);
 
 static ssize_t show_part_struct(struct class *class,struct class_attribute *attr, char *buf);
 static ssize_t show_list(struct class *class, struct class_attribute *attr,  char *buf);
-static ssize_t discard_page(struct class *class, struct class_attribute *attr, const char *buf);
+static ssize_t discard_page(struct class *class, struct class_attribute *attr, char *buf);
 static ssize_t do_gc_all(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
 static ssize_t do_gc_one(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
 static ssize_t do_test(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
@@ -266,7 +266,7 @@ uint32 _nand_write(struct aml_nftl_dev *nftl_dev,unsigned long start_sector,unsi
     amlnf_ktime_get_ts(&nftl_dev->ts_write_start);
     return ret;
 }
-uint32 _nand_discard(struct aml_nftl_dev *nftl_dev,uint32 start_sector,uint32 len)
+uint32 _nand_discard(struct aml_nftl_dev *nftl_dev,unsigned int start_sector,uint32 len)
 {
     uint32 ret;
 	#if 0
@@ -287,7 +287,7 @@ uint32 _blk_nand_write(struct aml_nftl_blk *nftl_blk,unsigned long start_sector,
 
     return ret;
 }
-uint32 _blk_nand_discard(struct aml_nftl_blk *nftl_blk,uint32 start_sector,uint32 len)
+uint32 _blk_nand_discard(struct aml_nftl_blk *nftl_blk,unsigned int start_sector,uint32 len)
 {
     uint32 ret;
     ret = _nand_discard(nftl_blk->nftl_dev,start_sector + nftl_blk->offset,len);
@@ -354,7 +354,7 @@ static ssize_t show_list(struct class *class, struct class_attribute *attr,  cha
     return 0;
 }
 
-static ssize_t discard_page(struct class *class, struct class_attribute *attr, const char *buf)
+static ssize_t discard_page(struct class *class, struct class_attribute *attr, char *buf)
 {
     struct aml_nftl_dev *nftl_dev = container_of(class, struct aml_nftl_dev, debug);
     PRINT("1111\n");

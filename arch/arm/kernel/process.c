@@ -157,11 +157,11 @@ void soft_restart(unsigned long addr)
 	/* Should never get here. */
 	BUG();
 }
-
+#if 0
 static void null_restart(char mode, const char *cmd)
 {
 }
-
+#endif
 void arm_machine_restart(char mode, const char *cmd)
 {
 #if defined (CONFIG_PLAT_MESON) && !defined(CONFIG_ARCH_MESON2)

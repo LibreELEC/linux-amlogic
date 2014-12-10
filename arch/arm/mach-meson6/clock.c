@@ -1407,6 +1407,7 @@ static  int __init meson_device_low_power(char *s)
     if(strcmp(s, "1") == 0) {
         device_low_power = 1;
     }
+	return 0;
 }
 __setup("meson_device_low_power=",meson_device_low_power);
 
@@ -1418,10 +1419,10 @@ static int clk_set_rate_a9(struct clk *clk, unsigned long rate)
 #endif /* CONFIG_SMP */
 	int error = 0;
 
+	int cpu_freq_limit = 1200000000;
 	if (rate < 1000)
 		rate *= 1000000;
 
-	int cpu_freq_limit = 1200000000;
 	if(device_low_power != 0) {
 		cpu_freq_limit = 600000000;
 	}

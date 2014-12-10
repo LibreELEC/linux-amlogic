@@ -1960,7 +1960,7 @@ void dmx_reset_hw_ex(struct aml_dvb *dvb, int reset_irq)
 
 		for(n=0; n<CHANNEL_COUNT; n++)
 		{
-			struct aml_channel *chan = &dmx->channel[n];
+		//	struct aml_channel *chan = &dmx->channel[n];
 
 			/*if(chan->used)*/
 			{
@@ -2485,8 +2485,8 @@ int aml_stb_hw_set_source(struct aml_dvb *dvb, dmx_source_t src)
 {
 	unsigned long flags;
 	int hw_src;
-	int ret = 0;
-
+	int ret;
+	ret = 0;
 	spin_lock_irqsave(&dvb->slock, flags);
 
 	hw_src = dvb->stb_source;
@@ -2504,13 +2504,13 @@ int aml_stb_hw_set_source(struct aml_dvb *dvb, dmx_source_t src)
 		case DMX_SOURCE_DVR0:
 			hw_src = AM_TS_SRC_HIU;
 		break;
-		case DMX_SOURCE_FRONT0+100:
+		case DMX_SOURCE_FRONT0_OFFSET:
 			hw_src = AM_TS_SRC_DMX0;
 		break;
-		case DMX_SOURCE_FRONT1+100:
+		case DMX_SOURCE_FRONT1_OFFSET:
 			hw_src = AM_TS_SRC_DMX1;
 		break;
-		case DMX_SOURCE_FRONT2+100:
+		case DMX_SOURCE_FRONT2_OFFSET:
 			hw_src = AM_TS_SRC_DMX2;
 		break;
 		default:

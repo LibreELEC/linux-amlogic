@@ -106,7 +106,7 @@ static const u32 poweron_data[] =
 /* 420 */ 0xad4bda56, 0x038002b5, 0x0007ffe0, 0x00001c10,
 /* 430 */ 0xad4ad6b5, 0x038002b5, 0x4007fee0, 0x00001c00
 };
-static DEFINE_SPINLOCK(lock);
+
 static struct clk *mali_clk = NULL;
 
 #if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6
@@ -128,6 +128,7 @@ static struct clk *mali_clk = NULL;
 #define MMU_FLAG_PTE_WR_PERMISSION      0x04
 
 //static int mali_revb_flag = -1;
+static DEFINE_SPINLOCK(lock);
 extern int mali_revb_flag;
 int mali_meson_is_revb(void)
 {

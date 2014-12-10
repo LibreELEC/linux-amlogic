@@ -287,6 +287,10 @@ static void vfm_init(void)
     char def_amlvideo2_chain[] = "vdin1 amlvideo2";
 #endif
 
+#if (defined CONFIG_TVIN_AFE)||(defined CONFIG_TVIN_HDMI)
+	char tvpath_id[] = "tvpath";
+	char tvpath_chain[]="vdin0 deinterlace amvideo";
+#endif
     int i;
     for(i=0; i<VFM_MAP_COUNT; i++){
         vfm_map[i] = NULL;
@@ -300,8 +304,6 @@ static void vfm_init(void)
     vfm_map_add(def_ext_id, def_ext_name_chain);
 #endif
 #if (defined CONFIG_TVIN_AFE)||(defined CONFIG_TVIN_HDMI)
-    char tvpath_id[] = "tvpath";
-    char tvpath_chain[]="vdin0 deinterlace amvideo";
     vfm_map_add(tvpath_id, tvpath_chain);
 #endif
 #ifdef CONFIG_V4L_AMLOGIC_VIDEO2

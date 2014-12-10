@@ -1957,7 +1957,7 @@ int vm_init_buf(size_t size)
 
     if(vm_pages && vm_buf_size != 0)
     {
-        pr_warn("%s cma space already in use, phys %p size %dk\n", __func__, page_to_phys(vm_pages), size/1024);
+        pr_warn("%s cma space already in use, phys %d size %dk\n", __func__, page_to_phys(vm_pages), size/1024);
         dma_release_from_contiguous(&vm_device.pdev->dev, vm_pages, vm_buf_size/PAGE_SIZE);
     }
 
@@ -1966,7 +1966,7 @@ int vm_init_buf(size_t size)
     {
         dma_addr_t phys;
         phys = page_to_phys(vm_pages);
-        pr_info("%s: allocating phys %p, size %dk\n", __func__, phys, size/1024);
+        pr_info("%s: allocating phys %d, size %dk\n", __func__, phys, size/1024);
         set_vm_buf_info(phys, size);
         vm_buf_size = size;
         return 0;
@@ -2012,9 +2012,9 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static int vm_driver_probe(struct platform_device *pdev)
 {
 #ifndef CONFIG_CMA
-	char* buf_start;
+	phys_addr_t buf_start;
 	unsigned int buf_size;
-	struct resource *mem;
+//	struct resource *mem;
     int idx;
 
 #if 0
@@ -2035,7 +2035,7 @@ static int vm_driver_probe(struct platform_device *pdev)
      }
      else
      {
-         buf_start = (char *)get_reserve_block_addr(idx);
+         buf_start = (phys_addr_t)get_reserve_block_addr(idx);
          buf_size = (unsigned int)get_reserve_block_size(idx);
      }
 #endif

@@ -46,7 +46,7 @@ static int wifi_power_resume(struct platform_device *pdev);
 static int  wifi_power_open(struct inode *inode,struct file *file);
 static int  wifi_power_release(struct inode *inode,struct file *file);
 static void usb_wifi_power(int is_power);
-static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+static long wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 static const struct of_device_id amlogic_wifi_power_dt_match[]={
 	{	.compatible = "amlogic,wifi_power",
@@ -91,7 +91,7 @@ static int  wifi_power_release(struct inode *inode,struct file *file)
     return ret;
 }
 
-static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct wifi_power_platform_data *pdata = NULL;
 
@@ -256,8 +256,8 @@ EXPORT_SYMBOL(wifi_get_country_code);
 
 int wifi_usb_set_power(int val)
 {
-	WARN_ON(1);
     struct wifi_power_platform_data *pdata = NULL;
+	WARN_ON(1);
     if(devp==NULL)
         return -1;
     pdata = (struct wifi_power_platform_data*)devp->platform_data;
@@ -299,13 +299,13 @@ static void usb_wifi_power(int is_power)
     else
         CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO6_O, (1<<11));
 #endif
-    return 0;
+    return;
 }
 
 static int wifi_power_probe(struct platform_device *pdev)
 {
     int ret;
-    char * str;
+    const char * str;
 
     pdata = kzalloc(sizeof(struct wifi_power_platform_data), GFP_KERNEL);
     if(!pdata)

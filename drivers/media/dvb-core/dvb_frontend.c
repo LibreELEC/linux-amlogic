@@ -572,14 +572,20 @@ int si2177_get_strength(void);
 
 static void dvb_frontend_swzigzag(struct dvb_frontend *fe)
 {
-	fe_status_t s = 0;
-	int retval = 0;
-	int time=0;
-	int count=0;
-	int newcount=0;
-	int strength=0;
+	fe_status_t s;
+	int retval;
+	int time;
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache, tmp;
+#if ((defined CONFIG_AM_SI2176) || (defined CONFIG_AM_SI2177))&&(defined CONFIG_AM_M6_DEMOD)
+	int strength;
+#endif
+#if (defined CONFIG_AM_M6_DEMOD)
+	int newcount;
+    int count;
+	count=0;
+#endif
+	s=retval=time=0;
 
 	/* if we've got no parameters, just keep idling */
 	if (fepriv->state & FESTATE_IDLE) {
@@ -1342,7 +1348,7 @@ static int dvb_frontend_asyncwait(struct dvb_frontend *fe, u32 ms_timeout)
 											dvb_frontend_asyncshouldwakeup(fe),
 											ms_timeout * HZ /1000);
 
-	dprintk ("%s:%d/%d\n", __func__, ms_timeout, wait_ret);
+	dprintk ("%s:%d/%ld\n", __func__, ms_timeout, wait_ret);
 
 	if(wait_ret > 0){
 		ret = 1;
@@ -2500,11 +2506,11 @@ out:
 
 static int dtv_set_frontend(struct dvb_frontend *fe)
 {
-	printk("dtv_set_frontend\n");
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_frontend_tune_settings fetunesettings;
 	u32 rolloff = 0;
+	printk("dtv_set_frontend\n");
 
 	if (dvb_frontend_check_parameters(fe) < 0)
 		return -EINVAL;
@@ -3238,6 +3244,7 @@ int dvb_register_frontend(struct dvb_adapter* dvb,
 		.kernel_ioctl = dvb_frontend_ioctl
 	};
 
+	int ret;
 	dev_dbg(dvb->device, "%s:\n", __func__);
 
 	if (mutex_lock_interruptible(&frontend_mutex))

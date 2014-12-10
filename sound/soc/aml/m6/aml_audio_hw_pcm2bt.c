@@ -137,7 +137,7 @@ unsigned int pcm_in_set_rd_ptr(unsigned int value)
 
 unsigned int pcm_in_wr_ptr(void)
 {
-	unsigned int writing = READ_MPEG_REG(AUDIN_FIFO1_PTR);
+//	unsigned int writing = READ_MPEG_REG(AUDIN_FIFO1_PTR);
     unsigned int written = 0;
     unsigned int value = 0;
 

@@ -275,7 +275,7 @@ static int internal_read_status(struct phy_device *phydev)
 
 int amlogic_phy_config_aneg(struct phy_device *phydev){
 
-	genphy_config_aneg(phydev);
+	return genphy_config_aneg(phydev);
 }
 static struct phy_driver amlogic_phy_driver[] = {
 	{

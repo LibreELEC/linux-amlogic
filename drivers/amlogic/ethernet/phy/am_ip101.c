@@ -264,8 +264,8 @@ static int ip101a_g_ack_interrupt(struct phy_device *phydev)
 }
 static int ip101a_g_genphy_suspend(struct phy_device *phydev)
 {
-	printk("**************ip101 sd*****************\n");
 	int value;
+	printk("**************ip101 sd*****************\n");
 	off_analog(phydev, OFF);
 	value = phy_read(phydev, MII_BMCR);
 	phy_write(phydev, MII_BMCR, (value | BMCR_PDOWN));
@@ -273,8 +273,8 @@ static int ip101a_g_genphy_suspend(struct phy_device *phydev)
 }
 static int ip101a_g_genphy_resume(struct phy_device *phydev)
 {
-	printk("**************ip101 re*****************\n");
 	int value;
+	printk("**************ip101 re*****************\n");
 	off_analog(phydev, ON);
 	value = phy_read(phydev, MII_BMCR);
 	phy_write(phydev, MII_BMCR, (value & ~BMCR_PDOWN));

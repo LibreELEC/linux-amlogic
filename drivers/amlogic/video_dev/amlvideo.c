@@ -558,7 +558,7 @@ static int freerun_cleancache_dqbuf(struct v4l2_buffer *p) {
     if (freerun_start) {
         current_pts += DUR2PTS(ppmgrvf->duration);
     }
-    p->index = ppmgrvf->canvas0Addr&0xff - PPMGR_CANVAS_INDEX;
+    p->index = (ppmgrvf->canvas0Addr&0xff) - PPMGR_CANVAS_INDEX;
     p->timestamp.tv_sec = current_pts / 90000;
     p->timestamp.tv_usec = (current_pts % 90000) * 100 / 9;
     return ret;
@@ -622,7 +622,7 @@ static int freerun_dqbuf(struct v4l2_buffer *p) {
         mutex_unlock(&vfpMutex);
         return -EAGAIN;
     }
-    p->index = ppmgrvf->canvas0Addr&0xff - PPMGR_CANVAS_INDEX;
+    p->index = (ppmgrvf->canvas0Addr&0xff) - PPMGR_CANVAS_INDEX;
     p->timestamp.tv_sec = 0;
     p->timestamp.tv_usec = ppmgrvf->pts_us64;
     return ret;
@@ -693,7 +693,7 @@ static int normal_dqbuf(struct v4l2_buffer *p) {
         mutex_unlock(&vfpMutex);
         return -EAGAIN;
     }
-    p->index = ppmgrvf->canvas0Addr&0xff - PPMGR_CANVAS_INDEX;
+    p->index = (ppmgrvf->canvas0Addr&0xff) - PPMGR_CANVAS_INDEX;
     p->timestamp.tv_sec = 0;
     p->timestamp.tv_usec = ppmgrvf->duration;
 
@@ -744,7 +744,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
     return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i) {
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i) {
     return 0;
 }
 

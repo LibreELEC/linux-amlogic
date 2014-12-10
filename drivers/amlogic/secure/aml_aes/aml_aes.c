@@ -163,7 +163,7 @@ static int aes_algorithm_enc_core(uint8_t data[16],const aes_key_context_t* ks )
 	return 0;
 }
 
-
+#if 0
 static void aes_inv_shift_row(void* data, uint8_t shift){
 	uint8_t tmp[4];
 	tmp[0] = ((uint8_t*)data)[(4+0-shift)&3];
@@ -172,7 +172,7 @@ static void aes_inv_shift_row(void* data, uint8_t shift){
 	tmp[3] = ((uint8_t*)data)[(4+3-shift)&3];
 	memcpy(data, tmp, 4);
 }
-
+#endif
 static void aes_inv_shift_col(void* data, uint8_t shift){
 	uint8_t tmp[4];
 	tmp[0] = ((uint8_t*)data)[ 0];

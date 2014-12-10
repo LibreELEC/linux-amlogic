@@ -406,9 +406,9 @@ struct bf3720_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct bf3720_fh *to_fh(struct bf3920_device *dev)
+static inline struct bf3720_fh *to_fh(struct bf3720_device *dev)
 {
-	return container_of(dev, struct bf3720_fh, dev);
+	return container_of(&dev, struct bf3720_fh, dev);
 }
 
 static struct v4l2_frmsize_discrete bf3720_prev_resolution[]= //should include 352x288 and 640x480, those two size are used for recording
@@ -2072,13 +2072,13 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct bf3720_fh *fh = priv;
 	struct videobuf_queue *q = &fh->vb_vidq;
 	struct bf3720_device *dev = fh->dev;
+	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 
         f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN-1) ) & (~(CANVAS_WIDTH_ALIGN-1));
 	if ((f->fmt.pix.pixelformat==V4L2_PIX_FMT_YVU420) ||
             (f->fmt.pix.pixelformat==V4L2_PIX_FMT_YUV420)){
                 f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN*2-1) ) & (~(CANVAS_WIDTH_ALIGN*2-1));
         }
-	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
 		return ret;
 
@@ -2256,7 +2256,7 @@ static int vidioc_enum_framesizes(struct file *file, void *priv, struct v4l2_frm
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	//printk("----------- %s \n",__func__);
 
@@ -2373,7 +2373,7 @@ static int bf3720_open(struct file *file)
         resource_size_t mem_start = 0;
         unsigned int mem_size = 0;
 
-#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif
 	aml_cam_init(&dev->cam_info);
@@ -2503,7 +2503,7 @@ static int bf3720_close(struct file *file)
 	power_down_bf3720(dev);
 #endif
 	aml_cam_uninit(&dev->cam_info);
-#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 0);
 #endif
 	wake_unlock(&(dev->wake_lock));

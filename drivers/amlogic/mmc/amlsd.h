@@ -73,7 +73,7 @@ void aml_sd_uart_detect_clr (struct amlsd_platform* pdata);
 		prop = 0;													\
 	    if (DEBUG_SD_OF) {                                          \
 	        printk("get property:%25s, value:0x%08x\n",    			\
-	            prop_name, value);                           		\
+	            prop_name, (unsigned int)value);                           		\
 	    }															\
     }
 

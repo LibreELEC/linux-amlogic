@@ -10,8 +10,8 @@
 //#include "mxl/MxL5007_API.h"
 //#include "../tuners/si2176_func.h"
 
-static int configure_first=-1;
-
+//static int configure_first=-1;
+#if 0
 static int set_tuner_DCT7070X(struct aml_demod_sta *demod_sta,
 			      struct aml_demod_i2c *adap)
 {
@@ -46,6 +46,7 @@ static int set_tuner_DCT7070X(struct aml_demod_sta *demod_sta,
 
     return ret;
 }
+#endif
 
 /*int tuner_set_ch(struct aml_demod_sta *demod_sta, struct aml_demod_i2c *adap)
 {
@@ -94,7 +95,7 @@ extern	int si2177_get_strength(void);
 
 int tuner_get_ch_power(struct aml_fe_dev *adap)
 {
-    int ret = 0;
+//    int ret = 0;
 	int strength=0;
 
 #if (defined CONFIG_AM_SI2176)

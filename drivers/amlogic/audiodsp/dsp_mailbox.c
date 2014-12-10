@@ -110,9 +110,11 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 	unsigned long status;
 	struct mail_msg msg;
 	int i = 0;
-	status=READ_VREG(MB1_REG);
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	unsigned long fiq_mask;
+#endif
+	status=READ_VREG(MB1_REG);
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	fiq_mask=READ_VREG(MB1_SEL);
 	status=status&fiq_mask;
 #endif

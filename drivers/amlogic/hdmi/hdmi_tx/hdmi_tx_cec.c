@@ -649,10 +649,10 @@ unsigned char check_cec_msg_valid(const cec_rx_message_t* pcec_message)
 static irqreturn_t cec_isr_handler(int irq, void *dev_instance)
 {
     unsigned char rx_msg[MAX_MSG], rx_len;
-    unsigned int intr_stat = 0;
 
     //cec_disable_irq();
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    unsigned int intr_stat = 0;
     intr_stat = aml_read_reg32(P_AO_CEC_INTR_STAT);
     hdmi_print(INF, CEC "aocec irq %x\n", intr_stat);
 
@@ -1735,8 +1735,10 @@ void cec_usrcmd_set_dispatch(const char * buf, size_t count)
     int j = 0;
     int bool = 0;
     char param[32] = {0};
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     unsigned bit_set;
     unsigned time_set;
+#endif
     unsigned char msg[4] = {0};
 
     hdmi_print(INF, CEC "cec usrcmd set dispatch start:\n");

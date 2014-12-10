@@ -705,7 +705,7 @@ static int pmu3_hw_params(struct snd_pcm_substream *substream,
 
 	return 0;
 }
-
+#if 0
 static int pmu3_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 		int div_id, int div)
 {
@@ -717,7 +717,7 @@ static int pmu3_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 
 	return 0;
 }
-
+#endif
 #define AML_PMU3_PLAYBACK_RATES SNDRV_PCM_RATE_8000_48000
 #define AML_PMU3_CAPTURE_RATES SNDRV_PCM_RATE_8000_48000
 #define AML_PMU3_FORMATS SNDRV_PCM_FMTBIT_S16_LE|SNDRV_PCM_FMTBIT_S24_LE
@@ -889,7 +889,7 @@ static struct snd_soc_codec_driver soc_codec_dev_pmu3 = {
 };
 
 
-static int pmu3_audio_codec_mute()
+static int pmu3_audio_codec_mute(void)
 {
     uint32_t addr;
     unsigned int value = 0x8000;

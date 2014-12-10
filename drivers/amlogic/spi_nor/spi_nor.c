@@ -607,14 +607,6 @@ early_param("storage",get_storage_device);
 	 * a chip ID, try the JEDEC id commands; they'll work for most
 	 * newer chips, even if we don't recognize the particular chip.
 	 */
-	printk("%s\n", __func__);
-
-	int flag = -1;
-	flag = check_storage_device();
-	if(flag < 0){
-		printk("%s %d boot_device_flag %d : do not init spi\n",__func__,__LINE__,boot_device_flag);
-		return  -ENOMEM;
-	}
 
 #ifdef CONFIG_OF
 	int index;
@@ -625,6 +617,16 @@ early_param("storage",get_storage_device);
 	int ret;
 	phandle phandle;
 	struct device_node *np_spi_part;
+#endif
+	int flag = -1;
+	flag = check_storage_device();
+	printk("%s\n", __func__);
+	if(flag < 0){
+		printk("%s %d boot_device_flag %d : do not init spi\n",__func__,__LINE__,boot_device_flag);
+		return  -ENOMEM;
+	}
+
+#ifdef CONFIG_OF
 
 	if(spi->dev.of_node){
 		data = kzalloc(sizeof(struct flash_platform_data), GFP_KERNEL);
@@ -666,17 +668,17 @@ early_param("storage",get_storage_device);
 				goto err;
 				}
 			}
-			ret = of_property_read_string(np_spi_part, "name", &(data->parts[index].name));
+			ret = of_property_read_string(np_spi_part, "name", (const char **)&(data->parts[index].name));
 			if(ret){
 				printk("%s:%d,please config name item\n",__func__,__LINE__);
 				goto err;
 			}
-			ret = of_property_read_u32(np_spi_part, "offset", &(data->parts[index].offset));
+			ret = of_property_read_u32(np_spi_part, "offset", (u32 *)&(data->parts[index].offset));
 			if(ret){
 				printk("%s:%d,please config offset item\n",__func__,__LINE__);
 				goto err;
 			}
-			ret = of_property_read_u32(np_spi_part, "size", &(data->parts[index].size));
+			ret = of_property_read_u32(np_spi_part, "size", (u32 *)&(data->parts[index].size));
 			if(ret){
 				printk("%s:%d,please config size item\n",__func__,__LINE__);
 				goto err;

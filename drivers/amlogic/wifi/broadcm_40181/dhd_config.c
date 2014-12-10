@@ -1064,12 +1064,18 @@ dhd_conf_read_config(dhd_pub_t *dhd)
 	uint len, len_val;
 	void * image = NULL;
 	char * memblock = NULL;
-	char *bufp, pick[MAXSZ_BUF], *pch, *pick_tmp;
+	char *bufp, *pick=NULL, *pch, *pick_tmp;
 	char *pconf_path;
 	bool conf_file_exists;
 	wl_mac_list_t *mac_list;
 	wl_mac_range_t *mac_range;
 
+	pick = kmalloc(MAXSZ_BUF, GFP_KERNEL);
+	if(!pick){
+		printk("kmalloc pick error \n");
+		goto err;
+	}
+	memset(pick, 0, MAXSZ_BUF);
 	pconf_path = dhd->conf_path;
 
 	conf_file_exists = ((pconf_path != NULL) && (pconf_path[0] != '\0'));
@@ -1550,6 +1556,8 @@ err:
 	if (image)
 		dhd_os_close_image(image);
 
+	if(pick)
+		kfree(pick);
 	return bcmerror;
 }
 

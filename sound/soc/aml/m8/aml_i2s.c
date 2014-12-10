@@ -488,8 +488,8 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 	audio_stream_t *s= &prtd->s;
 	int ret = 0;
-	ALSA_TRACE();
 	unsigned int size = 0;
+	ALSA_TRACE();
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		snd_soc_set_runtime_hwparams(substream, &aml_i2s_hardware);
 		if(s->device_type == AML_AUDIO_I2SOUT){

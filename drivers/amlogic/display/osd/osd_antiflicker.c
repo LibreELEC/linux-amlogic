@@ -201,9 +201,9 @@ static int osd_antiflicker_process(void)
 	u32 y1 = 0;
 	u32 yres = 0;
 
-	mutex_lock(&osd_antiflicker_mutex);
 	config_para_ex_t *ge2d_config = &ge2d_osd_antiflicker.ge2d_config;
 	ge2d_context_t *context = ge2d_osd_antiflicker.ge2d_context;
+	mutex_lock(&osd_antiflicker_mutex);
 
 	canvas_read(OSD1_CANVAS_INDEX, &cs);
 	canvas_read(OSD1_CANVAS_INDEX, &cd);

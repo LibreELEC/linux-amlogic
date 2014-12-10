@@ -129,7 +129,9 @@ static IfCtrl_t IfCtrl;
 
 /***** local function prototypes *********************************************/
 
+#if (CONF__SUPPORT_REPEATER3D == ENABLE)
 static uint8_t GetIfTypeFromUnreqBuffer ( void );
+#endif
 static void SetDecodeIfBuffers ( const DevAddr_t DevAddr, const uint8_t bDecodeIfType );
 static void SetIfTo ( SelectIf_t eSelectIf, const uint16_t wTo );
 static bool_t GetIf( const uint8_t bIfType );
@@ -152,9 +154,11 @@ static uint8_t GetIfTypeFromUnreqBuffer ( void ){
     return RegisterRead( REG__UNREQ_TYPE );
 }
 #endif
+#if (CONF__DEBUG_PRINT == ENABLE)
 static uint8_t GetMpegDecodeAddr ( void ){
     return RegisterRead( REG__MPEG_DECODE);
 }
+#endif
 /*****************************************************************************/
 /**
  *  The description of the function print_tabl().
@@ -804,6 +808,8 @@ SelectIf_t id;
                                         }
                                     }
                                     break;
+					default:
+									break;
                 }
             }
         }

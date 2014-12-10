@@ -295,10 +295,10 @@ static int switch_gp_pll(int flag)
 	return ret;
 }
 
-static int _adjust_vpu_clk(VPU_Conf_t *vconf)
+static int _adjust_vpu_clk(void *vconf1)
 {
 	unsigned int clk_level;
-
+	VPU_Conf_t *vconf=(VPU_Conf_t *)vconf1;
 	clk_level = vconf->clk_level;
 	aml_write_reg32(P_HHI_VPU_CLK_CNTL, ((1 << 8) | (vpu_clk_setting[vpu_config.chip_type][clk_level][1] << 9) | (vpu_clk_setting[vpu_config.chip_type][clk_level][2] << 0)));
 
@@ -754,7 +754,6 @@ static void vpu_driver_init(void)
     //Remove VPU_HDMI ISO
     aml_set_reg32_bits(P_AO_RTI_GEN_PWR_SLEEP0, 0, 9, 1); // [9] VPU_HDMI
 }
-
 static void vpu_driver_disable(void)
 {
     vpu_config.mem_pd0 = aml_read_reg32(P_HHI_VPU_MEM_PD_REG0);

@@ -89,9 +89,9 @@ static void aml_audio_stop_timer(struct aml_audio_private_data *p_aml_audio)
 static int hp_det_adc_value(struct aml_audio_private_data *p_aml_audio)
 {
     int ret,hp_value,hp_val_sum,loop_num;
+    unsigned int mic_ret = 0;
     hp_val_sum = 0;
     loop_num = 0;
-    unsigned int mic_ret = 0;
 
     while(loop_num < 8){
         hp_value = get_adc_sample(p_aml_audio->hp_adc_ch);
@@ -294,6 +294,7 @@ static int aml_m8_spk_enabled;
 static bool aml_audio_i2s_mute_flag = 0;
 static bool aml_audio_spdif_mute_flag = 0;
 
+#if 0
 static int aml_m8_set_spk(struct snd_kcontrol *kcontrol,
     struct snd_ctl_elem_value *ucontrol)
 {
@@ -309,6 +310,7 @@ static int aml_m8_set_spk(struct snd_kcontrol *kcontrol,
     return 0;
 }
 
+#endif
 static int aml_m8_get_spk(struct snd_kcontrol *kcontrol,
     struct snd_ctl_elem_value *ucontrol)
 {
@@ -338,7 +340,6 @@ static int aml_audio_get_i2s_mute(struct snd_kcontrol *kcontrol,
 }
 
 
-static bool spdif_mute_flag;
 
 static int aml_audio_set_spdif_mute(struct snd_kcontrol *kcontrol,
     struct snd_ctl_elem_value *ucontrol)
@@ -492,6 +493,7 @@ static int aml_resume_pre(struct snd_soc_card *card)
 
         p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
     }
+    printk(KERN_INFO "enter %s\n", __func__);
     return 0;
 }
 

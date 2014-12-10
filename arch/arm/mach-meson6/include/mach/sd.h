@@ -56,7 +56,7 @@ struct amlsd_platform {
 	struct amlsd_host* host;
 	struct mmc_host *mmc;
 	struct list_head sibling;
-	unsigned long ocr_avail;
+	unsigned int ocr_avail;
 	unsigned int port;
 #define     PORT_SDIO_A     0
 #define     PORT_SDIO_B     1

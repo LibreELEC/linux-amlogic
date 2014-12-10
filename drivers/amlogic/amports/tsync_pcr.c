@@ -234,7 +234,7 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
 }
 
 // timer to check the system with the referrence time in ts stream.
-static unsigned long tsync_pcr_check()
+static unsigned long tsync_pcr_check(void)
 {
     u32 tsdemux_pcr=tsdemux_pcrscr_get();
     u32 tsdemux_pcr_diff=0;
@@ -261,7 +261,7 @@ static unsigned long tsync_pcr_check()
 		tsync_pcr_tsdemuxpcr_discontinue=0;
 		tsync_pcr_discontinue_point=0;
 		tsync_pcr_discontinue_waited=0;
-		printk("[tsync_pcr_check] video discontinue didn't happen, waited=%x\n",abs(tsdemux_pcr-tsync_pcr_discontinue_point));
+		printk("[tsync_pcr_check] video discontinue didn't happen, waited=%lx\n",abs(tsdemux_pcr-tsync_pcr_discontinue_point));
 	}
 	need_recovery=0;
     }

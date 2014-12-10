@@ -82,9 +82,9 @@ unsigned int aml_i2s_alsa_write_addr = 0;
 
 static  unsigned  playback_substream_handle = 0 ;
 /*to keep the pcm status for clockgating*/
-static unsigned clock_gating_status = 0;
-static unsigned clock_gating_playback = 1;
-static unsigned clock_gating_capture = 2;
+//static unsigned clock_gating_status = 0;
+//static unsigned clock_gating_playback = 1;
+//static unsigned clock_gating_capture = 2;
 static int audio_type_info = -1;
 static int audio_sr_info = -1;
 extern unsigned audioin_mode;
@@ -94,16 +94,16 @@ static unsigned trigger_underun = 0;
 static int audio_ch_info = -1;
 
 //static struct rt5631_platform_data *rt5631_snd_pdata = NULL;
-static struct aml_pcm_work_t{
-	struct snd_pcm_substream *substream;
-	struct work_struct aml_codec_workqueue;
-}aml_pcm_work;
+//static struct aml_pcm_work_t{
+//	struct snd_pcm_substream *substream;
+//	struct work_struct aml_codec_workqueue;
+//}aml_pcm_work;
 
 int codec_power=1;
 unsigned int flag=0;
-static int num=0;
+//static int num=0;
 
-static int codec_power_switch(struct snd_pcm_substream *substream, unsigned int status);
+//static int codec_power_switch(struct snd_pcm_substream *substream, unsigned int status);
 
 EXPORT_SYMBOL(aml_i2s_playback_start_addr);
 EXPORT_SYMBOL(aml_i2s_capture_start_addr);
@@ -112,7 +112,7 @@ EXPORT_SYMBOL(aml_i2s_capture_buf_size);
 EXPORT_SYMBOL(aml_i2s_playback_phy_start_addr);
 EXPORT_SYMBOL(aml_i2s_capture_phy_start_addr);
 EXPORT_SYMBOL(aml_i2s_alsa_write_addr);
-
+#if 0
 static void aml_codec_power_switch_queue(struct work_struct* work)
 {
 
@@ -122,7 +122,7 @@ static void aml_codec_power_switch_queue(struct work_struct* work)
 	// disable power down/up, which caused pop noise
 	//codec_power_switch(substream, clock_gating_status);
 }
-
+#endif
 /*--------------------------------------------------------------------------*\
  * Hardware definition
 \*--------------------------------------------------------------------------*/
@@ -335,7 +335,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
             /* one size for i2s output, another for 958, and 128 for alignment */
 		    //buf->area = dma_alloc_coherent(pcm->card->dev, size+4096,
 					  //&buf->addr, GFP_KERNEL);
-            buf->area = aml_i2s_playback_start_addr;
+            buf->area = (unsigned char *)aml_i2s_playback_start_addr;
             buf->addr = aml_pcm_playback_phy_start_addr;
 		    printk("aml-pcm %d:"
 		    "dev>0 playback preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
@@ -350,7 +350,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		    buf->private_data = NULL;
 		    //buf->area = dma_alloc_coherent(pcm->card->dev, size*2,
 		    //			  &buf->addr, GFP_KERNEL);
-		    buf->area = aml_i2s_capture_start_addr;
+		    buf->area = (unsigned char *)aml_i2s_capture_start_addr;
             buf->addr = aml_pcm_capture_phy_start_addr;
 		    printk("aml-pcm %d:"
 		    "dev>0 capture preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
@@ -453,7 +453,7 @@ AIU_HDMI_CLK_DATA_CTRL can be writen sucessfully when audio PLL OFF.
 so notify HDMI to set audio parameter every time when HDMI AUDIO not ready
 */
 
-static int audio_notify_hdmi_info(int audio_type, void *v){
+static void audio_notify_hdmi_info(int audio_type, void *v){
 	struct snd_pcm_substream *substream =(struct snd_pcm_substream*)v;
 	if(substream->runtime->rate != audio_sr_info || audio_type_info != audio_type || !audio_hdmi_init_ready()
 		|| substream->runtime->channels != audio_ch_info)
@@ -467,6 +467,7 @@ static int audio_notify_hdmi_info(int audio_type, void *v){
 	audio_type_info = audio_type;
 
 }
+#if 0
 static void iec958_notify_hdmi_info(void)
 {
 	unsigned audio_type = AOUT_EVENT_IEC_60958_PCM;
@@ -487,6 +488,7 @@ static void iec958_notify_hdmi_info(void)
 	}
 
 }
+#endif
 /*
 special call by the audiodsp,add these code,as there are three cases for 958 s/pdif output
 1)NONE-PCM  raw output ,only available when ac3/dts audio,when raw output mode is selected by user.
@@ -855,6 +857,7 @@ static snd_pcm_uframes_t aml_pcm_pointer(
 	return 0;
 }
 
+#if USE_HRTIMER != 0
 static enum hrtimer_restart aml_pcm_hrtimer_callback(struct hrtimer* timer)
 {
   struct aml_runtime_data* prtd =  container_of(timer, struct aml_runtime_data, hrtimer);
@@ -863,7 +866,7 @@ static enum hrtimer_restart aml_pcm_hrtimer_callback(struct hrtimer* timer)
   struct snd_pcm_runtime* runtime= substream->runtime;
 
   unsigned int last_ptr, size;
-  unsigned long flag;
+//  unsigned long flag;
   //printk("------------->hrtimer start\n");
   if(s->active == 0){
     hrtimer_forward_now(timer, ns_to_ktime(HRTIMER_PERIOD));
@@ -902,7 +905,7 @@ static enum hrtimer_restart aml_pcm_hrtimer_callback(struct hrtimer* timer)
   hrtimer_forward_now(timer, ns_to_ktime(HRTIMER_PERIOD));
   return HRTIMER_RESTART;
 }
-
+#endif
 static void aml_pcm_timer_callback(unsigned long data)
 {
     struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
@@ -997,6 +1000,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	int ret = 0;
 	void *buffer = NULL;
 	unsigned int buffersize = 0;
+	audio_stream_t *s = NULL;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		playback_substream_handle = (unsigned long)substream;
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_hardware);
@@ -1056,7 +1060,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 
 
 	spin_lock_init(&prtd->s.lock);
-	audio_stream_t *s = &prtd->s;
+	s = &prtd->s;
 	s->xrun_num = 0;
  out:
 	return ret;
@@ -1208,7 +1212,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
 	return res;
 }
 
-static unsigned int aml_get_in_wr_ptr(){
+static unsigned int aml_get_in_wr_ptr(void){
 	return (audio_in_i2s_wr_ptr() - aml_i2s_capture_phy_start_addr);
 }
 
@@ -1372,7 +1376,7 @@ static void aml_pcm_free_dma_buffers(struct snd_pcm *pcm)
     }
 }
 
-#ifdef CONFIG_PM
+#if 0
 static int aml_pcm_suspend(struct snd_soc_dai *dai)
 {
 	struct snd_pcm_runtime *runtime = dai->runtime;
@@ -1414,9 +1418,9 @@ static int aml_pcm_resume(struct snd_soc_dai *dai)
 
 #ifdef CONFIG_DEBUG_FS
 
-static struct dentry *debugfs_root;
-static struct dentry *debugfs_regs;
-static struct dentry *debugfs_mems;
+//static struct dentry *debugfs_root;
+//static struct dentry *debugfs_regs;
+//static struct dentry *debugfs_mems;
 
 static int regs_open_file(struct inode *inode, struct file *file)
 {
@@ -1608,7 +1612,7 @@ static const struct file_operations mems_fops={
 	.read = mems_read_file,
 	.write = mems_write_file,
 };
-
+#if 0
 static void aml_pcm_init_debugfs(void)
 {
 		debugfs_root = debugfs_create_dir("aml",NULL);
@@ -1631,6 +1635,7 @@ static void aml_pcm_cleanup_debugfs(void)
 {
 	debugfs_remove_recursive(debugfs_root);
 }
+#endif
 #else
 static void aml_pcm_init_debugfs(void)
 {

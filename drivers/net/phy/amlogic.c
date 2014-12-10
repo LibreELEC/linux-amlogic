@@ -259,10 +259,16 @@ static int internal_read_status(struct phy_device *phydev)
 }
 
 
-int amlogic_phy_config_aneg(struct phy_device *phydev){
+int amlogic_phy_config_aneg(struct phy_device *phydev)
+{
+	int err;
+	err = genphy_config_aneg(phydev);
+	if(err < 0)
+		return err;
 
-	genphy_config_aneg(phydev);
+	return 0;
 }
+
 static struct phy_driver amlogic_phy_driver[] = {
  {
 	.phy_id		= 0x79898963,

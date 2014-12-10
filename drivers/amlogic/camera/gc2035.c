@@ -3403,7 +3403,7 @@ static int vidioc_enum_framesizes(struct file *file, void *priv, struct v4l2_frm
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	//printk("----------- %s \n",__func__);
 
@@ -3520,7 +3520,7 @@ static int gc2035_open(struct file *file)
         resource_size_t mem_start = 0;
         unsigned int mem_size = 0;
 
-#if CONFIG_CMA
+#ifdef CONFIG_CMA
     retval = vm_init_buf(16*SZ_1M);
     if(retval <0)
     {
@@ -3529,7 +3529,7 @@ static int gc2035_open(struct file *file)
     }
 #endif
 
-#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif
 	aml_cam_init(&dev->cam_info);
@@ -3660,7 +3660,7 @@ static int gc2035_close(struct file *file)
 	power_down_gc2035(dev);
 #endif
 	aml_cam_uninit(&dev->cam_info);
-#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 0);
 #endif
 	wake_unlock(&(dev->wake_lock));

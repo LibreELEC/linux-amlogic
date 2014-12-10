@@ -254,6 +254,7 @@ static int ksz8091_set_wol(struct phy_device *phydev, struct ethtool_wolinfo *wo
 {
 	int err, oldpage, temp;
 
+	int i = 0;
 	oldpage = phy_read(phydev, KSZ8091_MMD_CTRL);
 /*
 Magic-packet detection is enabled by writing a 1 to MMD address 1Fh,register 0h, bit [6]
@@ -261,7 +262,6 @@ Magic-packet detection is enabled by writing a 1 to MMD address 1Fh,register 0h,
 The KSZ8091MNX/RNB does not generate the magic packet. The magic packet must be provided by the external system.
 */
 	printk("wol->wolopts = %d\nWAKE_MAGIC = %d\n",wol->wolopts,WAKE_MAGIC);
-	int i = 0;
 	if (wol->wolopts & WAKE_MAGIC) {
 	temp =  phy_read(phydev, KSZ8091_WOL_OMSO);
 

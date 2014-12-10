@@ -767,7 +767,7 @@ schedule:
 static void gsl_monitor_worker(struct work_struct *work)
 {
 	struct gsl_ts *ts = container_of(to_delayed_work(work), struct gsl_ts, monitor_work);
-	int i;
+//	int i;
 
 #ifdef GSL_NOID_VERSION
 	if (ts->api == NULL) {
@@ -913,7 +913,7 @@ static int gsl_ts_resume(struct i2c_client *client)
 
 static int gsl_ts_probe(struct i2c_client *client,const struct i2c_device_id *id)
 {
-	struct gsl_ts *ts;
+	struct gsl_ts *ts=NULL;
 	int rc = -1;
 
 	printk("GSLX680 Enter %s\n", __func__);

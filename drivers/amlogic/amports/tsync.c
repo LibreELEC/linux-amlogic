@@ -1025,7 +1025,7 @@ int tsync_set_av_threshold_max(int max)
 }
 EXPORT_SYMBOL(tsync_set_av_threshold_max);
 
-int tsync_get_vpause_flag()
+int tsync_get_vpause_flag(void)
 {
     return vpause_flag;
 }

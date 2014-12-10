@@ -430,7 +430,7 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			/**********all cpu:hotplug_load_history*******************/
 			max_periods = max(DEFAULT_HOTPLUG_IN_SAMPLING_PERIODS,
 					DEFAULT_HOTPLUG_OUT_SAMPLING_PERIODS);
-			max_periods = max(max_periods, DEFAULT_EACHCPU_OUT_SAMPLING_PERIODS);
+			max_periods = max(max_periods, (unsigned int)DEFAULT_EACHCPU_OUT_SAMPLING_PERIODS);
 			hg_tuners->hotplug_load_history = kmalloc(
 					(sizeof(unsigned int) * max_periods),
 					GFP_KERNEL);

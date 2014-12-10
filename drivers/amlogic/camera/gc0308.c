@@ -2030,8 +2030,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 	struct gc0308_fh *fh = container_of(res, struct gc0308_fh, res);
 	struct gc0308_device *dev  = fh->dev;
     //int bytes = fh->fmt->depth >> 3 ;
-	*size = fh->width*fh->height*fh->fmt->depth >> 3;
 	int height = fh->height;
+	*size = fh->width*fh->height*fh->fmt->depth >> 3;
 	if(height==1080)
 		height = 1088;
 	*size = (fh->width*height*fh->fmt->depth)>>3;
@@ -2454,7 +2454,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	return ret;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 {
 	return 0;
 }
@@ -2560,7 +2560,7 @@ static int gc0308_open(struct file *file)
 	int retval = 0;
 	resource_size_t mem_start = 0;
         unsigned int mem_size = 0;
-#if CONFIG_CMA
+#ifdef CONFIG_CMA
     retval = vm_init_buf(16*SZ_1M);
     if(retval <0)
         return -1;

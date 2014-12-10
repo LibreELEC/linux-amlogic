@@ -20,6 +20,25 @@
 extern int cec_power_flag;
 unsigned char cec_repeat = 10;
 #endif
+static const remotereg_t *remoteregsTab[] = {
+	RDECODEMODE_NEC,
+	RDECODEMODE_DUOKAN,
+	RDECODEMODE_MITSUBISHI,
+	RDECODEMODE_THOMSON,
+	RDECODEMODE_TOSHIBA,
+	RDECODEMODE_SONYSIRC,
+	RDECODEMODE_RC5,
+	RDECODEMODE_RESERVED,
+	RDECODEMODE_RC6,
+	RDECODEMODE_RCMM,
+	RDECODEMODE_COMCAST,
+	RDECODEMODE_SANYO,
+	RDECODEMODE_SKIPLEADER,
+	RDECODEMODE_SW,
+	RDECODEMODE_SW_NEC,
+	NULL,
+	RDECODEMODE_SW_DUOKAN
+};
 extern char *remote_log_buf;
 static int auto_repeat_count,repeat_count = 0;
 static void remote_rel_timer_sr(unsigned long data);
@@ -120,7 +139,7 @@ void get_cur_scancode(struct remote *remote_data){
 	}
 	else if(remote_data->work_mode > DECODEMODE_MAX){
 		remote_data->cur_lsbkeycode = remote_data->cur_keycode;
-		if(remote_data->work_mode = DECODEMODE_SW_DUOKAN )
+		if(remote_data->work_mode == DECODEMODE_SW_DUOKAN )
 			changeduokandecodeorder(remote_data);
 	}
 	else{
@@ -360,7 +379,7 @@ int remote_hw_reprot_key(struct remote *remote_data)
 	get_cur_scancode(remote_data);
 	get_cur_scanstatus(remote_data);
 	if(remote_data->status)// repeat enable & come in S timer is open
-		return;
+		return 0;
 	if (remote_data->cur_lsbkeycode) {	//key first press
 		if(remote_data->ig_custom_enable)
 		{
@@ -481,7 +500,7 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
 				if(i == ARRAY_SIZE(remote_data->custom_code))
 				{
 					input_dbg("Wrong custom code is 0x%08x\n", remote_data->cur_lsbkeycode);
-					return -1;
+					return;
 				}
 			}
 		}

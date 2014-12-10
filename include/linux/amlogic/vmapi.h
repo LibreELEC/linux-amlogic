@@ -14,7 +14,7 @@ typedef struct vm_output_para{
 	unsigned vaddr;
 	unsigned int ext_canvas;
 }vm_output_para_t;
-
+struct videobuf_buffer;
 int vm_fill_buffer(struct videobuf_buffer* vb , vm_output_para_t* para);
 
 #ifdef CONFIG_CMA

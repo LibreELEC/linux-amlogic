@@ -1451,7 +1451,7 @@ static int picdec_driver_probe(struct platform_device *pdev)
 			buf_size = 0;
 			printk("picdec memory resource undefined.\n");
 		}else{
-			idx= find_reserve_block_by_name(name);
+			idx= find_reserve_block_by_name((char *)name);
 			if(idx< 0)
 			{
 				printk("picdec share memory resource fail case 1.\n");

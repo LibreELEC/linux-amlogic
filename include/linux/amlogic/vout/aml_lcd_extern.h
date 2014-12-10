@@ -49,5 +49,6 @@ struct lcd_extern_config_t {
 extern struct aml_lcd_extern_driver_t* aml_lcd_extern_get_driver(void);
 extern int lcd_extern_driver_check(void);
 extern int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config_t *pdata);
+extern int remove_lcd_extern(struct lcd_extern_config_t *pdata);
 
 #endif

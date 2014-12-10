@@ -1154,14 +1154,15 @@ static  void  osd1_update_disp_freescale_enable(void)
 
 static void osd1_update_coef(void)
 {
+	int vf_coef_idx = 0;
+	int *vf_coef;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	int i;
 	int hf_coef_idx = 0;
 	int hf_coef_wren = 1;
-
-	int vf_coef_idx = 0;
 	int vf_coef_wren = 1;
-	int *hf_coef, *vf_coef;
-
+	int *hf_coef;
+#endif
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
 	}else if (vf_coef_idx == 1){
@@ -1278,14 +1279,16 @@ static  void  osd2_update_disp_freescale_enable(void)
 
 static void osd2_update_coef(void)
 {
+	int vf_coef_idx = 0;
+	int  *vf_coef;
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	int i;
 	int hf_coef_idx = 0;
-	int hf_coef_wren = 1;
-
-	int vf_coef_idx = 0;
 	int vf_coef_wren = 1;
-	int *hf_coef, *vf_coef;
-
+	int hf_coef_wren = 1;
+	int *hf_coef;
+#endif
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
 	}else if (vf_coef_idx == 1){

@@ -628,6 +628,8 @@ struct ar0833_device {
 
 	fe_arg_t fe_arg;
 
+	int stream_on;
+
 	vdin_arg_t vdin_arg;
 	/* wake lock */
 	struct wake_lock	wake_lock;
@@ -658,14 +660,9 @@ struct ar0833_fh {
 
 	enum v4l2_buf_type         type;
 	int			   input; 	/* Input Number on bars */
-	int  stream_on;
 	unsigned int		f_flags;
 };
 
-static inline struct ar0833_fh *to_fh(struct ar0833_device *dev)
-{
-	return container_of(dev, struct ar0833_fh, dev);
-}
 
 #define RAW10
 
@@ -4440,7 +4437,6 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
 	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	struct ar0833_fh *fh = to_fh(dev);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_ar0833(value));
@@ -4465,7 +4461,7 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(ar0833_qctrl[4].default_value!=value){
 			ar0833_qctrl[4].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 			AR0833_set_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 		}
@@ -4473,7 +4469,7 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 	case V4L2_CID_EXPOSURE:
 		if(ar0833_qctrl[5].default_value!=value){
 			ar0833_qctrl[5].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0833_set_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 		}
@@ -4488,7 +4484,7 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 	case V4L2_CID_COLORFX:
 		if(ar0833_qctrl[6].default_value!=value){
 			ar0833_qctrl[6].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0833_set_param_effect(dev,value);
 		}
 		break;
@@ -4516,7 +4512,7 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 		if(ar0833_qctrl[13].default_value!=value){
 			ar0833_qctrl[13].default_value=value;
 			printk(" set camera  focus zone =%d. \n ",value);
-			if(fh->stream_on) {
+			if(dev->stream_on) {
 				set_focus_zone(dev, value);
 			}
 		}
@@ -4525,7 +4521,7 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 		printk("V4L2_CID_FOCUS_AUTO\n");
 		if(ar0833_qctrl[8].default_value!=value){
 			ar0833_qctrl[8].default_value=value;
-			if(fh->stream_on)
+			if(dev->stream_on)
 				AR0833_AutoFocus(dev,value);
 		}
 	case V4L2_CID_PRIVACY:
@@ -4583,7 +4579,7 @@ static void ar0833_thread_tick(struct ar0833_fh *fh)
 	unsigned long flags = 0;
 
 	dprintk(dev, 1, "Thread tick\n");
-	if(!fh->stream_on){
+	if(!dev->stream_on){
 		dprintk(dev, 1, "sensor doesn't stream on\n");
 		return ;
 	}
@@ -5169,7 +5165,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
 		dev->vops->start_tvin_service(0,&para);
-		fh->stream_on        = 1;
+		dev->stream_on        = 1;
 	}
     /*** 		set cm2 		***/
 	dev->vdin_arg.cmd = VDIN_CMD_SET_CM2;
@@ -5195,7 +5191,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	ret = videobuf_streamoff(&fh->vb_vidq);
 	if(ret == 0 ){
         dev->vops->stop_tvin_service(0);
-        fh->stream_on        = 0;
+        dev->stream_on        = 0;
 	}
 	return ret;
 }
@@ -5530,7 +5526,7 @@ static int ar0833_open(struct file *file)
     fh->fmt      = &formats[0];
     fh->width    = 640;
     fh->height   = 480;
-    fh->stream_on = 0 ;
+    dev->stream_on = 0 ;
     fh->f_flags  = file->f_flags;
     /* Resets frame counters */
     dev->jiffies = jiffies;
@@ -5610,7 +5606,7 @@ static int ar0833_close(struct file *file)
     ar0833_have_open = 0;
     ar0833_stop_thread(vidq);
     videobuf_stop(&fh->vb_vidq);
-    if(fh->stream_on){
+    if(dev->stream_on){
         dev->vops->stop_tvin_service(0);
     }
     videobuf_mmap_free(&fh->vb_vidq);

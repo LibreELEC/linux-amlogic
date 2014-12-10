@@ -4417,7 +4417,7 @@ static int ov5640_open(struct file *file)
 	int retval = 0;
 	//int reg_val;
 	//int i = 0;
-#if CONFIG_CMA
+#ifdef CONFIG_CMA
     retval = vm_init_buf(24*SZ_1M);
     if(retval <0) {
 	printk("error: no cma memory\n");

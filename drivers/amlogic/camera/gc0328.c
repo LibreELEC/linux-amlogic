@@ -2310,7 +2310,7 @@ static int gc0328_open(struct file *file)
 	struct gc0328_device *dev = video_drvdata(file);
 	struct gc0328_fh *fh = NULL;
 	int retval = 0;
-#if CONFIG_CMA
+#ifdef CONFIG_CMA
     retval = vm_init_buf(16*SZ_1M);
     if(retval <0)
         return -1;

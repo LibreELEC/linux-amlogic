@@ -597,6 +597,10 @@ static void viuin_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 static int viuin_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 {
 	viuin_t *devp = container_of(fe,viuin_t,frontend);
+
+	if (!devp)
+	    return -ENODEV;
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	vsync_enter_line_curr = (READ_VCBUS_REG(devp->enc_info_addr)>>16)&0x1fff;
 	if(vsync_enter_line_curr > vsync_enter_line_max)

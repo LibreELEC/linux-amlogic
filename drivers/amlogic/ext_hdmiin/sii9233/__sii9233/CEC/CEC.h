@@ -226,7 +226,7 @@ typedef struct
 //void SiI_918x_Event_Handler( void );
 void CEC_Event_Handler( void );
 
-void CEC_event_descriptor_clear() ;
+void CEC_event_descriptor_clear(void) ;
 
 extern uint8_t bCECSlvAddr;
 

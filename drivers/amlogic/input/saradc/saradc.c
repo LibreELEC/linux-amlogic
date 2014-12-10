@@ -153,7 +153,7 @@ int get_adc_sample(int chan)
 	int count;
 	int value=-1;
 	int sum;
-	unsigned int flags;
+	unsigned long flags;
 	if (!gp_saradc)
 		return -1;
 
@@ -306,7 +306,6 @@ static ssize_t saradc_print_flag_store(struct class *cla, struct class_attribute
 #ifndef CONFIG_MESON_CPU_TEMP_SENSOR
 static ssize_t saradc_temperature_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count)
 {
-    int ret;
 		u8 tempsen;
 		sscanf(buf, "%d", (int*)&tempsen);
 		if (tempsen) {
@@ -454,7 +453,7 @@ err_free_mem:
 	return err;
 }
 
-static int saradc_suspend(struct platform_device *pdev)
+static int saradc_suspend(struct platform_device *pdev,pm_message_t state)
 {
 	printk("%s: disable SARADC\n", __func__);
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8

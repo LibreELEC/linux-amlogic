@@ -220,7 +220,7 @@ static int  create_vout_attr(void)
 	}
 
     // Init /sys/class/display/mode value
-    init_mode = get_current_vinfo();
+    init_mode = (vinfo_t *)get_current_vinfo();
     if(init_mode)
         strcpy(mode, init_mode->name);
 

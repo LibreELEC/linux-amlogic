@@ -2,7 +2,7 @@
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <linux/delay.h>
-
+struct gpio_chip;
 extern int gpio_amlogic_requst_force(struct gpio_chip *chip ,unsigned offset);
 extern void   gpio_amlogic_free(struct gpio_chip *chip,unsigned offset);
 
@@ -252,7 +252,7 @@ static void set_gpio_pinmux(struct gpio_group_info_s* g_info, unsigned mask)
 	}
 
 }
-
+#if 0
 static void free_gpio_pinmux(struct gpio_group_info_s* g_info, unsigned mask)
 {
 	int i;
@@ -262,7 +262,7 @@ static void free_gpio_pinmux(struct gpio_group_info_s* g_info, unsigned mask)
 	}
 
 }
-
+#endif
 static void revert_gpiotest_pinmux(void)
 {
 	int i;

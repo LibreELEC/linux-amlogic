@@ -123,7 +123,7 @@ static void spi_write_8(unsigned char addr, unsigned char data)
     udelay(SPI_DELAY);
 }
 
-static void lcd_extern_spi_init(void)
+static int lcd_extern_spi_init(void)
 {
     int ending_flag = 0;
     int i=0;
@@ -143,9 +143,11 @@ static void lcd_extern_spi_init(void)
         i++;
     }
     printk("%s\n", __FUNCTION__);
+
+    return 0;
 }
 
-static void lcd_extern_spi_off(void)
+static int lcd_extern_spi_off(void)
 {
     int ending_flag = 0;
     int i=0;
@@ -167,6 +169,8 @@ static void lcd_extern_spi_off(void)
     printk("%s\n", __FUNCTION__);
     mdelay(10);
     spi_gpio_off();
+
+    return 0;
 }
 
 static int lcd_extern_driver_update(void)
@@ -220,6 +224,7 @@ lcd_extern_probe_failed:
 
 static int aml_LD070WS2_remove(struct platform_device *pdev)
 {
+    remove_lcd_extern(lcd_ext_config);
     if (pdev->dev.platform_data)
         kfree (pdev->dev.platform_data);
     return 0;

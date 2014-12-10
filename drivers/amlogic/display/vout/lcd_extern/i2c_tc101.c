@@ -68,7 +68,7 @@ static int aml_i2c_write(struct i2c_client *i2client,unsigned char *buff, unsign
 
     return res;
 }
-
+#if 0
 static int aml_i2c_read(struct i2c_client *i2client,unsigned char *buff, unsigned len)
 {
     int res = 0;
@@ -93,7 +93,7 @@ static int aml_i2c_read(struct i2c_client *i2client,unsigned char *buff, unsigne
 
     return res;
 }
-
+#endif
 static int i2c_reg_read(unsigned char reg, unsigned char *buf)
 {
     int ret=0;
@@ -250,7 +250,7 @@ static int aml_tc101_probe(struct platform_device *pdev)
     if (!aml_tc101_i2c_client) {
         ret = i2c_add_driver(&aml_tc101_i2c_driver);
         if (ret) {
-            printk("[error] %s probe: add i2c_driver failed\n" LCD_EXTERN_NAME);
+            printk("[error] lcd_extern probe: add i2c_driver failed\n");
             goto lcd_extern_probe_failed;
         }
     }
@@ -266,6 +266,7 @@ lcd_extern_probe_failed:
 
 static int aml_tc101_remove(struct platform_device *pdev)
 {
+    remove_lcd_extern(lcd_ext_config);
     if (pdev->dev.platform_data)
         kfree (pdev->dev.platform_data);
     return 0;

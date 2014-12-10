@@ -262,6 +262,7 @@ lcd_extern_probe_failed:
 
 static int aml_N070ICN_remove(struct platform_device *pdev)
 {
+    remove_lcd_extern(lcd_ext_config);
     if (pdev->dev.platform_data)
         kfree (pdev->dev.platform_data);
     return 0;

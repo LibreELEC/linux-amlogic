@@ -370,7 +370,7 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			(1 << 14) |    // enable gpioZ 10:3 to be bt656 dt_in
 			(1 << 15) |
 			(1 << 16));
-	#elif (MESON_CPU_TYPE >= CONFIG_ARCH_MESON8)
+	#elif (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
 	if(devp->para.isp_fe_port == TVIN_PORT_CAMERA) {
 	        temp_data = (1 << BT_EN_BIT)    // enable BT moduale.
 			|(0 << BT_REF_MODE_BIT )      // timing reference is from bit stream.

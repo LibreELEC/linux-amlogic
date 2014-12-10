@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// Copyright © 2002-2005, Silicon Image, Inc.  All rights reserved.
+// Copyright ? 2002-2005, Silicon Image, Inc.  All rights reserved.
 //
 // No part of this work may be reproduced, modified, distributed, transmitted,
 // transcribed, or translated into any language or computer format, in any form
@@ -68,7 +68,7 @@ ROM const uint8_t physicalAddr[4] = {(CEC_PA_EDID_CH0>>8)&0xFF, (CEC_PA_EDID_CH1
 
 
 #if (PEBBLES_ES1_NVM == ENABLE)
-static void ProgramExtra()
+static void ProgramExtra(void)
 {
 	uint8_t i;
 

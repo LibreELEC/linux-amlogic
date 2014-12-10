@@ -36,7 +36,7 @@ static void sw_i2c_setsda(struct aml_demod_i2c *adap, unsigned val)
         sda &= ~(1<<(adap->sda_bit));
     *(volatile u32 *)(adap->sda_out) = sda;
 }
-
+#if 0
 static int sw_i2c_getscl(struct aml_demod_i2c *adap)
 {
     u32 oe, scl;
@@ -50,6 +50,7 @@ static int sw_i2c_getscl(struct aml_demod_i2c *adap)
 
     return scl;
 }
+#endif
 
 static int sw_i2c_getsda(struct aml_demod_i2c *adap)
 {
@@ -151,6 +152,7 @@ static int i2c_inb(struct aml_demod_i2c *adap)
     return indata;
 }
 
+#if 0
 static int aml_i2c_sw_test_bus(struct aml_demod_i2c *adap, char *name)
 {
     int scl, sda;
@@ -217,6 +219,7 @@ bailout:
     sclhi(adap);
     return -ENODEV;
 }
+#endif
 
 static int try_address(struct aml_demod_i2c *adap,
 		       unsigned char addr, int retries)

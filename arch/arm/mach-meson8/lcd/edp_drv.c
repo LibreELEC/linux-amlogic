@@ -28,6 +28,25 @@ static struct class *edp_debug_class = NULL;
 // dplpm for eDP link policy maker
 //*************************************//
 
+typedef enum {
+	dpcd_strings_0 = 0,
+	dpcd_strings_1,
+	dpcd_strings_2,
+	dpcd_strings_3,
+	dpcd_strings_4,
+	dpcd_strings_5,
+	dpcd_strings_6,
+	dpcd_strings_7,
+	dpcd_strings_8,
+	dpcd_strings_9,
+	dpcd_strings_10,
+	dpcd_strings_11,
+	dpcd_strings_12,
+	dpcd_strings_13,
+	dpcd_strings_14,
+	dpcd_strings_15,
+} EDP_DPCD_Strings_t;
+
 // Strings used by printout functions
 static const char *dpcd_strings[] =
 {
@@ -167,7 +186,7 @@ static void dptx_dump_MSA(void)
            READ_DPTX_REG(EDP_TX_MAIN_STREAM_DATA_COUNT_PER_LANE));
     DPRINT("********************************************\n");
 }
-
+#if 0
 static int dptx_set_link_rate(unsigned char link_rate)
 {
 	int status = 0;
@@ -217,7 +236,7 @@ static int dptx_set_lane_count(unsigned char lane_count)
 
 	return status;
 }
-
+#endif
 //Main Stream Attributes
 static void dptx_set_MSA(EDP_MSA_t *vm)
 {
@@ -353,7 +372,7 @@ static int dptx_init_downspread(unsigned char ss_enable)
 
 	return status;
 }
-
+#if 0
 static char *dptx_explain_reply_code(int status)
 {
 	switch (status) {
@@ -361,7 +380,7 @@ static char *dptx_explain_reply_code(int status)
 			return "unknown status";
 	}
 }
-
+#endif
 static int trdp_AUX_check_status(void)
 {
 	if (READ_DPTX_REG(EDP_TX_TRANSMITTER_OUTPUT_ENABLE) & 1)
@@ -651,44 +670,44 @@ static int trdp_get_sink_caps(TRDP_DPCDData_t *dpcd_data)
         return status;
 
     // Clear data structures
-    memset(dpcd_data->downstream_port_types, 0, 16);
-    memset(dpcd_data->downstream_port_caps, 0, 16);
+    memset(dpcd_data->downstream_port_types, 0, 10);
+    memset(dpcd_data->downstream_port_caps, 0, 10);
 
     switch (aux_data[0]) {
         case 0x10:
             dpcd_data->dpcd_rev = 0x10;
-            dpcd_data->rev_string = dpcd_strings[5];
+            dpcd_data->rev_string = dpcd_strings_5;
             break;
         case 0x11:
             dpcd_data->dpcd_rev = 0x11;
-            dpcd_data->rev_string = dpcd_strings[6];
+            dpcd_data->rev_string = dpcd_strings_6;
             break;
         case 0x12:
             dpcd_data->dpcd_rev = 0x12;
-            dpcd_data->rev_string = dpcd_strings[14];
+            dpcd_data->rev_string = dpcd_strings_14;
             break;
         default:
             dpcd_data->dpcd_rev = 0x00;
-            dpcd_data->rev_string = dpcd_strings[0];
+            dpcd_data->rev_string = dpcd_strings_0;
             break;
     }
 
     switch (aux_data[1]) {
         case VAL_EDP_TX_LINK_BW_SET_162:
             dpcd_data->max_link_rate = VAL_EDP_TX_LINK_BW_SET_162;
-            dpcd_data->link_rate_string = dpcd_strings[7];
+            dpcd_data->link_rate_string = dpcd_strings_7;
             break;
         case VAL_EDP_TX_LINK_BW_SET_270:
             dpcd_data->max_link_rate = VAL_EDP_TX_LINK_BW_SET_270;
-            dpcd_data->link_rate_string = dpcd_strings[8];
+            dpcd_data->link_rate_string = dpcd_strings_8;
             break;
         case VAL_EDP_TX_LINK_BW_SET_540:
             dpcd_data->max_link_rate = VAL_EDP_TX_LINK_BW_SET_540;
-            dpcd_data->link_rate_string = dpcd_strings[15];
+            dpcd_data->link_rate_string = dpcd_strings_15;
             break;
         default:
             dpcd_data->max_link_rate = 0;
-            dpcd_data->link_rate_string = dpcd_strings[1];
+            dpcd_data->link_rate_string = dpcd_strings_1;
             break;
     }
 
@@ -725,22 +744,22 @@ static int trdp_get_sink_caps(TRDP_DPCDData_t *dpcd_data)
             // Downstream port type
             switch ((dpcd_data->downstream_port_caps[xx] & 0x07)) {
                 case 0x01:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[9];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_9;
                     break;
                 case 0x02:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[10];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_10;
                     break;
                 case 0x03:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[11];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_11;
                     break;
                 case 0x04:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[12];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_12;
                     break;
                 case 0x05:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[13];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_13;
                     break;
                 default:
-                    dpcd_data->downstream_port_types[xx] = dpcd_strings[1];
+                    dpcd_data->downstream_port_types[xx] = dpcd_strings_1;
                     break;
             }
         }
@@ -780,8 +799,8 @@ static int trdp_dump_DPCD(void)
            "     Has EDID                    : %s\n"
            "     Uses Previous Port          : %s\n"
            "     Buffer Size                 : %u\n",
-            dpcdinfo.rev_string,
-            dpcdinfo.link_rate_string,
+            dpcd_strings[dpcdinfo.rev_string],
+            dpcd_strings[dpcdinfo.link_rate_string],
             dpcdinfo.max_lane_count,
            (dpcdinfo.enhanced_framing_support == 1) ? dpcd_strings[3] : dpcd_strings[4],
            (dpcdinfo.downspread_support == 1) ? "0.5%" : "None",
@@ -800,7 +819,7 @@ static int trdp_dump_DPCD(void)
         DPRINT("   Downstream Port %u:\n"
                "      Port Type         : %s\n"
                "      HPD Aware         : %s\n",
-               i, dpcdinfo.downstream_port_types[i],
+               i, dpcd_strings[dpcdinfo.downstream_port_types[i]],
                ((dpcdinfo.downstream_port_caps[i] & 0x08) == 0x08) ? dpcd_strings[3] : dpcd_strings[4] );
     }
 	DPRINT("********************************************\n");
@@ -873,7 +892,7 @@ static void trdp_edp_link_rate_update(unsigned char link_rate)
 			break;
 	}
 }
-
+#if 0
 static int trdp_set_link_rate(unsigned char link_rate)
 {
 	int status = VAL_EDP_TX_AUX_OPERATION_SUCCESS;
@@ -921,7 +940,7 @@ static int trdp_set_lane_count(unsigned char lane_count)
 
 	return status;
 }
-
+#endif
 static int trdp_set_downspread(unsigned char ss_enable)
 {
 	int status = 0;
@@ -1992,8 +2011,6 @@ static int remove_edp_attr(void)
 
 void edp_probe(void)
 {
-	int ret;
-
 	creat_edp_attr();
 }
 

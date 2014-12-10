@@ -283,13 +283,24 @@ static atsc_cfg_t list_qam256[113] = {
 
 
 #if (defined CONFIG_AM_SI2176)
-#include "../si2176/si2176_func.h"
+#include "si2176_func.h"
 extern struct si2176_device_s *si2176_devp;
 extern void si2176_set_frequency(unsigned int freq);
 #elif (defined CONFIG_AM_SI2177)
-#include "../si2177/si2177_func.h"
+//#include "si2177_func.h"
+#include "../../../../hardware/dvb/silabs/drivers/si2177/si2177_func.h"
+
 extern struct si2177_device_s *si2177_devp;
 extern void si2177_set_frequency(unsigned int freq);
+/*extern int si2177_init(struct i2c_client *si2177, si2177_cmdreplyobj_t *rsp, si2177_common_reply_struct *common_reply);
+extern int si2177_configure(struct i2c_client *si2177, si2177_propobj_t *prop, si2177_cmdreplyobj_t *rsp, si2177_common_reply_struct *common_reply);
+extern unsigned char si2177_set_property(struct i2c_client *si2177,
+                unsigned char   reserved,
+                unsigned int    prop,
+                unsigned int    data,
+                si2177_cmdreplyobj_t *rsp);*/
+
+
 #endif
 
 #if (defined CONFIG_AM_SI2176)
@@ -368,7 +379,7 @@ int demod_set_tuner(struct aml_demod_sta *demod_sta,
 int demod_set_tuner(struct aml_demod_sta *demod_sta,
 		  struct aml_demod_i2c *demod_i2c,
 		  struct aml_tuner_sys *tuner_sys){
-		return;
+		return 0;
 
 }
 
@@ -604,7 +615,7 @@ void dtmb_write_reg(int reg_addr, int reg_data)
 	apb_write_reg(DTMB_BASE+(reg_addr<<2),reg_data);
 }
 
-long dtmb_read_reg(int reg_addr)
+unsigned int dtmb_read_reg(int reg_addr)
 {
     return apb_read_reg(DTMB_BASE+(reg_addr<<2));
 }
@@ -885,7 +896,7 @@ void dtmb_initial(struct aml_demod_sta *demod_sta)
 
 }
 
-int dtmb_information()
+int dtmb_information(void)
 {
 	int tps;
 	tps = dtmb_read_reg(0xe5);
@@ -903,7 +914,7 @@ int dtmb_information()
 		(tps >> 18) &0x3,
 		(tps >> 16) &0x3);
 
-
+	return 0;
 
 }
 
