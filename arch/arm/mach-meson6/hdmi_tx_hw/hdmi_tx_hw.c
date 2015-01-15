@@ -1999,6 +1999,7 @@ static int hdmitx_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio
 {
     unsigned int audio_N_para = 6272;
     unsigned int audio_N_tolerance = 3;
+    unsigned int multiplier = 1;
 //    unsigned int audio_CTS = 30000;
 
     hdmi_print(INF, AUD "audio channel num is %d\n", hdmitx_device->cur_audio_param.channel_num);
@@ -2122,14 +2123,21 @@ static int hdmitx_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio
     hdmi_print(INF, AUD "reset audio N para\n");
     switch(audio_param->sample_rate){
         case FS_44K1:
-            audio_N_para = 6272 * 2;
-            break;
         case FS_48K:
-            audio_N_para = 6144 * 2;
+            multiplier = 2;
             break;
         default:
             break;
     }
+
+    //1080p24hz mode is a special case - at least for yamaha amps
+    //it needs 3 times the normal npara to get a stable audio lock
+    if((hdmitx_device->cur_VIC == HDMI_1080p24))
+    {
+      multiplier = 3;
+    }
+
+    audio_N_para *= multiplier;
 
     //TODO. Different audio type, maybe have different settings
     switch(audio_param->type){
