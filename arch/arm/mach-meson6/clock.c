@@ -1419,7 +1419,7 @@ static int clk_set_rate_a9(struct clk *clk, unsigned long rate)
 #endif /* CONFIG_SMP */
 	int error = 0;
 
-	int cpu_freq_limit = 1200000000;
+	int cpu_freq_limit = 1512000000;
 	if (rate < 1000)
 		rate *= 1000000;
 
