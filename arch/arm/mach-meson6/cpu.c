@@ -59,6 +59,14 @@ EXPORT_SYMBOL(get_meson_cpu_version);
 int mali_revb_flag = -1;
 //int mali_version(void)
 
+int (*get_cpu_temperature_celius)(void) = NULL;
+EXPORT_SYMBOL_GPL(get_cpu_temperature_celius);
+
+int get_cpu_temperature(void)
+{
+    return get_cpu_temperature_celius ? get_cpu_temperature_celius() : -1;
+}
+
 EXPORT_SYMBOL_GPL(mali_revb_flag);
 static int __init maliversion(char *str)
 {
