@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -18,20 +18,20 @@
 
 #include "mali_osk.h"
 
-#define MALI_GP_DOMAIN_INDEX	0
-#define MALI_PP0_DOMAIN_INDEX	1
-#define MALI_PP1_DOMAIN_INDEX	2
-#define MALI_PP2_DOMAIN_INDEX	3
-#define MALI_PP3_DOMAIN_INDEX	4
-#define MALI_PP4_DOMAIN_INDEX	5
-#define MALI_PP5_DOMAIN_INDEX	6
-#define MALI_PP6_DOMAIN_INDEX	7
-#define MALI_PP7_DOMAIN_INDEX	8
-#define MALI_L20_DOMAIN_INDEX	9
-#define MALI_L21_DOMAIN_INDEX	10
-#define MALI_L22_DOMAIN_INDEX	11
+#define MALI_GP_DOMAIN_INDEX    0
+#define MALI_PP0_DOMAIN_INDEX   1
+#define MALI_PP1_DOMAIN_INDEX   2
+#define MALI_PP2_DOMAIN_INDEX   3
+#define MALI_PP3_DOMAIN_INDEX   4
+#define MALI_PP4_DOMAIN_INDEX   5
+#define MALI_PP5_DOMAIN_INDEX   6
+#define MALI_PP6_DOMAIN_INDEX   7
+#define MALI_PP7_DOMAIN_INDEX   8
+#define MALI_L20_DOMAIN_INDEX   9
+#define MALI_L21_DOMAIN_INDEX   10
+#define MALI_L22_DOMAIN_INDEX   11
 
-#define MALI_MAX_NUMBER_OF_DOMAINS	12
+#define MALI_MAX_NUMBER_OF_DOMAINS      12
 
 /* Record the domain config from the customer or default config */
 extern u16 mali_pmu_global_domain_config[];

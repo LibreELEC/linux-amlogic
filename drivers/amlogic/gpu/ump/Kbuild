@@ -32,7 +32,7 @@ endif
 UDD_FILE_PREFIX = ../mali/
 
 # Get subversion revision number, fall back to 0000 if no svn info is available
-SVN_REV := 0000
+SVN_REV := $(shell ((svnversion | grep -qv exported && echo -n 'Revision: ' && svnversion) || git svn info | sed -e 's/$$$$/M/' | grep '^Revision: ' || echo ${MALI_RELEASE_NAME}) 2>/dev/null | sed -e 's/^Revision: //')
 
 ccflags-y += -DSVN_REV=$(SVN_REV)
 ccflags-y += -DSVN_REV_STRING=\"$(SVN_REV)\"
@@ -42,17 +42,29 @@ ccflags-y += -I$(srctree)/drivers/staging/android
 ccflags-y += -DMALI_STATE_TRACKING=0
 ccflags-y += -DMALI_ENABLE_CPU_CYCLES=0
 ccflags-$(CONFIG_UMP_DEBUG) += -DDEBUG
-ccflags-$(CONFIG_MALI400_DEBUG) += -DDEBUG
 
 # For customer releases the Linux Device Drivers will be provided as ARM proprietary and GPL releases:
 # The ARM proprietary product will only include the license/proprietary directory
 # The GPL product will only include the license/gpl directory
 
 ifeq ($(wildcard $(TOP_KBUILD_SRC)$(src)/linux/license/gpl/*),)
-ccflags-y += -I$(TOP_KBUILD_SRC)$(src)/linux/license/proprietary -I$(TOP_KBUILD_SRC)$(src)/$(UDD_FILE_PREFIX)linux/license/proprietary
+ccflags-y += -I$(TOP_KBUILD_SRC)$(src)/linux/license/proprietary
 else
-ccflags-y += -I$(TOP_KBUILD_SRC)$(src)/linux/license/gpl -I$(TOP_KBUILD_SRC)$(src)/$(UDD_FILE_PREFIX)linux/license/gpl
+ccflags-y += -I$(TOP_KBUILD_SRC)$(src)/linux/license/gpl
+ccflags-y += -I$(TOP_KBUILD_SRC)$(src)/../mali/linux/license/gpl
 endif
+
+
+$(obj)/__mali_osk_atomics.c : $(src)/$(UDD_FILE_PREFIX)linux/mali_osk_atomics.c
+	@cp -f $< $@
+$(obj)/__mali_osk_locks.c : $(src)/$(UDD_FILE_PREFIX)linux/mali_osk_locks.c
+	@cp -f $< $@
+$(obj)/__mali_osk_memory.c : $(src)/$(UDD_FILE_PREFIX)linux/mali_osk_memory.c
+	@cp -f $< $@
+$(obj)/__mali_osk_math.c : $(src)/$(UDD_FILE_PREFIX)linux/mali_osk_math.c
+	@cp -f $< $@
+$(obj)/__mali_osk_misc.c : $(src)/$(UDD_FILE_PREFIX)linux/mali_osk_misc.c
+	@cp -f $< $@
 
 ump-y = common/ump_kernel_common.o \
 	common/ump_kernel_descriptor_mapping.o \
@@ -67,11 +79,23 @@ ump-y = common/ump_kernel_common.o \
 	linux/ump_osk_atomics.o \
 	linux/ump_osk_low_level_mem.o \
 	linux/ump_osk_misc.o \
-	$(UDD_FILE_PREFIX)linux/mali_osk_atomics.o \
-	$(UDD_FILE_PREFIX)linux/mali_osk_locks.o \
-	$(UDD_FILE_PREFIX)linux/mali_osk_memory.o \
-	$(UDD_FILE_PREFIX)linux/mali_osk_math.o \
-	$(UDD_FILE_PREFIX)linux/mali_osk_misc.o
+	linux/ump_kernel_random_mapping.o \
+	__mali_osk_locks.o \
+	__mali_osk_memory.o \
+	__mali_osk_atomics.o \
+	__mali_osk_math.o \
+	__mali_osk_misc.o
 
+
+
+
+#	$(UDD_FILE_PREFIX)linux/mali_osk_atomics.o \
+#	$(UDD_FILE_PREFIX)linux/mali_osk_locks.o \
+#	$(UDD_FILE_PREFIX)linux/mali_osk_memory.o \
+#	$(UDD_FILE_PREFIX)linux/mali_osk_math.o \
+#	$(UDD_FILE_PREFIX)linux/mali_osk_misc.o
+
+
+clean-files := __mali_osk*.c
 
 obj-$(CONFIG_UMP) := ump.o

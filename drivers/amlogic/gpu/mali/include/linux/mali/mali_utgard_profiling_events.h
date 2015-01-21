@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -78,7 +78,7 @@ typedef enum {
 	MALI_PROFILING_EVENT_REASON_SINGLE_SW_EGL_CREATE_FENCE_SYNC = 60,
 	MALI_PROFILING_EVENT_REASON_SINGLE_SW_EGL_CREATE_NATIVE_FENCE_SYNC = 61,
 	MALI_PROFILING_EVENT_REASON_SINGLE_SW_EGL_FENCE_FLUSH       = 62,
-	MALI_PROFILING_EVENT_REASON_SINGLE_SW_EGL_FLUSH_SERVER_WAITS= 63,
+	MALI_PROFILING_EVENT_REASON_SINGLE_SW_EGL_FLUSH_SERVER_WAITS = 63,
 } cinstr_profiling_event_reason_single_sw_t;
 
 /**

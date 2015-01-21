@@ -11,5 +11,4 @@ extern void malifix_exit(void);
 extern void malifix_set_mmu_int_process_state(int, int);
 extern int  malifix_get_mmu_int_process_state(int);
 extern int mali_meson_is_revb(void);
-
 #endif /* MALI_FIX_H */

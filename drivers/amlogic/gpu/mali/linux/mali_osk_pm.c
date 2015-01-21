@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -43,7 +43,7 @@ _mali_osk_errcode_t _mali_osk_pm_dev_ref_add(void)
 	int err;
 	MALI_DEBUG_ASSERT_POINTER(mali_platform_device);
 	err = pm_runtime_get_sync(&(mali_platform_device->dev));
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	pm_runtime_mark_last_busy(&(mali_platform_device->dev));
 #endif
 	if (0 > err) {
@@ -62,7 +62,7 @@ void _mali_osk_pm_dev_ref_dec(void)
 #ifdef CONFIG_PM_RUNTIME
 	MALI_DEBUG_ASSERT_POINTER(mali_platform_device);
 	_mali_osk_atomic_dec(&mali_pm_ref_count);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	pm_runtime_mark_last_busy(&(mali_platform_device->dev));
 	pm_runtime_put_autosuspend(&(mali_platform_device->dev));
 #else
@@ -92,7 +92,7 @@ void _mali_osk_pm_dev_ref_dec_no_power_on(void)
 {
 #ifdef CONFIG_PM_RUNTIME
 	MALI_DEBUG_ASSERT_POINTER(mali_platform_device);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	pm_runtime_put_autosuspend(&(mali_platform_device->dev));
 #else
 	pm_runtime_put(&(mali_platform_device->dev));

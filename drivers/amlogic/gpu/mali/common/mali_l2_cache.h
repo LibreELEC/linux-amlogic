@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -55,7 +55,7 @@ void mali_l2_cache_terminate(void);
  * L2 pause is just a status that the L2 can't be accessed temporarily.
 */
 void mali_l2_cache_pause_all(mali_bool pause);
-struct mali_l2_cache_core *mali_l2_cache_create(_mali_osk_resource_t * resource);
+struct mali_l2_cache_core *mali_l2_cache_create(_mali_osk_resource_t *resource);
 void mali_l2_cache_delete(struct mali_l2_cache_core *cache);
 
 MALI_STATIC_INLINE void mali_l2_cache_set_pm_domain(struct mali_l2_cache_core *cache, struct mali_pm_domain *domain)

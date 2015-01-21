@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+# Copyright (C) 2010-2014 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the GNU General Public License version 2
 # as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -143,7 +143,18 @@ export EXTRA_DEFINES += -DCONFIG_MALI_PMU_PARALLEL_POWER_UP
 endif
 
 ifneq ($(BUILD),release)
+# Debug
 export CONFIG_MALI400_DEBUG=y
+else
+# Release
+ifeq ($(MALI_QUIET),1)
+export CONFIG_MALI_QUIET=y
+export EXTRA_DEFINES += -DCONFIG_MALI_QUIET
+endif
+endif
+
+ifeq ($(MALI_SKIP_JOBS),1)
+EXTRA_DEFINES += -DPROFILING_SKIP_PP_JOBS=1 -DPROFILING_SKIP_GP_JOBS=1
 endif
 
 all: $(UMP_SYMVERS_FILE)

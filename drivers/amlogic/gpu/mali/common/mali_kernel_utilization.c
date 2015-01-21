@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -81,7 +81,7 @@ static u32 calculate_window_render_fps(u64 time_period)
 }
 #endif  /* defined(CONFIG_MALI400_POWER_PERFORMANCE_POLICY) */
 
-static void calculate_gpu_utilization(void* arg)
+static void calculate_gpu_utilization(void *arg)
 {
 	u64 time_now;
 	u64 time_period;
@@ -223,7 +223,8 @@ static void calculate_gpu_utilization(void* arg)
 _mali_osk_errcode_t mali_utilization_init(void)
 {
 #if USING_GPU_UTILIZATION
-	struct _mali_osk_device_data data;
+	_mali_osk_device_data data;
+
 	if (_MALI_OSK_ERR_OK == _mali_osk_device_data_get(&data)) {
 		/* Use device specific settings (if defined) */
 		if (0 != data.utilization_interval) {

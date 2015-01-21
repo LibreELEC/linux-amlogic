@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2012-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -17,16 +17,16 @@
 #ifndef _MALI_SYNC_H_
 #define _MALI_SYNC_H_
 
-#include <linux/version.h>
-
 #if defined(CONFIG_SYNC)
 
 #include <linux/seq_file.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,10)
-#include <sync.h>
-#else
+#include <linux/version.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #include <linux/sync.h>
+#else
+#include <sync.h>
 #endif
+
 
 #include "mali_osk.h"
 

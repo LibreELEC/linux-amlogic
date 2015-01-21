@@ -227,4 +227,8 @@ void mali_core_scaling_term(void)
 {
 
 }
+
+void mali_post_init(void)
+{
+}
 #endif /* MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2011-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -34,7 +34,7 @@ struct mali_pp_core {
 _mali_osk_errcode_t mali_pp_initialize(void);
 void mali_pp_terminate(void);
 
-struct mali_pp_core *mali_pp_create(const _mali_osk_resource_t * resource, struct mali_group *group, mali_bool is_virtual, u32 bcast_id);
+struct mali_pp_core *mali_pp_create(const _mali_osk_resource_t *resource, struct mali_group *group, mali_bool is_virtual, u32 bcast_id);
 void mali_pp_delete(struct mali_pp_core *core);
 
 void mali_pp_stop_bus(struct mali_pp_core *core);
@@ -44,13 +44,13 @@ _mali_osk_errcode_t mali_pp_reset_wait(struct mali_pp_core *core);
 _mali_osk_errcode_t mali_pp_reset(struct mali_pp_core *core);
 _mali_osk_errcode_t mali_pp_hard_reset(struct mali_pp_core *core);
 
-void mali_pp_job_start(struct mali_pp_core *core, struct mali_pp_job *job, u32 sub_job, mali_bool restart_virtual);
+void mali_pp_job_start(struct mali_pp_core *core, struct mali_pp_job *job, u32 sub_job);
 
 /**
  * @brief Add commands to DMA command buffer to start PP job on core.
  */
 void mali_pp_job_dma_cmd_prepare(struct mali_pp_core *core, struct mali_pp_job *job, u32 sub_job,
-                                 mali_bool restart_virtual, mali_dma_cmd_buf *buf);
+				 mali_dma_cmd_buf *buf);
 
 u32 mali_pp_core_get_version(struct mali_pp_core *core);
 
@@ -66,7 +66,7 @@ MALI_STATIC_INLINE u32 mali_pp_core_get_bcast_id(struct mali_pp_core *core)
 	return core->bcast_id;
 }
 
-struct mali_pp_core* mali_pp_get_global_pp_core(u32 index);
+struct mali_pp_core *mali_pp_get_global_pp_core(u32 index);
 u32 mali_pp_get_glob_num_pp_cores(void);
 
 /* Debug */
@@ -122,9 +122,17 @@ MALI_STATIC_INLINE void mali_pp_enable_interrupts(struct mali_pp_core *core)
 	mali_hw_core_register_write(&core->hw_core, MALI200_REG_ADDR_MGMT_INT_MASK, MALI200_REG_VAL_IRQ_MASK_USED);
 }
 
-MALI_STATIC_INLINE void mali_pp_write_addr_stack(struct mali_pp_core *core, struct mali_pp_job *job)
+MALI_STATIC_INLINE void mali_pp_write_addr_renderer_list(struct mali_pp_core *core,
+		struct mali_pp_job *job, u32 subjob)
 {
-	u32 addr = mali_pp_job_get_addr_stack(job, core->core_id);
+	u32 addr = mali_pp_job_get_addr_frame(job, subjob);
+	mali_hw_core_register_write_relaxed(&core->hw_core, MALI200_REG_ADDR_FRAME, addr);
+}
+
+
+MALI_STATIC_INLINE void mali_pp_write_addr_stack(struct mali_pp_core *core, struct mali_pp_job *job, u32 subjob)
+{
+	u32 addr = mali_pp_job_get_addr_stack(job, subjob);
 	mali_hw_core_register_write_relaxed(&core->hw_core, MALI200_REG_ADDR_STACK, addr);
 }
 

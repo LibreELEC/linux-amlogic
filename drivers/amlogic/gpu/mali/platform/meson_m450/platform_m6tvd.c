@@ -191,3 +191,7 @@ int mali_deep_resume(struct device *device)
 	return ret;
 
 }
+
+void mali_post_init(void)
+{
+}

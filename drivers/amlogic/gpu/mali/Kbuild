@@ -40,17 +40,13 @@ ifneq ($(KBUILD_SRC),)
 endif
 
 OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB ?= 16
-
 USING_GPU_UTILIZATION ?= 1
-
-PROFILING_SKIP_PP_JOBS ?= 0
-PROFILING_SKIP_PP_AND_GP_JOBS ?= 0
 ############## Kasin Added, for platform. ################
 ifeq ($(CONFIG_MALI400_DEBUG),y)
 	BUILD ?= debug
 else
 	BUILD ?= release
-	ldflags-y += --strip-debug
+	#ldflags-y += --strip-debug
 endif
 ##################### end Kasin Added. ###################
 
@@ -190,6 +186,7 @@ ccflags-$(CONFIG_MALI400_INTERNAL_PROFILING) += -I$(src)/timestamp-$(TIMESTAMP)
 
 mali-$(CONFIG_DMA_SHARED_BUFFER) += linux/mali_memory_dma_buf.o
 mali-$(CONFIG_SYNC) += linux/mali_sync.o
+ccflags-$(CONFIG_SYNC) += -Idrivers/staging/android
 
 mali-$(CONFIG_MALI400_UMP) += linux/mali_memory_ump.o
 
@@ -201,9 +198,6 @@ obj-$(CONFIG_MALI400) := mali.o
 ccflags-y += $(EXTRA_DEFINES)
 
 # Set up our defines, which will be passed to gcc
-ccflags-y += -DPROFILING_SKIP_PP_JOBS=$(PROFILING_SKIP_PP_JOBS)
-ccflags-y += -DPROFILING_SKIP_PP_AND_GP_JOBS=$(PROFILING_SKIP_PP_AND_GP_JOBS)
-
 ccflags-y += -DMALI_PP_SCHEDULER_FORCE_NO_JOB_OVERLAP=$(MALI_PP_SCHEDULER_FORCE_NO_JOB_OVERLAP)
 ccflags-y += -DMALI_PP_SCHEDULER_KEEP_SUB_JOB_STARTS_ALIGNED=$(MALI_PP_SCHEDULER_KEEP_SUB_JOB_STARTS_ALIGNED)
 ccflags-y += -DMALI_PP_SCHEDULER_FORCE_NO_JOB_OVERLAP_BETWEEN_APPS=$(MALI_PP_SCHEDULER_FORCE_NO_JOB_OVERLAP_BETWEEN_APPS)
@@ -222,7 +216,6 @@ ccflags-$(CONFIG_MALI400_DEBUG) += -DDEBUG
 
 # Use our defines when compiling
 ccflags-y += -I$(src) -I$(src)/include -I$(src)/common -I$(src)/linux -I$(src)/platform
-ccflags-y += -I$(srctree)/drivers/staging/android
 
 # Get subversion revision number, fall back to only ${MALI_RELEASE_NAME} if no svn info is available
 MALI_RELEASE_NAME=$(shell cat $(TOP_KBUILD_SRC)$(DRIVER_DIR)/.version 2> /dev/null)

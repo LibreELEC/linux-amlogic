@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -40,8 +40,8 @@ _mali_osk_errcode_t _mali_osk_resource_find(u32 addr, _mali_osk_resource_t *res)
 
 				/* Any (optional) IRQ resource belonging to this resource will follow */
 				if ((i + 1) < mali_platform_device->num_resources &&
-				    IORESOURCE_IRQ == resource_type(&(mali_platform_device->resource[i+1]))) {
-					res->irq = mali_platform_device->resource[i+1].start;
+				    IORESOURCE_IRQ == resource_type(&(mali_platform_device->resource[i + 1]))) {
+					res->irq = mali_platform_device->resource[i + 1].start;
 				} else {
 					res->irq = -1;
 				}
@@ -72,28 +72,19 @@ u32 _mali_osk_resource_base_address(void)
 	return ret;
 }
 
-_mali_osk_errcode_t _mali_osk_device_data_get(struct _mali_osk_device_data *data)
+_mali_osk_errcode_t _mali_osk_device_data_get(_mali_osk_device_data *data)
 {
 	MALI_DEBUG_ASSERT_POINTER(data);
 
 	if (NULL != mali_platform_device) {
-		struct mali_gpu_device_data* os_data = NULL;
+		struct mali_gpu_device_data *os_data = NULL;
 
-		os_data = (struct mali_gpu_device_data*)mali_platform_device->dev.platform_data;
+		os_data = (struct mali_gpu_device_data *)mali_platform_device->dev.platform_data;
 		if (NULL != os_data) {
 			/* Copy data from OS dependant struct to Mali neutral struct (identical!) */
-			data->dedicated_mem_start = os_data->dedicated_mem_start;
-			data->dedicated_mem_size = os_data->dedicated_mem_size;
-			data->shared_mem_size = os_data->shared_mem_size;
-			data->fb_start = os_data->fb_start;
-			data->fb_size = os_data->fb_size;
-			data->max_job_runtime = os_data->max_job_runtime;
-			data->utilization_interval = os_data->utilization_interval;
-			data->utilization_callback = os_data->utilization_callback;
-			data->pmu_switch_delay = os_data->pmu_switch_delay;
-			data->set_freq_callback = os_data->set_freq_callback;
+			BUILD_BUG_ON(sizeof(*os_data) != sizeof(*data));
+			_mali_osk_memcpy(data, os_data, sizeof(*os_data));
 
-			memcpy(data->pmu_domain_config, os_data->pmu_domain_config, sizeof(os_data->pmu_domain_config));
 			return _MALI_OSK_ERR_OK;
 		}
 	}

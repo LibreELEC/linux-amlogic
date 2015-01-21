@@ -223,7 +223,7 @@ static void mali_decide_next_status(struct mali_gpu_utilization_data *data, int*
 	u32 utilization, mali_up_limit, decided_fs_idx;
 	u32 ld_left, ld_right;
 	u32 ld_up, ld_down;
-	char change_mode;
+	u32 change_mode;
 
 	*pp_change_flag = 0;
 	change_mode = 0;
@@ -243,7 +243,7 @@ static void mali_decide_next_status(struct mali_gpu_utilization_data *data, int*
 			else
 				decided_fs_idx++;
 		}
-		if ((data->utilization_pp > ld_up) &&
+		if ((data->utilization_pp >= ld_up) &&
 				(num_cores_enabled < pmali_plat->scale_info.maxpp)) {
 			if ((num_cores_enabled < pmali_plat->sc_mpp) && (data->utilization_pp >= pmali_plat->bst_pp)) {
 				*pp_change_flag = 1;
@@ -253,6 +253,11 @@ static void mali_decide_next_status(struct mali_gpu_utilization_data *data, int*
 				change_mode = 1;
 			}
 		}
+#if LOG_MALI_SCALING
+                printk("[nexting..] [LD:%d]-> FS[CRNT:%d LMT:%d NEXT:%d] PP[NUM:%d LMT:%d MD:%d][F:%d]\n",
+                        data->utilization_pp, currentStep, mali_up_limit, decided_fs_idx,
+                        num_cores_enabled, pmali_plat->scale_info.maxpp, *pp_change_flag, change_mode);
+#endif
 	} else if (utilization <= ld_down) { /* go down */
 		if (mali_stay_count > 0) {
 			*next_fs_idx = decided_fs_idx;
@@ -375,6 +380,9 @@ u32 get_current_frequency(void)
 
 void mali_gpu_utilization_callback(struct mali_gpu_utilization_data *data)
 {
+	if (mali_pm_statue)
+		return;
+
 	switch (scaling_mode) {
 	case MALI_PP_FS_SCALING:
 		mali_pp_fs_scaling_update(data);

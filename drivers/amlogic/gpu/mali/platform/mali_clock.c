@@ -12,7 +12,6 @@
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TVD
 
 #define FCLK_MPLL2 (2 << 9)
-
 static DEFINE_SPINLOCK(lock);
 static mali_plat_info_t* pmali_plat = NULL;
 static u32 mali_extr_backup = 0;

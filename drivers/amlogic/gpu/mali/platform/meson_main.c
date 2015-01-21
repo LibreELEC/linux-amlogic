@@ -27,7 +27,7 @@
 #include "common/mali_pmu.h"
 #include "common/mali_osk_profiling.h"
 
-int mali_pm_statue = 1;
+int mali_pm_statue = 0;
 
 static struct mali_gpu_device_data mali_gpu_data =
 {
