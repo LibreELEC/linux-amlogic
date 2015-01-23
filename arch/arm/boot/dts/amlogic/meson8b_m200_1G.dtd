@@ -86,7 +86,7 @@ void root_func(){
 
         cma_0:region@0 {
            region_name = "cma_0";
-           reg = <0 0x02a00000>;
+           reg = <0 0x01200000>;
            linux,contiguous-region;
         };
 	};
@@ -500,7 +500,17 @@ void root_func(){
 //            gpio_dat3 = "BOOT_3";
 //            card_type = <1>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
 //        };
-			//sdio{
+//$$ DEVICE="sdio"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 = "port"
+//$$ L2 PROP_STR = "pinname"
+//$$ L3 PROP_U32 = "ocr_avail"
+//$$ L2 PROP_STR 4 = "caps"
+//$$ L3 PROP_U32 = "f_min"
+//$$ L3 PROP_U32 = "f_max"
+//$$ L3 PROP_U32 = "max_req_size"
+//$$ L2 PROP_U32 = "card_type"
+//sdio{
         //    status = "ok";
        //     port = <0>;          /*0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
         //    pinname = "sdio";
@@ -592,11 +602,11 @@ void root_func(){
             status = "okay";
             port = <5>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
             pinname = "emmc";
-            ocr_avail = <0x200000>;          /**VDD voltage 3.3 ~ 3.4 */
+            ocr_avail = <0x00200080>; // 3.3:0x200000, 1.8+3.3:0x00200080
             caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE","MMC_CAP_ERASE", "MMC_CAP_HW_RESET"; // MMC_CAP_NEEDS_POLL -- for detect, MMC_CAP_NONREMOVABLE -- for eMMC/TSD
             caps2 = "MMC_CAP2_HS200_1_8V_SDR";
-	        f_min = <300000>;
-            f_max = <150000000>;
+	    f_min = <300000>;
+            f_max = <100000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "BOOT_3";
             card_type = <1>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
@@ -619,7 +629,7 @@ void root_func(){
              ocr_avail = <0x00200080>; // 3.3:0x200000, 1.8+3.3:0x00200080
              caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_UHS_SDR12","MMC_CAP_UHS_SDR25","MMC_CAP_UHS_SDR50","MMC_CAP_UHS_SDR104","MMC_PM_KEEP_POWER";
              f_min = <300000>;
-             f_max = <200000000>;
+             f_max = <100000000>;
              max_req_size = <0x20000>;          /**128KB*/
              card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
          };
@@ -1208,8 +1218,8 @@ void root_func(){
 		status = "ok";
 		reg = <0xd0048600 0x24>;
 		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &nand_base>;
+		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -1405,11 +1415,15 @@ void root_func(){
 //$$ L2 PROP_U32 = "vendor_id"
 //$$ L2 PROP_STR = "product_desc"
 //$$ L2 PROP_STR = "cec_osd_string"
+//$$ L2 PROP_U32 = "cec_config"
+//$$ L2 PROP_U32 = "ao_cec"
         vend_data: vend_data{
             vendor_name = "Amlogic";           /* Max Chars: 8     */
-            vendor_id = <0x000000>;                 /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt   */
-            product_desc = "M8 MBox SKTv1";        /* Max Chars: 16    */
-            cec_osd_string = "Amlogic MBox";        /* Max Chars: 14    */
+            vendor_id = <0x000000>;            /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt */
+            product_desc = "M8 MBox SKTv1";    /* Max Chars: 16    */
+            cec_osd_string = "MBox";           /* Max Chars: 14    */
+            cec_config = <0x00000f>;           /* 4 bytes: use to control cec switch on/off; distinguish between Mbox and Tablet. <0x00000f>:Mbox; <0x000000> or no this value:Tablet*/
+            ao_cec = <0x000001>;               /* switch between ao-cec and ee-cec:: 1: ao-cec; 0: ee-cec */
         };
 
 //$$ MATCH "HDMI_pwr-ctrl_match" = <&pwr_ctrl>
@@ -1519,8 +1533,13 @@ void root_func(){
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
+			amlogic,pullupen=<1>;
 		};
-
+		conf_nand_state1: conf_nand1{
+			amlogic,pins = "BOOT_8", "BOOT_10";
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
 //$$ MATCH "Nand_pin_0_match" = "&nand_base"
 //$$ MATCH "Nand_pin_1_match" = "&nand_base"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"

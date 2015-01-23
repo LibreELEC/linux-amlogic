@@ -2104,7 +2104,7 @@ static int mmc_wipe_part_ioctl(struct block_device *bdev)
     if (!mmc_can_erase(card)) {
         pr_err("device do not support erase, do nothing\n");
 		err = 0;
-		goto cmd_rel_host;
+		goto dev_card_err;
 	}
 
 	mmc_claim_host(card->host);

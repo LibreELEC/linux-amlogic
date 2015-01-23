@@ -656,8 +656,11 @@ extern struct mmc_host *sdio_host;
 #endif
 
 #define POR_NAND_BOOT() ((POR_BOOT_VALUE == 7) || (POR_BOOT_VALUE == 6))
-#define POR_SPI_BOOT() ((POR_BOOT_VALUE == 5) || (POR_BOOT_VALUE == 4))
-#define POR_EMMC_BOOT() (POR_BOOT_VALUE == 3)
+//#define POR_SPI_BOOT() ((POR_BOOT_VALUE == 5) || (POR_BOOT_VALUE == 4))
+#define POR_SPI_BOOT()	((IS_MESON_M8M2_CPU)?(POR_BOOT_VALUE == 5) : ((POR_BOOT_VALUE == 5)||(POR_BOOT_VALUE == 4)))
+//#define POR_EMMC_BOOT() (POR_BOOT_VALUE == 3)
+#define POR_EMMC_BOOT()	((IS_MESON_M8M2_CPU)?((POR_BOOT_VALUE == 3)||(POR_BOOT_VALUE == 1)) : (POR_BOOT_VALUE == 3))
+
 #define POR_CARD_BOOT() (POR_BOOT_VALUE == 0)
 
 #define print_tmp(fmt, args...) do{\

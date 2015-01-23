@@ -117,10 +117,30 @@ int __add_to_swap_cache(struct page *page, swp_entry_t entry)
 	return error;
 }
 
-
+#define COMPRESS_PREV_USE 1
 int add_to_swap_cache(struct page *page, swp_entry_t entry, gfp_t gfp_mask)
 {
 	int error;
+#if COMPRESS_PREV_USE
+	unsigned long cmpr_len = 0;
+	struct block_device *bdev = NULL;
+	struct swap_info_struct *sis = NULL;
+	sis = swap_info_get(entry);
+	if (sis) {
+		if (sis->flags & SWP_BLKDEV) {
+			struct gendisk *disk = sis->bdev->bd_disk;
+			spin_unlock(&sis->lock);
+			if (disk && disk->fops->ioctl){
+				disk->fops->ioctl(bdev, 80, (unsigned)page,
+								 (unsigned long)&cmpr_len);
+				cmpr_len += cmpr_len >> 1;
+				if(cmpr_len > PAGE_SIZE){
+					return -EINVAL;
+				}
+			}
+		}
+	}
+#endif
 
 	error = radix_tree_preload(gfp_mask);
 	if (!error) {
@@ -158,12 +178,13 @@ void __delete_from_swap_cache(struct page *page)
  * @page: page we want to move to swap
  *
  * Allocate swap space for the page and add the page to the
- * swap cache.  Caller needs to hold the page lock. 
+ * swap cache.  Caller needs to hold the page lock.
  */
 int add_to_swap(struct page *page, struct list_head *list)
 {
 	swp_entry_t entry;
 	int err;
+
 
 	VM_BUG_ON(!PageLocked(page));
 	VM_BUG_ON(!PageUptodate(page));
@@ -177,7 +198,6 @@ int add_to_swap(struct page *page, struct list_head *list)
 			swapcache_free(entry, NULL);
 			return 0;
 		}
-
 	/*
 	 * Radix-tree node allocations from PF_MEMALLOC contexts could
 	 * completely exhaust the page allocator. __GFP_NOMEMALLOC
@@ -227,9 +247,9 @@ void delete_from_swap_cache(struct page *page)
 	page_cache_release(page);
 }
 
-/* 
- * If we are the only user, then try to free up the swap cache. 
- * 
+/*
+ * If we are the only user, then try to free up the swap cache.
+ *
  * Its ok to check for PageSwapCache without the page lock
  * here because we are going to recheck again inside
  * try_to_free_swap() _with_ the lock.
@@ -243,7 +263,7 @@ static inline void free_swap_cache(struct page *page)
 	}
 }
 
-/* 
+/*
  * Perform a free_page(), also freeing any swap cache associated with
  * this page if it is the last user of the page.
  */
@@ -293,7 +313,7 @@ struct page * lookup_swap_cache(swp_entry_t entry)
 	return page;
 }
 
-/* 
+/*
  * Locate a page of swap in physical memory, reserving swap cache space
  * and reading the disk if it is not already cached.
  * A failure return means that either the page allocation failed or that

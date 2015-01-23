@@ -808,8 +808,13 @@
             amlogic,pins = "BOOT_0", "BOOT_1", "BOOT_2", "BOOT_3", "BOOT_4",
             "BOOT_5", "BOOT_6", "BOOT_7", "BOOT_15";
             amlogic,pullup = <0>;
+	    amlogic,pullupen=<1>;
         };
-
+	conf_nand_state1: conf_nand1{
+		amlogic,pins = "BOOT_8", "BOOT_10";
+		amlogic,pullup=<1>;
+		amlogic,pullupen=<1>;
+	};
         nand_base:nand{
             amlogic,setmask = <2 0x7fe0000>;
             amlogic,clrmask = <   5 0xe

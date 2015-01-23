@@ -58,11 +58,26 @@
 #define PARSER_BUSY         (ES_PARSER_BUSY)
 
 #define PARSER_PARAMETER_LENGTH_BIT     16
+#define PARSER_PARAMETER_LOOP_BIT       24
 
 #define PARSER_POP      READ_MPEG_REG(PFIFO_DATA)
 #define SET_BLOCK(size) \
 WRITE_MPEG_REG_BITS(PARSER_CONTROL, size, ES_PACK_SIZE_BIT, ES_PACK_SIZE_WID)
 #define SET_DISCARD_SIZE(size) WRITE_MPEG_REG(PARSER_PARAMETER, size)
+
+#define VIDEO_AUTO_FLUSH
+#ifdef VIDEO_AUTO_FLUSH
+static u32 video_auto_flush_state;
+#define VIDEO_AUTO_FLUSH_IDLE          0
+#define VIDEO_AUTO_FLUSH_MONITOR       1
+#define VIDEO_AUTO_FLUSH_TRIGGER       2
+#define VIDEO_AUTO_FLUSH_DONE          3
+#define VIDEO_AUTO_FLUSH_PTS_THRESHOLD 90000
+#define VIDEO_AUTO_FLUSH_BYTE_COUNT    1024
+
+static s32 audio_last_pts;
+static s32 audio_monitor_pts;
+#endif
 
 enum {
     SEARCH_START_CODE = 0,
@@ -71,6 +86,10 @@ enum {
     SEND_SUBPIC_SEARCH,
     DISCARD_SEARCH,
     DISCARD_ONLY
+#ifdef VIDEO_AUTO_FLUSH
+    ,
+    SEARCH_START_CODE_VIDEO_FLUSH
+#endif
 };
 
 enum {
@@ -119,9 +138,7 @@ static void ptsmgr_vpts_checkin(u32 pts)
         first_vpts = pts;
     }
 
-    //    vpts_checkin(pts);
     pts_checkin_offset(PTS_TYPE_VIDEO, video_data_parsed, pts);
-
 }
 
 static void ptsmgr_apts_checkin(u32 pts)
@@ -133,6 +150,21 @@ static void ptsmgr_apts_checkin(u32 pts)
 
     //    apts_checkin(pts);
     pts_checkin_offset(PTS_TYPE_AUDIO, audio_data_parsed, pts);
+
+#ifdef VIDEO_AUTO_FLUSH
+    audio_last_pts = pts;
+
+    if ((video_auto_flush_state == VIDEO_AUTO_FLUSH_IDLE) && ptsmgr_first_vpts_ready()) {
+        video_auto_flush_state = VIDEO_AUTO_FLUSH_MONITOR;
+        audio_monitor_pts = pts;
+    }
+
+    if (video_auto_flush_state == VIDEO_AUTO_FLUSH_MONITOR) {
+        if ((audio_last_pts - audio_monitor_pts) > VIDEO_AUTO_FLUSH_PTS_THRESHOLD) {
+            video_auto_flush_state = VIDEO_AUTO_FLUSH_TRIGGER;
+        }
+    }
+#endif
 }
 
 static u32 parser_process(s32 type, s32 packet_len)
@@ -312,6 +344,12 @@ static u32 parser_process(s32 type, s32 packet_len)
         return SEARCH_START_CODE;
 
     } else if (type == 0) {
+#ifdef VIDEO_AUTO_FLUSH
+        if (video_auto_flush_state == VIDEO_AUTO_FLUSH_MONITOR) {
+            audio_monitor_pts = audio_last_pts;
+        }
+#endif
+
         if ((pts_dts_flag) && (!invalid_pts)) {
 #if TIMESTAMP_IONLY
             if (!ptsmgr_first_vpts_ready()) {
@@ -653,6 +691,13 @@ static void on_start_code_found(int start_code)
 #endif
         }
 
+#ifdef VIDEO_AUTO_FLUSH
+        if (video_auto_flush_state == VIDEO_AUTO_FLUSH_TRIGGER) {
+            next_action = SEARCH_START_CODE_VIDEO_FLUSH;
+            video_auto_flush_state = VIDEO_AUTO_FLUSH_DONE;
+        } else
+#endif
+
         next_action = SEARCH_START_CODE;
 
     } else {
@@ -715,6 +760,15 @@ static void on_start_code_found(int start_code)
     case DISCARD_ONLY:
         WRITE_MPEG_REG_BITS(PARSER_CONTROL, PARSER_DISCARD, ES_CTRL_BIT, ES_CTRL_WID);
         break;
+
+#ifdef VIDEO_AUTO_FLUSH
+    case SEARCH_START_CODE_VIDEO_FLUSH:
+        WRITE_MPEG_REG(PARSER_INSERT_DATA, 0xffffffff);
+        WRITE_MPEG_REG(PARSER_INSERT_DATA, 0xffffffff);
+        WRITE_MPEG_REG(PARSER_PARAMETER, ((VIDEO_AUTO_FLUSH_BYTE_COUNT/8) << PARSER_PARAMETER_LOOP_BIT) | (8 << PARSER_PARAMETER_LENGTH_BIT));
+        WRITE_MPEG_REG(PARSER_CONTROL, PARSER_AUTOSEARCH | PARSER_VIDEO | PARSER_WRITE | ES_INSERT_BEFORE_ES_WRITE);
+        break;
+#endif
     }
 }
 
@@ -823,6 +877,10 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     first_apts = 0;
     first_vpts = 0;
     pts_equ_dts_flag = 0;
+
+#ifdef VIDEO_AUTO_FLUSH
+    video_auto_flush_state = VIDEO_AUTO_FLUSH_IDLE;
+#endif
 
     printk("video 0x%x, audio 0x%x, sub 0x%x\n", video_id, audio_id, sub_id);
     if (fetchbuf == 0) {

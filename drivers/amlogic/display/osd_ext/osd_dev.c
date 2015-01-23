@@ -207,6 +207,16 @@ void osddev_ext_set_window_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 	osd_ext_set_window_axis_hw(index - 2, x0, y0, x1, y1);
 }
 
+int osddev_ext_sync_request(struct fb_info * info, u32 xoffset, u32 yoffset, s32 in_fence_fd)
+{
+	return osd_ext_sync_request(info->node-2, info->var.yres, xoffset , yoffset, in_fence_fd);
+}
+
+int osddev_ext_wait_for_vsync(void)
+{
+	return osd_ext_wait_vsync_event();
+}
+
 void osddev_ext_get_osd_ext_info(u32 index, s32(*posdval)[4], u32(*posdreg)[5], s32 info_flag)
 {
 	osd_ext_get_osd_ext_info_hw(index - 2, posdval, posdreg, info_flag);

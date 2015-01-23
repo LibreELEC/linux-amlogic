@@ -123,6 +123,8 @@ extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev);
 extern void osddev_init(void) ;
 extern void osddev_enable(int enable,int index);
+extern int osddev_sync_request( struct fb_info * info,u32 xoffset, u32 yoffset,s32 in_fence_fd);
+extern int osddev_wait_for_vsync(void);
 
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 

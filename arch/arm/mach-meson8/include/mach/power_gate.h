@@ -851,7 +851,37 @@ extern spinlock_t gate_lock;
 #define GCLK_REG_AO_REGS      (HHI_GCLK_AO)
 #define GCLK_MASK_AO_REGS      (1<<3)
 
-#define GCLK_IDX_MAX 132
+#define GCLK_IDX_CTS_ENCI         132
+#define GCLK_NAME_CTS_ENCI      "CTS_ENCI"
+#define GCLK_DEV_CTS_ENCI      "CLKGATE_CTS_ENCI"
+#define GCLK_REG_CTS_ENCI      (HHI_VID_CLK_CNTL2)
+#define GCLK_MASK_CTS_ENCI      (1<<0)
+
+#define GCLK_IDX_CTS_ENCP         133
+#define GCLK_NAME_CTS_ENCP      "CTS_ENCP"
+#define GCLK_DEV_CTS_ENCP      "CLKGATE_CTS_ENCP"
+#define GCLK_REG_CTS_ENCP      (HHI_VID_CLK_CNTL2)
+#define GCLK_MASK_CTS_ENCP      (1<<2)
+
+#define GCLK_IDX_CTS_ENCL         134
+#define GCLK_NAME_CTS_ENCL      "CTS_ENCL"
+#define GCLK_DEV_CTS_ENCL      "CLKGATE_CTS_ENCL"
+#define GCLK_REG_CTS_ENCL      (HHI_VID_CLK_CNTL2)
+#define GCLK_MASK_CTS_ENCL      (1<<3)
+
+#define GCLK_IDX_CTS_VDAC         135
+#define GCLK_NAME_CTS_VDAC      "CTS_VDAC"
+#define GCLK_DEV_CTS_VDAC      "CLKGATE_CTS_VDAC"
+#define GCLK_REG_CTS_VDAC      (HHI_VID_CLK_CNTL2)
+#define GCLK_MASK_CTS_VDAC      (1<<4)
+
+#define GCLK_IDX_CTS_HDMI_TX_PIXEL         136
+#define GCLK_NAME_CTS_HDMI_TX_PIXEL      "CTS_HDMI_TX_PIXEL"
+#define GCLK_DEV_CTS_HDMI_TX_PIXEL      "CLKGATE_CTS_HDMI_TX_PIXEL"
+#define GCLK_REG_CTS_HDMI_TX_PIXEL      (HHI_VID_CLK_CNTL2)
+#define GCLK_MASK_CTS_HDMI_TX_PIXEL      (1<<5)
+
+#define GCLK_IDX_MAX 137
 extern short GCLK_ref[GCLK_IDX_MAX];
 
 #define REGISTER_CLK(_MOD) \

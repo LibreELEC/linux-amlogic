@@ -29,12 +29,18 @@
 #include <linux/irqreturn.h>
 #include <linux/errno.h>
 #include <linux/irq.h>
+#include <linux/file.h>
+#include <linux/fdtable.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
+#include <linux/kthread.h>
 #include <linux/amlogic/amports/canvas.h>
+#include <sw_sync.h>
+#include <sync.h>
 #include <linux/amlogic/amlog.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
 #include <linux/amlogic/osd/osd.h>
+#include <linux/amlogic/osd/osd_hw.h>
 #include <linux/amlogic/vout/vout_notify.h>
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define FIQ_VSYNC
@@ -43,11 +49,27 @@
 #include "osd_hw_def.h"
 #include "osd_clone.h"
 #include "osd_prot.h"
+#include "osd_hw.h"
 
 static DECLARE_WAIT_QUEUE_HEAD(osd_ext_vsync_wq);
 static bool vsync_hit = false;
 static bool osd_ext_vf_need_update = false;
 
+#ifdef  CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
+//add sync fence relative varible here.
+//we will limit all fence relative code in this driver file.
+static int ext_timeline_created=0;
+static struct  sw_sync_timeline *ext_timeline;
+static u32 ext_cur_streamline_val;
+//thread control part
+struct kthread_worker ext_buffer_toggle_worker;
+struct task_struct *ext_buffer_toggle_thread;
+struct kthread_work ext_buffer_toggle_work;
+struct list_head	ext_post_fence_list;
+struct mutex		ext_post_fence_list_lock;
+
+void osd_ext_pan_display_fence(osd_ext_fence_map_t *fence_map);
+#endif
 static struct vframe_provider_s osd_ext_vf_prov;
 static int  g_vf_visual_width;
 static int  g_vf_width;
@@ -168,6 +190,170 @@ static unsigned int filt_coef2[] =  //2 point bilinear, bank_length == 2
 };
 
 /********************************************************************/
+/***********		osd fence relative code 	 			*****************/
+/********************************************************************/
+
+#ifdef  CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
+static inline int find_ext_buf_num(u32 yres,u32 yoffset)
+{
+	int n=yres;
+	int i;
+	for(i=0;i<MAX_BUF_NUM;i++)  //find current addr position.
+	{
+		if(yoffset  < (n))
+		break;
+		n+=yres;
+	}
+	return i;
+}
+
+//next we will process two osd layer in toggle buffer.
+static void osd_ext_toggle_buffer(struct kthread_work *work)
+{
+	osd_ext_fence_map_t *data, *next;
+	struct list_head saved_list;
+
+	mutex_lock(&ext_post_fence_list_lock);
+	saved_list = ext_post_fence_list;
+	list_replace_init(&ext_post_fence_list, &saved_list);
+	mutex_unlock(&ext_post_fence_list_lock);
+
+	list_for_each_entry_safe(data, next, &saved_list, list){
+		osd_ext_pan_display_fence(data);
+		if((data->in_fence) && (data->in_fd > 0)){
+			__close_fd(data->files, data->in_fd);
+			sync_fence_put(data->in_fence);
+		}
+		list_del(&data->list);
+		kfree(data);
+	}
+}
+
+static int out_ext_fence_create(int *release_fence_fd, u32 *val, u32 buf_num)
+{
+	//the first time create out_fence_fd==0
+	//sw_sync_timeline_inc  will release fence and it's sync point
+	struct sync_pt * outer_sync_pt;
+	struct sync_fence * outer_fence;
+	int out_fence_fd = -1;
+
+	out_fence_fd = get_unused_fd();
+	if(out_fence_fd < 0) return -1;//no file descriptor could be used. Error.
+	if(!ext_timeline_created)//timeline has not been created
+	{
+		ext_timeline = sw_sync_timeline_create("osd_ext_timeline");
+		ext_cur_streamline_val=1;
+		if(NULL==ext_timeline)
+		{
+			return -1;
+		}
+		init_kthread_worker(&ext_buffer_toggle_worker);
+		ext_buffer_toggle_thread= kthread_run(kthread_worker_fn,
+						&ext_buffer_toggle_worker, "aml_buf_ext_toggle");
+		init_kthread_work(&ext_buffer_toggle_work,osd_ext_toggle_buffer);
+		ext_timeline_created=1;
+	}
+	//install fence map; first ,the simplest.
+	ext_cur_streamline_val++;
+	*val=ext_cur_streamline_val;
+
+	outer_sync_pt=sw_sync_pt_create(ext_timeline,*val);
+	if(NULL == outer_sync_pt)
+	{
+		goto error_ret;
+	}
+
+	outer_fence=sync_fence_create("osd_ext_fence_out", outer_sync_pt);//fence object will be released when no point
+	if(NULL == outer_fence)
+	{
+		sync_pt_free(outer_sync_pt); //free sync point.
+		goto error_ret;
+	}
+
+	sync_fence_install(outer_fence,out_fence_fd);
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"---------------------------------------\n");
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"return out fence fd:%d\n",out_fence_fd);
+	*release_fence_fd = out_fence_fd;
+	return out_fence_fd;
+
+error_ret:
+	ext_cur_streamline_val--; //pt or fence fail,restore timeline value.
+	amlog_level(LOG_LEVEL_HIGH,"fence obj create fail\n");
+	put_unused_fd(out_fence_fd);
+	return -1;
+
+}
+
+int osd_ext_sync_request(u32 index, u32 yres, u32 xoffset,u32 yoffset,s32 in_fence_fd)
+{
+	int out_fence_fd = -1;
+	int buf_num = 0;
+
+	osd_ext_fence_map_t *fence_map = kzalloc(sizeof(osd_ext_fence_map_t), GFP_KERNEL);
+	buf_num = find_ext_buf_num(yres, yoffset);
+
+	if (!fence_map) {
+		printk("could not allocate osd_ext_fence_map\n");
+		return -ENOMEM;
+	}
+
+	mutex_lock(&ext_post_fence_list_lock);
+	fence_map->fb_index = index;
+	fence_map->buf_num = buf_num;
+	fence_map->yoffset = yoffset;
+	fence_map->xoffset = xoffset;
+	fence_map->yres = yres;
+	fence_map->in_fd = in_fence_fd;
+	fence_map->in_fence = sync_fence_fdget(in_fence_fd);
+	fence_map->files = current->files;
+
+	fence_map->out_fd = out_ext_fence_create(&out_fence_fd, &fence_map->val, buf_num);
+	list_add_tail(&fence_map->list, &ext_post_fence_list);
+	mutex_unlock(&ext_post_fence_list_lock);
+
+	queue_kthread_work(&ext_buffer_toggle_worker, &ext_buffer_toggle_work);
+
+	return  out_fence_fd;
+}
+
+static int  osd_ext_wait_buf_ready(osd_ext_fence_map_t *fence_map)
+{
+	s32 ret=-1;
+	struct sync_fence *buf_ready_fence = NULL;
+
+	if(fence_map->in_fd <= 0)
+	{
+		ret =-1;
+		return ret;
+	}
+
+	buf_ready_fence = fence_map->in_fence;
+	if(NULL == buf_ready_fence)
+	{
+		ret = -1;//no fence ,output directly.
+		return ret;
+	}
+
+	ret=sync_fence_wait(buf_ready_fence, -1);
+	if(ret < 0){
+		amlog_level(LOG_LEVEL_HIGH,"Sync Fence wait error:%d\n",ret);
+		printk("-----wait buf idx:[%d] ERROR\n-----on screen buf idx:[%d]\n",fence_map->buf_num, find_ext_buf_num(fence_map->yres, osd_ext_hw.pandata[fence_map->fb_index].y_start));
+	}else{
+		ret=1;
+	}
+
+	return ret;
+}
+
+#else
+int osd_ext_sync_request(u32 index, u32 yres,u32 xoffset, u32 yoffset,s32 in_fence_fd)
+{
+	amlog_level(LOG_LEVEL_HIGH,"osd_ext_sync_request not supported\n");
+	return -5566;
+}
+#endif
+
+/********************************************************************/
 /***********		osd psedu frame provider 			*****************/
 /********************************************************************/
 static vframe_t *osd_ext_vf_peek(void *arg)
@@ -204,7 +390,7 @@ static inline void osd_ext_update_3d_mode(int enable_osd1, int enable_osd2)
 	}
 }
 
-static inline void wait_vsync_wakeup(void)
+static inline void wait_ext_vsync_wakeup(void)
 {
 	vsync_hit = true;
 	wake_up_interruptible(&osd_ext_vsync_wq);
@@ -231,7 +417,7 @@ static inline void walk_through_update_list(void)
 #ifdef FIQ_VSYNC
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 {
-	wait_vsync_wakeup();
+	wait_ext_vsync_wakeup();
 
 	return IRQ_HANDLED;
 }
@@ -258,7 +444,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
 	}
 #endif
-	output_type=aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
+	output_type=aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0xc;
 	osd_ext_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
 	switch(output_type)
 	{
@@ -330,7 +516,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #ifdef FIQ_VSYNC
 		fiq_bridge_pulse_trigger(&osd_ext_hw.fiq_handle_item);
 #else
-		wait_vsync_wakeup();
+		wait_ext_vsync_wakeup();
 #endif
 	}
 #ifndef FIQ_VSYNC
@@ -343,6 +529,13 @@ void osd_ext_wait_vsync_hw(void)
 	vsync_hit = false;
 
 	wait_event_interruptible_timeout(osd_ext_vsync_wq, vsync_hit, HZ);
+}
+
+s32 osd_ext_wait_vsync_event(void)
+{
+	vsync_hit = false;
+	wait_event_interruptible_timeout(osd_ext_vsync_wq, vsync_hit, 1); //waiting for 10ms.
+	return 0;
 }
 
 void osd_ext_set_gbl_alpha_hw(u32 index, u32 gbl_alpha)
@@ -588,6 +781,14 @@ void osd_ext_change_osd_ext_order_hw(u32 index, u32 order)
 		return;
 	osd_ext_hw.osd_ext_order = order;
 	add_to_update_list(index, OSD_CHANGE_ORDER);
+	osd_ext_wait_vsync_hw();
+}
+
+void osd_ext_enable_hw(int enable, int index)
+{
+	osd_ext_hw.enable[index] = enable;
+	add_to_update_list(index, OSD_ENABLE);
+
 	osd_ext_wait_vsync_hw();
 }
 
@@ -866,37 +1067,6 @@ void osd_ext_set_block_mode_hw(u32 index, u32 mode)
 	osd_ext_wait_vsync_hw();
 }
 
-void osd_ext_enable_3d_mode_hw(int index, int enable)
-{
-	spin_lock_irqsave(&osd_ext_lock, lock_flags);
-	osd_ext_hw.mode_3d[index].enable = enable;
-	spin_unlock_irqrestore(&osd_ext_lock, lock_flags);
-	if (enable)		//when disable 3d mode ,we should return to stardard state.
-	{
-		osd_ext_hw.mode_3d[index].left_right = LEFT;
-		osd_ext_hw.mode_3d[index].l_start = osd_ext_hw.pandata[index].x_start;
-		osd_ext_hw.mode_3d[index].l_end =
-		    (osd_ext_hw.pandata[index].x_end + osd_ext_hw.pandata[index].x_start) >> 1;
-		osd_ext_hw.mode_3d[index].r_start = osd_ext_hw.mode_3d[index].l_end + 1;
-		osd_ext_hw.mode_3d[index].r_end = osd_ext_hw.pandata[index].x_end;
-		osd_ext_hw.mode_3d[index].origin_scale.h_enable = osd_ext_hw.scale[index].h_enable;
-		osd_ext_hw.mode_3d[index].origin_scale.v_enable = osd_ext_hw.scale[index].v_enable;
-		osd_ext_set_2x_scale_hw(index, 1, 0);
-	} else {
-
-		osd_ext_set_2x_scale_hw(index, osd_ext_hw.mode_3d[index].origin_scale.h_enable,
-					osd_ext_hw.mode_3d[index].origin_scale.v_enable);
-	}
-}
-
-void osd_ext_enable_hw(int enable, int index)
-{
-	osd_ext_hw.enable[index] = enable;
-	add_to_update_list(index, OSD_ENABLE);
-
-	osd_ext_wait_vsync_hw();
-}
-
 void osd_ext_set_2x_scale_hw(u32 index, u16 h_scale_enable, u16 v_scale_enable)
 {
 	amlog_level(LOG_LEVEL_HIGH, "osd[%d] set scale, h_scale: %s, v_scale: %s\r\n",
@@ -920,6 +1090,29 @@ void osd_ext_set_2x_scale_hw(u32 index, u16 h_scale_enable, u16 v_scale_enable)
 	add_to_update_list(index, DISP_GEOMETRY);
 
 	osd_ext_wait_vsync_hw();
+}
+
+void osd_ext_enable_3d_mode_hw(int index, int enable)
+{
+	spin_lock_irqsave(&osd_ext_lock, lock_flags);
+	osd_ext_hw.mode_3d[index].enable = enable;
+	spin_unlock_irqrestore(&osd_ext_lock, lock_flags);
+	if (enable)		//when disable 3d mode ,we should return to stardard state.
+	{
+		osd_ext_hw.mode_3d[index].left_right = LEFT;
+		osd_ext_hw.mode_3d[index].l_start = osd_ext_hw.pandata[index].x_start;
+		osd_ext_hw.mode_3d[index].l_end =
+		    (osd_ext_hw.pandata[index].x_end + osd_ext_hw.pandata[index].x_start) >> 1;
+		osd_ext_hw.mode_3d[index].r_start = osd_ext_hw.mode_3d[index].l_end + 1;
+		osd_ext_hw.mode_3d[index].r_end = osd_ext_hw.pandata[index].x_end;
+		osd_ext_hw.mode_3d[index].origin_scale.h_enable = osd_ext_hw.scale[index].h_enable;
+		osd_ext_hw.mode_3d[index].origin_scale.v_enable = osd_ext_hw.scale[index].v_enable;
+		osd_ext_set_2x_scale_hw(index, 1, 0);
+	} else {
+
+		osd_ext_set_2x_scale_hw(index, osd_ext_hw.mode_3d[index].origin_scale.h_enable,
+					osd_ext_hw.mode_3d[index].origin_scale.v_enable);
+	}
 }
 
 void osd_ext_set_osd_ext_rotate_angle_hw(u32 index, u32 angle)
@@ -1007,6 +1200,56 @@ void osd_ext_get_prot_canvas_hw(u32 index, s32 *x_start, s32 *y_start, s32 *x_en
 	*x_end = osd_ext_hw.rotation_pandata[index].x_end;
 	*y_end = osd_ext_hw.rotation_pandata[index].y_end;
 }
+
+#ifdef  CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
+void osd_ext_pan_display_fence(osd_ext_fence_map_t *fence_map)
+{
+	s32 ret = 1;
+	long diff_x, diff_y;
+	u32 index = fence_map->fb_index;
+	u32 xoffset = fence_map->xoffset;
+	u32 yoffset = fence_map->yoffset;
+
+	if (index >= 2)
+		return;
+
+	if(ext_timeline_created) //out fence created success.
+	{
+		ret = osd_ext_wait_buf_ready(fence_map);
+		if(ret < 0)
+		{
+			amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"fence wait ret %d\n",ret);
+		}
+	}
+
+	if(ret){
+		if(xoffset!=osd_ext_hw.pandata[index].x_start || yoffset !=osd_ext_hw.pandata[index].y_start)
+		{
+			diff_x = xoffset - osd_ext_hw.pandata[index].x_start;
+			diff_y = yoffset - osd_ext_hw.pandata[index].y_start;
+
+			osd_ext_hw.pandata[index].x_start += diff_x;
+			osd_ext_hw.pandata[index].x_end   += diff_x;
+			osd_ext_hw.pandata[index].y_start += diff_y;
+			osd_ext_hw.pandata[index].y_end   += diff_y;
+			add_to_update_list(index, DISP_GEOMETRY);
+			osd_ext_wait_vsync_hw();
+		}
+	}
+
+	if(ext_timeline_created){
+		if(ret){
+			sw_sync_timeline_inc(ext_timeline, 1);
+		}else{
+			printk("------NOT signal out_fence ERROR\n");
+		}
+	}
+
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \
+			xoffset,yoffset,osd_ext_hw.pandata[index].x_start ,osd_ext_hw.pandata[index].x_end , \
+			osd_ext_hw.pandata[index].y_start ,osd_ext_hw.pandata[index].y_end);
+}
+#endif
 
 void osd_ext_pan_display_hw(unsigned int xoffset, unsigned int yoffset, int index)
 {
@@ -1154,15 +1397,16 @@ static  void  osd1_update_disp_freescale_enable(void)
 
 static void osd1_update_coef(void)
 {
-	int vf_coef_idx = 0;
-	int *vf_coef;
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	int i;
 	int hf_coef_idx = 0;
+	int vf_coef_idx = 0;
+	int *hf_coef, *vf_coef;
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	int i = 0;
 	int hf_coef_wren = 1;
 	int vf_coef_wren = 1;
-	int *hf_coef;
 #endif
+
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
 	}else if (vf_coef_idx == 1){
@@ -1173,15 +1417,6 @@ static void osd1_update_coef(void)
 		vf_coef = filt_coef0;
 	}
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if (vf_coef_wren) {
-		aml_set_reg32_bits(P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
-		for (i = 0; i < 33; i++)
-		{
-			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
-		}
-	}
-
 	if (hf_coef_idx == 0){
 		hf_coef = filt_coef0;
 	}else if (hf_coef_idx == 1){
@@ -1190,6 +1425,15 @@ static void osd1_update_coef(void)
 		hf_coef = filt_coef2;
 	}else{
 		hf_coef = filt_coef0;
+	}
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	if (vf_coef_wren) {
+		aml_set_reg32_bits(P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
+		for (i = 0; i < 33; i++)
+		{
+			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
+		}
 	}
 
 	if (hf_coef_wren) {
@@ -1279,16 +1523,16 @@ static  void  osd2_update_disp_freescale_enable(void)
 
 static void osd2_update_coef(void)
 {
+	int hf_coef_idx = 0;
 	int vf_coef_idx = 0;
-	int  *vf_coef;
+	int *hf_coef, *vf_coef;
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	int i;
-	int hf_coef_idx = 0;
-	int vf_coef_wren = 1;
+	int i = 0;
 	int hf_coef_wren = 1;
-	int *hf_coef;
+	int vf_coef_wren = 1;
 #endif
+
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
 	}else if (vf_coef_idx == 1){
@@ -1299,15 +1543,6 @@ static void osd2_update_coef(void)
 		vf_coef = filt_coef0;
 	}
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if (vf_coef_wren) {
-		aml_set_reg32_bits (P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
-		for (i = 0; i < 33; i++)
-		{
-			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
-		}
-	}
-
 	if (hf_coef_idx == 0){
 		hf_coef = filt_coef0;
 	}else if (hf_coef_idx == 1){
@@ -1316,6 +1551,15 @@ static void osd2_update_coef(void)
 		hf_coef = filt_coef2;
 	}else{
 		hf_coef = filt_coef0;
+	}
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	if (vf_coef_wren) {
+		aml_set_reg32_bits (P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
+		for (i = 0; i < 33; i++)
+		{
+			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
+		}
 	}
 
 	if (hf_coef_wren) {
@@ -2024,7 +2268,12 @@ void osd_ext_init_hw(u32 logo_loaded)
 	osd_ext_hw.block_mode[OSD1] = osd_ext_hw.block_mode[OSD2] = 0;
 	osd_ext_hw.rotation_pandata[OSD1].x_start = osd_ext_hw.rotation_pandata[OSD1].y_start = 0;
 	osd_ext_hw.rotation_pandata[OSD2].x_start = osd_ext_hw.rotation_pandata[OSD2].y_start = 0;
-	memset(osd_ext_hw.rotate,0,sizeof(osd_rotate_t));
+	memset(osd_ext_hw.rotate,0,sizeof(osd_ext_rotate_t));
+
+#ifdef  CONFIG_FB_OSD_SUPPORT_SYNC_FENCE
+	INIT_LIST_HEAD(&ext_post_fence_list);
+	mutex_init(&ext_post_fence_list_lock);
+#endif
 
 #ifdef FIQ_VSYNC
 	osd_ext_hw.fiq_handle_item.handle = vsync_isr;
@@ -2132,7 +2381,6 @@ void osd_ext_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_ext_w, u32 
 void osd_ext_suspend_hw(void)
 {
 	osd_ext_hw.reg_status_save = aml_read_reg32(P_VPP2_MISC) & OSD_RELATIVE_BITS;
-
 	aml_clr_reg32_mask(P_VPP2_MISC, OSD_RELATIVE_BITS);
 
 	printk("osd_ext_suspended\n");
@@ -2143,7 +2391,6 @@ void osd_ext_suspend_hw(void)
 void osd_ext_resume_hw(void)
 {
 	aml_set_reg32_mask(P_VPP2_MISC, osd_ext_hw.reg_status_save);
-
 	printk("osd_ext_resumed\n");
 
 	return;

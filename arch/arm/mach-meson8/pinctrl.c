@@ -309,6 +309,16 @@ static int m8_set_pullup(unsigned int pin,unsigned int config)
 	u16 pullarg = AML_PINCONF_UNPACK_PULL_ARG(config);
 	u16 pullen = AML_PINCONF_UNPACK_PULL_EN(config);
 	ret=m8_pin_to_pullup(pin,&reg,&bit,&bit_en);
+	/*This on set BOOT_0 pull up en register*/
+	if(IS_MESON_M8M2_CPU && pin == BOOT_0){
+		if(!ret){
+			if(pullen)
+				aml_set_reg32_mask(p_pull_upen_addr[reg],1<<bit_en);
+			else
+				aml_clr_reg32_mask(p_pull_upen_addr[reg],1<<bit_en);
+		}
+		return ret;
+	}
 	if(!ret)
 	{
 		if(pullen){

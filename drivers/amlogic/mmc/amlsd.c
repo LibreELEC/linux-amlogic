@@ -1156,12 +1156,18 @@ irqreturn_t aml_irq_cd_thread(int irq, void *data)
     mdelay(20);
     aml_sd_uart_detect(pdata);
 
-    if((pdata->is_in == 0) && aml_card_type_sd(pdata)) {
+    if((pdata->is_in == 0) && aml_card_type_non_sdio(pdata)) {
         pdata->host->init_flag = 0;
     }
 
     //mdelay(500);
-    mmc_detect_change(pdata->mmc, msecs_to_jiffies(200));
+    if(pdata->is_in == 0){
+	mmc_detect_change(pdata->mmc, msecs_to_jiffies(2));
+
+    }
+    else{
+	mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
+    }
 
 	return IRQ_HANDLED;
 }

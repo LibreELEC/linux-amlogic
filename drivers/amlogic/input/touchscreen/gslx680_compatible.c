@@ -12,8 +12,9 @@
 #include "linux/amlogic/input/gslx680_compatible.h"
 
 #define STAT_POWER_ON		  0
-#define STAT_SLEEP 				1
-#define STAT_WORK     	2
+#define STAT_IDLE     	  1
+#define STAT_BUSY     	  2
+#define STAT_SLEEP 				3
 
 #ifdef HAVE_TOUCH_KEY
 static u16 key = 0;
@@ -65,6 +66,7 @@ static struct gsl_ts_data devices[] = {
 };
 
 struct gsl_ts {
+	spinlock_t lock;
 	struct i2c_client *client;
 	struct input_dev *input;
 	struct work_struct work;
@@ -761,7 +763,7 @@ static void gslX680_ts_worker(struct work_struct *work)
 
 schedule:
 	enable_irq(ts->irq);
-
+	ts->stat = STAT_IDLE;
 }
 
 static void gsl_monitor_worker(struct work_struct *work)
@@ -793,7 +795,7 @@ static void gsl_monitor_worker(struct work_struct *work)
 #endif
 	if (ts->stat == STAT_POWER_ON) {
 		init_chip(ts->client);
-		ts->stat = STAT_WORK;
+		ts->stat = STAT_IDLE;
 	}
 	else if (ts->stat == STAT_SLEEP) {
 		gslX680_shutdown_high();
@@ -803,9 +805,9 @@ static void gsl_monitor_worker(struct work_struct *work)
 		if (check_mem_data_b0(ts->client) == false) {
 			init_chip(ts->client);
 		}
-		ts->stat = STAT_WORK;
+		ts->stat = STAT_IDLE;
 	}
-	else if (ts->stat == STAT_WORK) {
+	else if (ts->stat == STAT_IDLE) {
 		if (check_mem_data_b0(ts->client) == false) {
 			printk("gslx680: check mem data NG!\n");
 			init_chip(ts->client);
@@ -816,7 +818,7 @@ static void gsl_monitor_worker(struct work_struct *work)
 	}
 
 exit_monitor_work:
-	if (ts->stat != STAT_WORK) {
+	if (ts->stat == STAT_POWER_ON) {
 		queue_delayed_work(ts->wq, &ts->monitor_work, msecs_to_jiffies(500));
 	}
 }
@@ -824,15 +826,15 @@ exit_monitor_work:
 static irqreturn_t gsl_ts_irq(int irq, void *dev_id)
 {
 	struct gsl_ts *ts = dev_id;
+	unsigned long flags;
 
-	if (ts->stat != STAT_WORK) {
-		return IRQ_HANDLED;
-	}
-	disable_irq_nosync(ts->irq);
-	if (!work_pending(&ts->work)) {
+	spin_lock_irqsave(&ts->lock,flags);
+	if (ts->stat == STAT_IDLE) {
+		ts->stat = STAT_BUSY;
+		disable_irq_nosync(ts->irq);
 		queue_work(ts->wq, &ts->work);
 	}
-
+	spin_unlock_irqrestore(&ts->lock,flags);
 	return IRQ_HANDLED;
 }
 
@@ -888,9 +890,10 @@ static int gslX680_register_input(struct i2c_client *client, struct gsl_ts *ts)
 static int gsl_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct gsl_ts *ts = dev_get_drvdata(&(client->dev));
+	unsigned long flags;
 
 	gslX680_shutdown_low();
-	disable_irq_nosync(ts->irq);
+	spin_lock_irqsave(&ts->lock,flags);
 	cancel_delayed_work_sync(&ts->monitor_work);
 	cancel_work_sync(&ts->work);
 #ifdef SLEEP_CLEAR_POINT
@@ -898,16 +901,23 @@ static int gsl_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	report_data(ts, 1, 1, 10, 1);
 	input_sync(ts->input);
 #endif
+	if (ts->stat == STAT_IDLE) {
+		disable_irq_nosync(ts->irq);
+	}
 	ts->stat = STAT_SLEEP;
+	spin_unlock_irqrestore(&ts->lock,flags);
 	return 0;
 }
 
 static int gsl_ts_resume(struct i2c_client *client)
 {
 	struct gsl_ts *ts = dev_get_drvdata(&(client->dev));
+	unsigned long flags;
 
+	spin_lock_irqsave(&ts->lock,flags);
 	queue_delayed_work(ts->wq, &ts->monitor_work, msecs_to_jiffies(10));
 	enable_irq(ts->irq);
+	spin_unlock_irqrestore(&ts->lock,flags);
 	return 0;
 }
 
@@ -951,6 +961,7 @@ static int gsl_ts_probe(struct i2c_client *client,const struct i2c_device_id *id
 	i2c_set_clientdata(client, ts);
 	client->irq = ts_com->irq;
 	ts->stat = STAT_POWER_ON;
+	spin_lock_init(&ts->lock);
 
 #ifdef GSL_FW_FILE
 	ts->config = kzalloc(sizeof(int)*GSLX680_CONFIG_MAX, GFP_KERNEL);

@@ -516,13 +516,15 @@ static int speaker_events(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
         printk("speaker_events--mute =1\n");
-		amlogic_set_value(p_audio->gpio_mute, 1, "mute_spk");
+		amlogic_gpio_direction_output(p_audio->gpio_mute, 1, "mute_spk");
+		//amlogic_set_value(p_audio->gpio_mute, 1, "mute_spk");
         aml_m8_spk_enabled = 1;
         msleep(p_audio->sleep_time);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
         printk("speaker_events--mute =0\n");
-		amlogic_set_value(p_audio->gpio_mute, 0, "mute_spk");
+		amlogic_gpio_direction_output(p_audio->gpio_mute, 0, "mute_spk");
+		//amlogic_set_value(p_audio->gpio_mute, 0, "mute_spk");
         aml_m8_spk_enabled = 0;
 		break;
 	}

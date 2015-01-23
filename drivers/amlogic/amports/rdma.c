@@ -145,11 +145,17 @@ void rdma_table_prepare_write(unsigned long reg_adr, unsigned long val)
     if(((rmda_item_count<<1)+1)<(RDMA_TABLE_SIZE/4)){
         rmda_table[rmda_item_count<<1] = reg_adr; //CBUS_REG_ADDR(reg_adr);
         rmda_table[(rmda_item_count<<1)+1] = val;
-        //printk("%s %d: %x %x\n",__func__, rmda_item_count, rmda_table[rmda_item_count<<1], rmda_table[(rmda_item_count<<1)+1]);
         rmda_item_count++;
     }
     else{
-        printk("%s fail: %d, %lx %lx\n",__func__, rmda_item_count, reg_adr, val);
+        int i;
+        for(i=0; i<rmda_item_count; i++){
+            Wr(rmda_table[i<<1], rmda_table[(i<<1)+1]);
+        }
+        rmda_item_count = 0;
+        rmda_table[rmda_item_count<<1] = reg_adr; //CBUS_REG_ADDR(reg_adr);
+        rmda_table[(rmda_item_count<<1)+1] = val;
+        rmda_item_count++;
     }
 }
 

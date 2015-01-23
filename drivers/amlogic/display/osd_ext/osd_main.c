@@ -46,6 +46,7 @@
 #include <asm/uaccess.h>
 #include "osd_log.h"
 #include "osd_main.h"
+#include "osd_sync.h"
 #include "osd_dev.h"
 #include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -267,6 +268,7 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 	u32 block_windows[8] = {0};
 	u32 block_mode;
 	unsigned long ret;
+	fb_ext_sync_request_t  sync_request;
 
 	switch (cmd) {
 	case  FBIOPUT_OSD_SRCKEY_ENABLE:
@@ -281,6 +283,11 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 	case FBIOPUT_OSD_SCALE_AXIS:
 		ret = copy_from_user(&osd_ext_axis, argp, 4 * sizeof(s32));
 		break;
+	case FBIOPUT_OSD_SYNC_ADD:
+		ret=copy_from_user(&sync_request,argp,sizeof(fb_ext_sync_request_t));
+		//printk("osd_mai request offset:%d\n", sync_request.offset);
+		break;
+	case FBIO_WAITFORVSYNC:
 	case FBIOGET_OSD_SCALE_AXIS:
 	case FBIOPUT_OSD_ORDER:
 	case FBIOGET_OSD_ORDER:
@@ -430,6 +437,17 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case FBIOPUT_OSD_WINDOW_AXIS:
 		osddev_ext_set_window_axis(info->node, osd_ext_dst_axis[0], osd_ext_dst_axis[1], osd_ext_dst_axis[2], osd_ext_dst_axis[3]);
+		break;
+	case FBIOPUT_OSD_SYNC_ADD:
+		sync_request.out_fen_fd=osddev_ext_sync_request(info, sync_request.xoffset, sync_request.yoffset, sync_request.in_fen_fd);
+		ret=copy_to_user(argp, &sync_request, sizeof(fb_ext_sync_request_t));
+		if(sync_request.out_fen_fd < 0) // fence create fail.
+		ret=-1;
+		break;
+	case FBIO_WAITFORVSYNC:
+		osddev_ext_wait_for_vsync();
+		ret=1;
+		ret=copy_to_user(argp,&ret,sizeof(u32));
 		break;
 	default:
 		break;
@@ -1373,7 +1391,6 @@ osd_ext_probe(struct platform_device *pdev)
 
 	if (NULL == init_logo_obj) {
 		set_current_vmode2(VMODE_INIT_NULL);
-		//set_current_vmode2(VMODE_LCD);
 		osddev_ext_init();
 	}
 	vinfo = get_current_vinfo2();
@@ -1383,21 +1400,8 @@ osd_ext_probe(struct platform_device *pdev)
 		printk("don't find need osd_ext memory from mesonfb_ext-dts\n");
 	}
 
-	for (index = 0; index < OSD_COUNT; index++) {
+	for (index = 0; index < OSD_COUNT; index++){
 		//platform resource
-#if 0
-		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index))) {
-			amlog_level(LOG_LEVEL_HIGH, "No frame buffer memory define.\n");
-			r = -EFAULT;
-			goto failed2;
-		}
-
-		//if we have no resource then no need to create this device.
-		amlog_level(LOG_LEVEL_HIGH, "[osd%d] 0x%x-0x%x\n", index+2, mem->start, mem->end);
-		if (!mem || mem->start == 0 || mem->end == 0 || mem->start == mem->end) {
-			continue ;
-		}
-#else
 		if(osd_ext_memory){
 			mem = &memobj;
 			ret = find_reserve_block(pdev->dev.of_node->name,index);
@@ -1409,7 +1413,7 @@ osd_ext_probe(struct platform_device *pdev)
 			mem->start = (phys_addr_t)get_reserve_block_addr(ret);
 			mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
 		}
-#endif
+
 		fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
 		if (!fbi) {
 			r = -ENOMEM;

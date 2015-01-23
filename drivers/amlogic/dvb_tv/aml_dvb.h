@@ -202,6 +202,7 @@ struct aml_dvb {
 	int                  reset_flag;
 	spinlock_t           slock;
 	struct timer_list    watchdog_timer;
+	int                  dmx_watchdog_disable[DMX_DEV_COUNT];
 };
 
 
@@ -212,7 +213,7 @@ extern int aml_dmx_hw_start_feed(struct dvb_demux_feed *dvbdmxfeed);
 extern int aml_dmx_hw_stop_feed(struct dvb_demux_feed *dvbdmxfeed);
 extern int aml_dmx_hw_set_source(struct dmx_demux* demux, dmx_source_t src);
 extern int aml_stb_hw_set_source(struct aml_dvb *dvb, dmx_source_t src);
-extern int aml_dsc_hw_set_source(struct aml_dvb *dvb, aml_ts_source_t src);
+extern int aml_dsc_hw_set_source(struct aml_dvb *dvb, dmx_source_t src);
 extern int aml_tso_hw_set_source(struct aml_dvb *dvb, dmx_source_t src);
 extern int aml_dmx_set_skipbyte(struct aml_dvb *dvb, int skipbyte);
 extern int aml_dmx_set_demux(struct aml_dvb *dvb, int id);
@@ -257,5 +258,15 @@ struct devio_aml_platform_data {
 	int (*io_reset)(void *, int enable);
 };
 
+/*Reset the demux device*/
+void dmx_reset_hw(struct aml_dvb *dvb);
+void dmx_reset_hw_ex(struct aml_dvb *dvb, int reset_irq);
+
+/*Reset the individual demux*/
+void dmx_reset_dmx_hw(struct aml_dvb *dvb, int id);
+void dmx_reset_dmx_id_hw_ex(struct aml_dvb *dvb, int id, int reset_irq);
+void dmx_reset_dmx_id_hw_ex_unlock(struct aml_dvb *dvb, int id, int reset_irq);
+void dmx_reset_dmx_hw_ex(struct aml_dvb *dvb, struct aml_dmx *dmx, int reset_irq);
+void dmx_reset_dmx_hw_ex_unlock(struct aml_dvb *dvb, struct aml_dmx *dmx, int reset_irq);
 
 #endif

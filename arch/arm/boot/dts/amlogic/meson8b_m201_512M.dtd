@@ -1250,8 +1250,8 @@ void root_func(){
 		status = "ok";
 		reg = <0xd0048600 0x24>;
 		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &nand_base>;
+		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -1448,11 +1448,15 @@ void root_func(){
 //$$ L2 PROP_U32 = "vendor_id"
 //$$ L2 PROP_STR = "product_desc"
 //$$ L2 PROP_STR = "cec_osd_string"
+//$$ L2 PROP_U32 = "cec_config"
+//$$ L2 PROP_U32 = "ao_cec"
         vend_data: vend_data{
             vendor_name = "Amlogic";           /* Max Chars: 8     */
-            vendor_id = <0x000000>;                 /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt   */
-            product_desc = "M8 MBox SKTv1";        /* Max Chars: 16    */
-            cec_osd_string = "Amlogic MBox";        /* Max Chars: 14    */
+            vendor_id = <0x000000>;            /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt */
+            product_desc = "M8 MBox SKTv1";    /* Max Chars: 16    */
+            cec_osd_string = "MBox";           /* Max Chars: 14    */
+            cec_config = <0x00000f>;           /* 4 bytes: use to control cec switch on/off; distinguish between Mbox and Tablet. <0x00000f>:Mbox; <0x000000> or no this value:Tablet*/
+            ao_cec = <0x000001>;               /* switch between ao-cec and ee-cec:: 1: ao-cec; 0: ee-cec */
         };
 
 //$$ MATCH "HDMI_pwr-ctrl_match" = <&pwr_ctrl>
@@ -1562,8 +1566,13 @@ void root_func(){
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
+			amlogic,pullupen=<1>;
 		};
-
+		conf_nand_state1: conf_nand1{
+			amlogic,pins = "BOOT_8", "BOOT_10";
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
 //$$ MATCH "Nand_pin_0_match" = "&nand_base"
 //$$ MATCH "Nand_pin_1_match" = "&nand_base"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"

@@ -1760,8 +1760,8 @@ sdio{
 		status = "ok";
 		reg = <0xd0048600 0x24>;
 		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &nand_base>;
+		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -2058,8 +2058,13 @@ sdio{
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
+			amlogic,pullupen=<1>;
 		};
-
+		conf_nand_state1: conf_nand1{
+			amlogic,pins = "BOOT_8", "BOOT_10";
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
 //$$ MATCH "Nand_pin_0_match" = "&nand_base"
 //$$ MATCH "Nand_pin_1_match" = "&nand_base"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"

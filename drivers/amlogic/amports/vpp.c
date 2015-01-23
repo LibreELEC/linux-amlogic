@@ -305,7 +305,8 @@ vpp_process_speed_check(s32 width_in,
                         s32 height_out,
                         s32 height_screen,
                         vpp_frame_par_t *next_frame_par,
-                        const vinfo_t *vinfo)
+                        const vinfo_t *vinfo,
+                        vframe_t *vf)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if ((width_in <= 0) || (height_in <= 0) || (height_out <= 0) || (height_screen <= 0)) {
@@ -313,11 +314,24 @@ vpp_process_speed_check(s32 width_in,
     }
 
     if (height_in > height_out) {
-        if (height_out == 0 || div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
-                    height_out * vinfo->sync_duration_den * 256) > get_vpu_clk()) {
-            return SPEED_CHECK_VSKIP;
-        } else {
-            return SPEED_CHECK_DONE;
+
+        if(vf->type & VIDTYPE_VIU_422)
+        {
+            if (height_out == 0 || div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
+                        height_out * vinfo->sync_duration_den * 196) > get_vpu_clk()) {
+                return SPEED_CHECK_VSKIP;
+            }else {
+                return SPEED_CHECK_DONE;
+            }
+        }
+        else
+        {
+            if (height_out == 0 || div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
+                        height_out * vinfo->sync_duration_den * 256) > get_vpu_clk()) {
+                return SPEED_CHECK_VSKIP;
+            }else {
+                return SPEED_CHECK_DONE;
+            }
         }
     } else if (next_frame_par->hscale_skip_count== 0) {
         if (div_u64(VPP_SPEED_FACTOR * width_in * vinfo->sync_duration_num * height_screen,
@@ -356,7 +370,8 @@ vpp_set_filters2(u32 width_in,
                  u32 height_in,
                  const vinfo_t *vinfo,
                  u32 vpp_flags,
-                 vpp_frame_par_t *next_frame_par)
+                 vpp_frame_par_t *next_frame_par,
+                 vframe_t *vf)
 {
     u32 screen_width, screen_height;
     s32 start, end;
@@ -493,6 +508,10 @@ RESTART:
 
 	/*aspect ratio match*/
 	if ((wide_mode >= VIDEO_WIDEOPTION_4_3_IGNORE) && (wide_mode <= VIDEO_WIDEOPTION_16_9_COMBINED) && orig_aspect) {
+		if(vinfo->width && vinfo->height){
+			aspect_ratio_out = (vinfo->height << 8) / vinfo->width;
+		}
+
 		if ((video_height << 8) > (video_width * aspect_ratio_out)) {
 			u32 real_video_height = (video_width * aspect_ratio_out) >> 8;
 
@@ -764,7 +783,8 @@ RESTART:
                        next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
                        height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0),
                        next_frame_par,
-                       vinfo);
+                       vinfo,
+                       vf);
 
         if (skip == SPEED_CHECK_VSKIP) {
             if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
@@ -1045,7 +1065,7 @@ vpp_set_filters(u32 process_3d_type,u32 wide_mode,
     next_frame_par->VPP_post_blend_vd_h_end_ = vinfo->width - 1;
     next_frame_par->VPP_post_blend_h_size_ = vinfo->width;
 
-    vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
+    vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par, vf);
 }
 
 #if HAS_VPU_PROT
@@ -1115,7 +1135,7 @@ prot_get_parameter(u32 wide_mode,
     next_frame_par->VPP_post_blend_vd_h_end_ = vinfo->width - 1;
     next_frame_par->VPP_post_blend_h_size_ = vinfo->width;
 
-    vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
+    vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par, vf);
 }
 #endif
 

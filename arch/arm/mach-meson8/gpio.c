@@ -492,9 +492,15 @@ int gpio_amlogic_direction_output(struct gpio_chip *chip,unsigned offset, int va
 		meson_secure_reg_write(P_AO_SECURE_REG0, meson_secure_reg_read(P_AO_SECURE_REG0) | (1<<0));
 #endif
 		if(value)
-			aml_set_reg32_mask(P_PREG_PAD_GPIO0_O,1<<31);//out put high
+			if (IS_MESON_M8_CPU)
+				aml_set_reg32_mask(P_PREG_PAD_GPIO0_O,1<<31);//out put high
+			else
+				aml_set_reg32_mask(P_PAD_PULL_UP_REG2,1<<0);//out put high
 		else
-			aml_clr_reg32_mask(P_PREG_PAD_GPIO0_O,1<<31);//out put low
+			if (IS_MESON_M8_CPU)
+				aml_clr_reg32_mask(P_PREG_PAD_GPIO0_O,1<<31);//out put low
+			else
+				aml_clr_reg32_mask(P_PAD_PULL_UP_REG2,1<<0);//out put high
 		aml_clr_reg32_mask(P_PREG_PAD_GPIO0_O,1<<30);//out put enable
 		return 0;
 	}

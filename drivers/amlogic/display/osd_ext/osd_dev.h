@@ -86,6 +86,8 @@ extern void osddev_ext_get_free_scale_mode(u32 index, u32 *freescale_mode);
 extern void osddev_ext_free_scale_mode(u32 index ,u32 freescale_mode);
 extern void osddev_ext_get_window_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osddev_ext_set_window_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
+extern int    osddev_ext_sync_request(struct fb_info * info, u32 xoffset, u32 yoffset, s32 in_fence_fd);
+extern int    osddev_ext_wait_for_vsync(void);
 extern void osddev_ext_get_osd_ext_info(u32 index, s32(*posdval)[4], u32(*posdreq)[5], s32 info_flag);
 extern void osddev_ext_get_block_windows(u32 index, u32 *windows);
 extern void osddev_ext_set_block_windows(u32 index, u32 *windows);

@@ -331,7 +331,7 @@ void di_hw_init(void)
 {
 #ifdef NEW_DI_V1
     Wr(DI_MTN_1_CTRL1, Rd(DI_MTN_1_CTRL1)&(~(1<<31))); //enable old DI mode for m6tv
-    Wr(DI_CLKG_CTRL, Rd(DI_CLKG_CTRL)); //di clock gate
+    Wr(DI_CLKG_CTRL, Rd(DI_CLKG_CTRL)|0x1); //di no clock gate
 
     /* fifo size setting from 0x1be60 to 0x1bf20 */
     Wr(VD1_IF0_LUMA_FIFO_SIZE, 0x1bf20);  // 1a63 is vd1_if0_luma_fifo_size

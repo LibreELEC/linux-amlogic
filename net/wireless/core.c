@@ -326,16 +326,16 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 
 	alloc_size = sizeof(*rdev) + sizeof_priv;
 
-	rdev = kzalloc(alloc_size, GFP_KERNEL);
-	if (!rdev) {
-		printk("kzalloc %d memory failed! try to use vzalloc\n", alloc_size);
+	//rdev = kzalloc(alloc_size, GFP_KERNEL);
+	//if (!rdev) {
+	//	printk("kzalloc %d memory failed! try to use vzalloc\n", alloc_size);
 		rdev = vzalloc(alloc_size);
 		if(!rdev) {
 			printk("vzalloc %d memory failed\n", alloc_size);
 		return NULL;
 		}
 		rdev->vmalloc_flag = 1;
-	}
+	//}
 
 	rdev->ops = ops;
 

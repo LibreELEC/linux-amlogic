@@ -148,6 +148,8 @@ static const u32 frame_rate_tab[16] = {
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
+static struct vframe_s vfpool2[VF_POOL_SIZE];
+static int cur_pool_idx = 0;
 static s32 vfbuf_use[DECODE_BUFFER_NUM_MAX];
 static u32 dec_control = 0;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
@@ -165,6 +167,17 @@ static s32 frame_force_skip_flag = 0;
 static s32 error_frame_skip_level = 0;
 static s32 wait_buffer_counter = 0;
 static u32 first_i_frame_ready = 0;
+
+static inline int pool_index(vframe_t *vf)
+{
+    if ((vf >= &vfpool[0]) && (vf <= &vfpool[VF_POOL_SIZE-1])) {
+        return 0;
+    } else if ((vf >= &vfpool[1]) && (vf <= &vfpool2[VF_POOL_SIZE-1])) {
+        return 1;
+    } else {
+        return -1;
+    }
+}
 
 static inline u32 index2canvas(u32 index)
 {
@@ -191,6 +204,7 @@ static void set_frame_info(vframe_t *vf)
 
     vf->width  = frame_width = READ_VREG(MREG_PIC_WIDTH);
     vf->height = frame_height = READ_VREG(MREG_PIC_HEIGHT);
+    vf->flag = 0;
 
     if (frame_dur > 0) {
         vf->duration = frame_dur;
@@ -248,6 +262,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 {
     u32 reg, info, seqinfo, offset, pts, pts_valid = 0;
     vframe_t *vf;
+    u64 pts_us64 = 0;
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -268,7 +283,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
         }
 
         if ((((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) || ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_P))
-             && (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0)) {
+             && (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 0, &pts_us64) == 0)) {
             pts_valid = 1;
         }
 
@@ -347,6 +362,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->orientation = 0 ;
             vf->pts = (pts_valid) ? pts : 0;
+            vf->pts_us64 = (pts_valid) ? pts_us64 : 0;
 
             vfbuf_use[index] = 1;
 
@@ -402,6 +418,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->orientation = 0 ;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = (pts_valid) ? pts : 0;
+            vf->pts_us64 = (pts_valid) ? pts_us64 : 0;
 
             if ((error_skip(info, vf)) ||
                 ((first_i_frame_ready == 0) && ((PICINFO_TYPE_MASK & info) != PICINFO_TYPE_I))) {
@@ -431,6 +448,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->orientation = 0 ;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = 0;
+            vf->pts_us64 = 0;
 
             if ((error_skip(info, vf)) ||
                 ((first_i_frame_ready == 0) && ((PICINFO_TYPE_MASK & info) != PICINFO_TYPE_I))) {
@@ -471,7 +489,9 @@ static vframe_t *vmpeg_vf_get(void* op_arg)
 
 static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
-    kfifo_put(&recycle_q, (const vframe_t **)&vf);
+    if (pool_index(vf) == cur_pool_idx) {
+        kfifo_put(&recycle_q, (const vframe_t **)&vf);
+    }
 }
 
 static int vmpeg_event_cb(int type, void *data, void *private_data)
@@ -577,7 +597,9 @@ static void vmpeg_put_timer_func(unsigned long arg)
                 vf->index = -1;
             }
 
-            kfifo_put(&newframe_q, (const vframe_t **)&vf);
+            if (pool_index(vf) == cur_pool_idx) {
+                kfifo_put(&newframe_q, (const vframe_t **)&vf);
+            }
         }
     }
 
@@ -767,8 +789,10 @@ static void vmpeg12_local_init(void)
     INIT_KFIFO(recycle_q);
     INIT_KFIFO(newframe_q);
 
+    cur_pool_idx ^= 1;
+
     for (i=0; i<VF_POOL_SIZE; i++) {
-        const vframe_t *vf = &vfpool[i];
+        const vframe_t *vf = (cur_pool_idx == 0) ? &vfpool[i] : &vfpool2[i];
         vfpool[i].index = -1;
         kfifo_put(&newframe_q, &vf);
     }

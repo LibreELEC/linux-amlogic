@@ -15,6 +15,7 @@ config AMLOGIC_THERMAL
     select CPUCORE_THERMAL
     select GPUCORE_THERMAL
     select AML_VIRTUAL_THERMAL
+    depends on CPU_FREQ
     default n
     help
       This is the Amlogic Thermal interface driver

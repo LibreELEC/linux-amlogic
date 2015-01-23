@@ -158,5 +158,6 @@ typedef struct {
 #define  FBIOPUT_OSD_WINDOW_AXIS  	0x4513
 #define FBIOPUT_OSD_ROTATE_ON   	0x4516
 #define FBIOPUT_OSD_ROTATE_ANGLE	0x4517
+#define  FBIOPUT_OSD_SYNC_ADD	0x4518
 
 #endif /* OSD_MAIN_H */

@@ -567,13 +567,13 @@ printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
     if( (mode==TVMODE_480CVBS) || (mode==TVMODE_576CVBS) )
     {
         msleep(1000);
-#ifdef CONFIG_ARCH_MESON8B
+
 		CLK_GATE_ON(VCLK2_ENCI);
 		CLK_GATE_ON(VCLK2_VENCI1);
         CLK_GATE_ON(CTS_ENCI);
         CLK_GATE_ON(CTS_VDAC);
 		CLK_GATE_ON(DAC_CLK);
-#endif
+
         cvbs_cntl_output(1);
     }
 #endif

@@ -1508,6 +1508,42 @@ static ssize_t show_firstvpts(struct class *class,
     return sprintf(buf, "0x%x\n", timestamp_firstvpts_get());
 }
 
+
+
+static ssize_t show_firstapts(struct class *class,
+                         struct class_attribute *attr,
+                         char *buf)
+{
+    return sprintf(buf, "0x%x\n", timestamp_firstapts_get());
+}
+
+static ssize_t store_firstapts(struct class *class,
+                          struct class_attribute *attr,
+                          const char *buf,
+                          size_t size)
+{
+    unsigned pts;
+    ssize_t r;
+
+    r = sscanf(buf, "0x%x", &pts);
+    if (r != 1) {
+        return -EINVAL;
+    }
+
+    timestamp_firstapts_set(pts);
+
+    return size;
+}
+
+
+
+static ssize_t show_checkin_firstvpts(struct class *class,
+                         struct class_attribute *attr,
+                         char *buf)
+{
+    return sprintf(buf, "0x%x\n", timestamp_checkin_firstvpts_get());
+}
+
 static ssize_t show_vpause_flag(struct class *class,
                          struct class_attribute *attr,
                          char *buf)
@@ -1549,6 +1585,8 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(last_checkin_apts, S_IRUGO | S_IWUSR, show_last_checkin_apts, NULL),
     __ATTR(firstvpts, S_IRUGO | S_IWUSR, show_firstvpts, NULL),
     __ATTR(vpause_flag, S_IRUGO | S_IWUSR, show_vpause_flag, store_vpause_flag),
+    __ATTR(firstapts,  S_IRUGO | S_IWUSR | S_IWGRP, show_firstapts,    store_firstapts),
+    __ATTR(checkin_firstvpts, S_IRUGO | S_IWUSR, show_checkin_firstvpts, NULL),
     __ATTR_NULL
 };
 

@@ -986,19 +986,22 @@ static unsigned int log2i (unsigned int val) {
 }
 
 static int init_buf_spec(hevc_stru_t* hevc);
-
+extern u32 get_blackout_policy(void);
 static void uninit_pic_list(hevc_stru_t* hevc)
 {
 	int i;
-	for(i=0; i<MAX_REF_PIC_NUM; i++){
-    if(m_PIC[i].alloc_pages!=NULL && m_PIC[i].cma_page_count>0){
-        dma_release_from_contiguous(cma_dev, m_PIC[i].alloc_pages, m_PIC[i].cma_page_count);
-        printk("release cma buffer[%d] (%d %x)\n", i, m_PIC[i].cma_page_count, (unsigned)m_PIC[i].alloc_pages);
-        m_PIC[i].alloc_pages=NULL;
-        m_PIC[i].cma_page_count=0;
-    }
-  }
-  hevc->pic_list_init_flag = 0;
+
+	if (get_blackout_policy() == 1) {
+		for(i=0; i<MAX_REF_PIC_NUM; i++){
+			if(m_PIC[i].alloc_pages!=NULL && m_PIC[i].cma_page_count>0){
+				dma_release_from_contiguous(cma_dev,m_PIC[i].alloc_pages, m_PIC[i].cma_page_count);
+				printk("release cma buffer[%d] (%d %x)\n", i, m_PIC[i].cma_page_count, (unsigned)m_PIC[i].alloc_pages);
+				m_PIC[i].alloc_pages=NULL;
+				m_PIC[i].cma_page_count=0;
+			}
+		}
+	}
+	hevc->pic_list_init_flag = 0;
 }
 
 static void init_pic_list(hevc_stru_t* hevc)
@@ -2897,6 +2900,7 @@ static void set_frame_info(vframe_t *vf)
     vf->height = frame_height;
     vf->duration = frame_dur;
     vf->duration_pulldown = 0;
+    vf->flag = 0;
 
     ar = min(frame_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX);
     vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);

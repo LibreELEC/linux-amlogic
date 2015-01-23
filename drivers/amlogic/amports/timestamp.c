@@ -19,6 +19,7 @@ static u32 system_time_up = 0;
 static u32 audio_pts_up = 0;
 static u32 audio_pts_started = 0;
 static u32 first_vpts = 0;
+static u32 first_checkin_vpts = 0;
 static u32 first_apts = 0;
 
 static u32 system_time_scale_base = 1;
@@ -149,6 +150,21 @@ u32 timestamp_firstvpts_get(void)
     return first_vpts;
 }
 EXPORT_SYMBOL(timestamp_firstvpts_get);
+
+
+void timestamp_checkin_firstvpts_set(u32 pts)
+{
+    first_checkin_vpts = pts;
+    printk("video first checkin pts = %x\n", first_checkin_vpts);
+}
+EXPORT_SYMBOL(timestamp_checkin_firstvpts_set);
+
+u32 timestamp_checkin_firstvpts_get(void)
+{
+    return first_checkin_vpts;
+}
+EXPORT_SYMBOL(timestamp_checkin_firstvpts_get);
+
 
 void timestamp_firstapts_set(u32 pts)
 {

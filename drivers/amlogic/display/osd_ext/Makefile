@@ -12,3 +12,4 @@ endif
 
 EXTRA_CFLAGS += -Iinclude/linux/osd/
 EXTRA_CFLAGS += -Iinclude/linux/ge2d/
+EXTRA_CFLAGS += -Idrivers/staging/android/

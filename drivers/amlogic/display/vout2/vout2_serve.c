@@ -171,6 +171,7 @@ static void  set_vout_window(char *para)
 static const char *venc_mux_help = {
 	"venc_mux:\n"
 	"    0. single display, viu1->panel, viu2->null\n"
+	"    1. dual display, viu1->cvbs, viu2->panel\n"
 	"    2. dual display, viu1->hdmi, viu2->panel\n"
 	"    4. single display, viu1->null, viu2->hdmi\n"
 	"    8. dual display, viu1->panel, viu2->hdmi\n"
@@ -190,6 +191,10 @@ static ssize_t venc_mux_store(struct class *class, struct class_attribute *attr,
 	switch (mux) {
 	case 0x0:
 		mux_type = s_venc_mux;
+		aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, mux_type, 0, 4);
+		break;
+	case 0x1:
+		mux_type = mux |(s_venc_mux<<2);
 		aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, mux_type, 0, 4);
 		break;
 	case 0x2:

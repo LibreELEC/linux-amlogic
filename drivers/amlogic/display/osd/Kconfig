@@ -13,6 +13,13 @@ config FB_AM
 	help
 	  This is the frame buffer device driver.
 
+config FB_OSD_SUPPORT_SYNC_FENCE
+	bool "OSD SYNC FENCE"
+	default y
+	depends on  FB_AM
+	help
+	  Select to enable OSD SYNC FENCE.
+
 config FB_OSD2_ENABLE
 	bool "osd2 layer enable"
 	default y
@@ -26,6 +33,7 @@ config FB_OSD2_CURSOR
 	default n
 	help
 		Enables support for a mouse cursor using OSD2.
+
 config FB_OSD2_DEFAULT_BITS_PER_PIXEL
 	depends on FB_OSD2_ENABLE
 	int "default OSD2 BPP"

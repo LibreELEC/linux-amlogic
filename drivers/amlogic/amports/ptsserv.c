@@ -346,15 +346,16 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
 
         if (type == PTS_TYPE_VIDEO && pTable->first_checkin_pts == -1) {
             pTable->first_checkin_pts = val;
-            if(tsync_get_debug_pts_checkin() && tsync_get_debug_vpts()) {
+            timestamp_checkin_firstvpts_set(val);
+            //if(tsync_get_debug_pts_checkin() && tsync_get_debug_vpts()) {
                 printk("first check in vpts <0x%x:0x%x> ok!\n", offset, val);
-            }
+            //}
         }
         if (type == PTS_TYPE_AUDIO && pTable->first_checkin_pts == -1) {
             pTable->first_checkin_pts = val;
-            if (tsync_get_debug_pts_checkin() && tsync_get_debug_apts()) {
+            //if (tsync_get_debug_pts_checkin() && tsync_get_debug_apts()) {
                 printk("first check in apts <0x%x:0x%x> ok!\n", offset, val);
-            }
+            //}
         }
 
         if (tsync_get_debug_pts_checkin()) {
@@ -695,6 +696,8 @@ static int _pts_lookup_offset_inline(
 
             if (!pTable->first_lookup_ok) {
                 pTable->first_lookup_ok = 1;
+                if (type == PTS_TYPE_VIDEO)
+                    timestamp_firstvpts_set(*val);
                 if (tsync_get_debug_pts_checkout()) {
                     if (tsync_get_debug_vpts() && (type == PTS_TYPE_VIDEO)) {
                         printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
@@ -796,6 +799,7 @@ static int pts_lookup_offset_inline(
     u8 type, u32 offset, u32 *val, u32 pts_margin, u64 *uS64){
     int res = _pts_lookup_offset_inline(type,offset,val,pts_margin,uS64);
 
+#if 0
     if(timestamp_firstvpts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_VIDEO){
 	timestamp_firstvpts_set(*val);
     }
@@ -804,7 +808,10 @@ static int pts_lookup_offset_inline(
 	timestamp_firstvpts_set(*val);
     }
 #endif
-    else if(timestamp_firstapts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_AUDIO){
+    else
+#endif
+
+    if(timestamp_firstapts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_AUDIO){
 	timestamp_firstapts_set(*val);
     }
 

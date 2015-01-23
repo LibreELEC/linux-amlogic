@@ -56,6 +56,9 @@ static int amlsd_get_host_caps(struct device_node* of_node,
                 caps |= host_caps[i].caps;
         }
     };
+	if(caps & MMC_CAP_8_BIT_DATA){
+		caps |= MMC_CAP_4_BIT_DATA;
+	}
     pdata->caps = caps;
     printk("pdata->caps %x\n", pdata->caps);
 	return 0;

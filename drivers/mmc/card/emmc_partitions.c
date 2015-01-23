@@ -177,7 +177,11 @@ int get_reserve_partition_off (struct mmc_card *card) // byte unit
     if (storage_flag == EMMC_BOOT_FLAG) {
         off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;
     } else if (storage_flag == SPI_EMMC_FLAG) {
-        off = 0;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8B
+        off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;
+#else
+	      off = 0;
+#endif
     } else if ((storage_flag == 0) || (storage_flag == -1)){ // if storage_flag is invalid
         if (POR_EMMC_BOOT()) {
             off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;

@@ -1359,6 +1359,9 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq)
         timeout = 500;//mod_timer(&host->timeout_tlist,
                 //jiffies + 500/*10*nsecs_to_jiffies(mrq->data->timeout_ns)*/); // 5s
 
+    if(mrq->cmd->opcode == MMC_ERASE) //about 30S for erase cmd.
+        timeout = 3000;
+
     schedule_delayed_work(&host->timeout, timeout);
 
     spin_lock_irqsave(&host->mrq_lock, flags);

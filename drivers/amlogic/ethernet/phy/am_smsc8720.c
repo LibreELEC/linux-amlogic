@@ -47,6 +47,7 @@ static int smsc_phy_config_init(struct phy_device *phydev)
 	if (rc < 0)
 		return rc;
 
+	printk("/**************************************amlogic 8720 phy driver  init********************************************/\n");
 	/* If the SMSC PHY is in power down mode, then set it
 	 * in all capable mode before using it.
 	 */
@@ -72,11 +73,11 @@ static int smsc_phy_config_init(struct phy_device *phydev)
 		return rc;
 
 	/* Enable energy detect mode for this SMSC Transceivers */
-	rc = phy_write(phydev, MII_LAN83C185_CTRL_STATUS,
+/*	rc = phy_write(phydev, MII_LAN83C185_CTRL_STATUS,
 		       rc | MII_LAN83C185_EDPWRDOWN);
 	if (rc < 0)
 		return rc;
-
+*/
 	return smsc_phy_ack_interrupt (phydev);
 }
 
@@ -99,7 +100,7 @@ static int lan911x_config_init(struct phy_device *phydev)
 static int lan87xx_read_status(struct phy_device *phydev)
 {
 	int err = genphy_read_status(phydev);
-
+#if 0
 	if (!phydev->link) {
 		/* Disable EDPD to wake up PHY */
 		int rc = phy_read(phydev, MII_LAN83C185_CTRL_STATUS);
@@ -124,6 +125,7 @@ static int lan87xx_read_status(struct phy_device *phydev)
 		if (rc < 0)
 			return rc;
 	}
+#endif
 
 	return err;
 }
@@ -218,8 +220,8 @@ static struct phy_driver smsc_phy_driver[] = {
 
 	.driver		= { .owner = THIS_MODULE, }
 }, {
-	.phy_id		= 0x0007c0f0, /* OUI=0x00800f, Model#=0x0f */
-	.phy_id_mask	= 0xfffffff0,
+	.phy_id		= 0x0007c0f1, /* OUI=0x00800f, Model#=0x0f */
+	.phy_id_mask	= 0xffffffff,
 	.name		= "SMSC LAN8710/LAN8720",
 
 	.features	= (PHY_BASIC_FEATURES | SUPPORTED_Pause
@@ -265,7 +267,7 @@ static struct mdio_device_id __maybe_unused smsc_tbl[] = {
 	{ 0x0007c0b0, 0xfffffff0 },
 	{ 0x0007c0c0, 0xfffffff0 },
 	{ 0x0007c0d0, 0xfffffff0 },
-	{ 0x0007c0f0, 0xfffffff0 },
+	{ 0x0007c0f1, 0xffffffff },
 	{ }
 };
 

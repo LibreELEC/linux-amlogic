@@ -1468,7 +1468,7 @@ static bool migrate_balanced_pgdat(struct pglist_data *pgdat,
 		if (!populated_zone(zone))
 			continue;
 
-		if (zone->all_unreclaimable)
+		if (!zone_reclaimable(zone))
 			continue;
 
 		/* Avoid waking kswapd by allocating pages_to_migrate pages. */
@@ -1549,7 +1549,7 @@ bool numamigrate_update_ratelimit(pg_data_t *pgdat, unsigned long nr_pages)
 	else
 		pgdat->numabalancing_migrate_nr_pages += nr_pages;
 	spin_unlock(&pgdat->numabalancing_migrate_lock);
-	
+
 	return rate_limited;
 }
 

@@ -9,6 +9,9 @@
 **	macro  define  part
 **
 **************************************************************************/
+
+#define MAX_BUF_NUM	 3  /*fence relative*/
+
 #define	LEFT		0
 #define	RIGHT		1
 #define	OSD_RELATIVE_BITS               0x333f0
@@ -81,14 +84,14 @@ typedef void (*update_func_t)(void);
 typedef struct {
 	struct list_head list;
 	update_func_t update_func;  //each reg group has it's own update function.
-} hw_list_t;
+} hw_ext_list_t;
 
 typedef struct {
 	u32 width;  //in byte unit
 	u32	height;
 	u32 canvas_idx;
 	u32	addr;
-} fb_geometry_t;
+} fb_ext_geometry_t;
 
 typedef struct {
 	u16	h_enable;
@@ -113,7 +116,22 @@ typedef struct {
 typedef struct{
 	u32  on_off;
 	u32  angle;
-}osd_rotate_t;
+}osd_ext_rotate_t;
+
+typedef struct {
+	struct list_head list;
+
+	u32  fb_index;
+	u32  buf_num;
+	u32  xoffset;
+	u32  yoffset;
+	u32  yres;
+	s32  in_fd;
+	s32  out_fd;
+	u32  val;
+	struct sync_fence *in_fence;
+	struct files_struct * files;
+}osd_ext_fence_map_t;
 
 typedef pandata_t dispdata_t;
 
@@ -134,7 +152,7 @@ typedef struct {
 	u32             free_scale_enable[HW_OSD_COUNT];
 	u32             free_scale_width[HW_OSD_COUNT];
 	u32             free_scale_height[HW_OSD_COUNT];
-	fb_geometry_t   fb_gem[HW_OSD_COUNT];
+	fb_ext_geometry_t   fb_gem[HW_OSD_COUNT];
 	const color_bit_define_t *color_info[HW_OSD_COUNT];
 	u32             scan_mode;
 	u32             osd_ext_order;
@@ -144,12 +162,12 @@ typedef struct {
 	u32             block_mode[HW_OSD_COUNT];
 	u32		free_scale_mode[HW_OSD_COUNT];
 	u32		osd_reverse[HW_OSD_COUNT];
-	osd_rotate_t	rotate[HW_OSD_COUNT];
+	osd_ext_rotate_t	rotate[HW_OSD_COUNT];
 	pandata_t		rotation_pandata[HW_OSD_COUNT];
-	hw_list_t       reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
+	hw_ext_list_t       reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 	u32             clone[HW_OSD_COUNT];
 	u32             angle[HW_OSD_COUNT];
-} hw_para_t;
+} hw_para_ext_t;
 
 /************************************************************************
 **
@@ -188,7 +206,7 @@ static void osd2_update_disp_3d_mode(void);
 **
 **************************************************************************/
 static DEFINE_SPINLOCK(osd_ext_lock);
-static hw_para_t osd_ext_hw;
+static hw_para_ext_t osd_ext_hw;
 static unsigned long lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long fiq_flag;

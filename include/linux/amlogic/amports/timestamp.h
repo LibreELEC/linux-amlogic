@@ -58,6 +58,10 @@ extern void timestamp_firstvpts_set(u32 pts);
 
 extern u32 timestamp_firstvpts_get(void);
 
+extern void timestamp_checkin_firstvpts_set(u32 pts);
+
+extern u32 timestamp_checkin_firstvpts_get(void);
+
 extern void timestamp_firstapts_set(u32 pts);
 
 extern u32 timestamp_firstapts_get(void);

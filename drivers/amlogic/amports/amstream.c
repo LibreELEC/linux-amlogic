@@ -927,7 +927,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
     sub_wp = stbuf_sub_wp_get();
     sub_start = stbuf_sub_start_get();
 
-    if (sub_wp == sub_rp) {
+    if (sub_wp == sub_rp||sub_rp==0) {
         return 0;
     }
 
@@ -1930,12 +1930,25 @@ static ssize_t videobufused_show(struct class *class, struct class_attribute *at
 {
     char *pbuf = buf;
     stream_buf_t *p = NULL;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    stream_buf_t *p_hevc = NULL;
+#endif
+
     p = &bufs[0];
-	if (p->flag & BUF_FLAG_IN_USE) {
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if (HAS_HEVC_VDEC)
+        p_hevc = &bufs[BUF_TYPE_HEVC];
+#endif
+
+    if (p->flag & BUF_FLAG_IN_USE) {
         pbuf += sprintf(pbuf, "%d ", 1);
     }
-	else
-	{
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    else if(HAS_HEVC_VDEC && (p_hevc->flag & BUF_FLAG_IN_USE)) {
+        pbuf += sprintf(pbuf, "%d ", 1);
+    }
+#endif
+    else {
         pbuf += sprintf(pbuf, "%d ", 0);
     }
     return 1;
