@@ -250,7 +250,7 @@ bit[1:0]: enable bypass post when skip
 static int di_vscale_skip_enable = 3;
 #endif
 #else
-static int di_vscale_skip_enable = 4;
+static int di_vscale_skip_enable = 1;
 #endif
 
 #ifdef RUN_DI_PROCESS_IN_IRQ
