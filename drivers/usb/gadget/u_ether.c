@@ -875,17 +875,6 @@ static int get_ether_addr(const char *str, u8 *dev_addr)
 	return 1;
 }
 
-static int get_ether_addr_str(u8 dev_addr[ETH_ALEN], char *str, int len)
-{
-	if (len < 18)
-		return -EINVAL;
-
-	snprintf(str, len, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 dev_addr[0], dev_addr[1], dev_addr[2],
-		 dev_addr[3], dev_addr[4], dev_addr[5]);
-	return 18;
-}
-
 static int get_host_ether_addr(u8 *str, u8 *dev_addr)
 {
 	memcpy(dev_addr, str, ETH_ALEN);
@@ -895,6 +884,17 @@ static int get_host_ether_addr(u8 *str, u8 *dev_addr)
 	random_ether_addr(dev_addr);
 	memcpy(str, dev_addr, ETH_ALEN);
 	return 1;
+}
+
+static int get_ether_addr_str(u8 dev_addr[ETH_ALEN], char *str, int len)
+{
+	if (len < 18)
+		return -EINVAL;
+
+	snprintf(str, len, "%02x:%02x:%02x:%02x:%02x:%02x",
+		 dev_addr[0], dev_addr[1], dev_addr[2],
+		 dev_addr[3], dev_addr[4], dev_addr[5]);
+	return 18;
 }
 
 static const struct net_device_ops eth_netdev_ops = {
