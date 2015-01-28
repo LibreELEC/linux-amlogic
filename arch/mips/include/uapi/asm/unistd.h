@@ -1029,17 +1029,15 @@
 #define __NR_process_vm_writev		(__NR_Linux + 310)
 #define __NR_kcmp			(__NR_Linux + 311)
 #define __NR_finit_module		(__NR_Linux + 312)
-#define __NR_sched_setattr		(__NR_Linux + 313)
-#define __NR_sched_getattr		(__NR_Linux + 314)
 
 /*
  * Offset of the last N32 flavoured syscall
  */
-#define __NR_Linux_syscalls		314
+#define __NR_Linux_syscalls		312
 
 #endif /* _MIPS_SIM == _MIPS_SIM_NABI32 */
 
 #define __NR_N32_Linux			6000
-#define __NR_N32_Linux_syscalls		314
+#define __NR_N32_Linux_syscalls		312
 
 #endif /* _UAPI_ASM_UNISTD_H */
