@@ -875,10 +875,10 @@ void root_func(){
 //$$ L2 PROP_STR = "product_desc"
 //$$ L2 PROP_STR = "cec_osd_string"
         vend_data: vend_data{
-            vendor_name = "Amlogic";           /* Max Chars: 8     */
+            vendor_name = "WeTek";                  /* Max Chars: 8     */
             vendor_id = <0x000000>;                 /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt   */
-            product_desc = "MX MBox G18Ref";        /* Max Chars: 16    */
-            cec_osd_string = "Amlogic MBox";        /* Max Chars: 14    */
+            product_desc = "WeTek Play";            /* Max Chars: 16    */
+            cec_osd_string = "WeTek Play";          /* Max Chars: 14    */
         };
 
 //$$ MATCH "HDMI_pwr-ctrl_match" = <&pwr_ctrl>
