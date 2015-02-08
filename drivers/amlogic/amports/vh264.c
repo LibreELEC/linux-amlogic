@@ -34,6 +34,7 @@
 #include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
 #include <linux/amlogic/amports/vformat.h>
+#include <linux/amlogic/amports/tsync.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
@@ -806,7 +807,9 @@ static int vh264_set_params(void)
     aspect_ratio_idc = (seq_info >> 16) & 0xff;
 
     if (timing_info_present_flag) {
-        fixed_frame_rate_flag = seq_info & 0x40;
+        if (tsync_get_enable()) {
+            fixed_frame_rate_flag = seq_info & 0x40;
+        }
 
         if (((num_units_in_tick * 120) >= time_scale && ((!sync_outside) || (!frame_dur))) && num_units_in_tick && time_scale) {
             if (use_idr_framerate || !frame_dur || !duration_from_pts_done || vh264_running) {

@@ -818,6 +818,12 @@ void tsync_set_dec_reset(void)
 }
 EXPORT_SYMBOL(tsync_set_dec_reset);
 
+int tsync_get_enable(void)
+{
+    return tsync_enable;
+}
+EXPORT_SYMBOL(tsync_get_enable);
+
 void tsync_set_enable(int enable)
 {
     tsync_enable = enable;
