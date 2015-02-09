@@ -1322,10 +1322,10 @@ static int aml_sdio_probe(struct platform_device *pdev)
         mmc->alldev_claim = &aml_sdio_claim;
         mmc->ios.clock = 400000;
         mmc->ios.bus_width = MMC_BUS_WIDTH_1;
-        mmc->max_blk_count = 4095;
-        mmc->max_blk_size = 4095;
+        mmc->max_blk_count = 256;
         mmc->max_req_size = pdata->max_req_size;
         mmc->max_seg_size = mmc->max_req_size;
+        mmc->max_blk_size = mmc->max_req_size / mmc->max_blk_count;
         mmc->max_segs = 1024;
         mmc->ocr_avail = pdata->ocr_avail;
         mmc->ocr = pdata->ocr_avail;
