@@ -108,8 +108,6 @@ int aarch64_insn_patch_text_nosync(void *addr, u32 insn);
 int aarch64_insn_patch_text_sync(void *addrs[], u32 insns[], int cnt);
 int aarch64_insn_patch_text(void *addrs[], u32 insns[], int cnt);
 
-#endif  /* __ASSEMBLY__ */
-
 bool aarch32_insn_is_wide(u32 insn);
 
 #define A32_RN_OFFSET	16
