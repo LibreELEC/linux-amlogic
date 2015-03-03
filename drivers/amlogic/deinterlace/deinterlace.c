@@ -192,7 +192,7 @@ static int receiver_is_amvideo = 1;
 
 static unsigned char new_keep_last_frame_enable = 0;
 static int bypass_state = 1;
-static int bypass_prog = 0;
+static int bypass_prog = 1;
 static int bypass_hd_prog = 0;
 #if (MESON_CPU_TYPE>=MESON_CPU_TYPE_MESON8)
 static int bypass_interlace_output = 0;
