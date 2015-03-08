@@ -73,6 +73,13 @@ config LEDS_LM3642
 	  converter plus 1.5A constant current driver for a high-current
 	  white LED.
 
+config LEDS_WETEKPLAY
+	tristate "LED support for the WeTek.Play status LED"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for controlling the status LED
+	  of the WeTek.Play box. ON means BLUE, OFF means RED.
+
 
 config LEDS_LOCOMO
 	tristate "LED Support for Locomo device"
