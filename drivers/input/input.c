@@ -28,6 +28,11 @@
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
 #include "input-compat.h"
+// Led Trigger Support.
+#ifdef CONFIG_LEDS_TRIGGER_REMOTE_CONTROL
+#include <linux/leds.h>
+extern void ledtrig_rc_activity(struct led_classdev *led_cdev);
+#endif
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
@@ -179,7 +184,9 @@ static void input_repeat_key(unsigned long data)
 {
 	struct input_dev *dev = (void *) data;
 	unsigned long flags;
-
+#ifdef CONFIG_LEDS_TRIGGER_REMOTE_CONTROL
+	ledtrig_rc_activity(NULL);
+#endif
 	spin_lock_irqsave(&dev->event_lock, flags);
 
 	if (test_bit(dev->repeat_key, dev->key) &&
@@ -427,6 +434,9 @@ void input_event(struct input_dev *dev,
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 
+#ifdef CONFIG_LEDS_TRIGGER_REMOTE_CONTROL
+		ledtrig_rc_activity(NULL);
+#endif
 		spin_lock_irqsave(&dev->event_lock, flags);
 		input_handle_event(dev, type, code, value);
 		spin_unlock_irqrestore(&dev->event_lock, flags);
