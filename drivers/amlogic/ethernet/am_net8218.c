@@ -55,6 +55,12 @@
 #define DRV_NAME	DRIVER_NAME
 #define DRV_VERSION	"v2.0.0"
 
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+#include <linux/leds.h>
+extern void ledtrig_eth_linkup(struct led_classdev *led_cdev);
+extern void ledtrig_eth_linkdown(struct led_classdev *led_cdev);
+#endif
+
 #undef CONFIG_HAS_EARLYSUSPEND
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -975,6 +981,14 @@ static void aml_adjust_link(struct net_device *dev)
 		return;
 
 	spin_lock_irqsave(&priv->lock, flags);
+
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+	if (phydev->link)
+		ledtrig_eth_linkup(NULL);
+	else
+		ledtrig_eth_linkdown(NULL);
+#endif
+
 	if(phydev->phy_id == INTERNALPHY_ID){
 		val = (8<<27)|(7 << 24)|(1<<16)|(1<<15)|(1 << 13)|(1 << 12)|(4 << 4)|(0 << 1);
 		PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, val);

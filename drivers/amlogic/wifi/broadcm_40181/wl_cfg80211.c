@@ -92,6 +92,12 @@
 #define IW_WSEC_ENABLED(wsec)   ((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED))
 #endif /* BCMWAPI_WPI */
 
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+#include <linux/leds.h>
+extern void ledtrig_wifi_linkup(struct led_classdev *led_cdev);
+extern void ledtrig_wifi_linkdown(struct led_classdev *led_cdev);
+#endif
+
 static struct device *cfg80211_parent_dev = NULL;
 struct wl_priv *wlcfg_drv_priv = NULL;
 u32 wl_dbg_level = WL_DBG_ERR;
@@ -11181,6 +11187,9 @@ static u32 wl_get_ielen(struct wl_priv *wl)
 static void wl_link_up(struct wl_priv *wl)
 {
 	wl->link_up = true;
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+	ledtrig_wifi_linkup(NULL);
+#endif
 }
 
 static void wl_link_down(struct wl_priv *wl)
@@ -11191,6 +11200,9 @@ static void wl_link_down(struct wl_priv *wl)
 	wl->link_up = false;
 	conn_info->req_ie_len = 0;
 	conn_info->resp_ie_len = 0;
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+	ledtrig_wifi_linkdown(NULL);
+#endif
 }
 
 static unsigned long wl_lock_eq(struct wl_priv *wl)
