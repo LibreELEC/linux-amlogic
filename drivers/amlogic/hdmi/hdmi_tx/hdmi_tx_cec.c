@@ -659,6 +659,7 @@ static irqreturn_t cec_isr_handler(int irq, void *dev_instance)
 {
     unsigned char rx_msg[MAX_MSG], rx_len;
 
+    udelay(100);
     //cec_disable_irq();
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     unsigned int intr_stat = 0;
