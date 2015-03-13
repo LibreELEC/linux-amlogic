@@ -114,6 +114,7 @@ static inline bool id_aa64mmfr0_mixed_endian_el0(u64 mmfr0)
 	return (ID_AA64MMFR0_BIGEND(mmfr0) == 0x1) ||
 		(ID_AA64MMFR0_BIGENDEL0(mmfr0) == 0x1);
 }
+
 #endif /* __ASSEMBLY__ */
 
 #endif
