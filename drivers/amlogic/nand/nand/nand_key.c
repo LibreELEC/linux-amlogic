@@ -578,7 +578,7 @@ static int aml_nand_key_init(struct mtd_info *mtd)
 		offset = mtd->erasesize;
 		offset *= remain_start_block;
 		error = mtd->_block_isbad(mtd, offset);
-		if (error) {
+		if (error == FACTORY_BAD_BLOCK_ERROR) {
 			aml_chip->aml_nandkey_info->nand_bbt_info.nand_bbt[bad_blk_cnt++] = remain_start_block;
 			if(bad_blk_cnt >= MAX_BAD_BLK_NUM)
 			{
