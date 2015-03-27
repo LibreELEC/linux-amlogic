@@ -422,17 +422,21 @@ void cec_input_handle_message(void)
 
     opcode = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.opcode;
 
+    hdmi_print(INF, CEC "opcode:0x%x, hdmitx_device->cec_func_config:0x%x\n",opcode,hdmitx_device->cec_func_config);
+
     /* process key event messages from tv */
     if(hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK))
     {
         switch (opcode) {
         case CEC_OC_USER_CONTROL_PRESSED:
+        case CEC_OC_VENDOR_REMOTE_BUTTON_DOWN:
             // check valid msg
             {
                 unsigned char opernum;
                 unsigned char follower;
                 opernum  = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].operand_num;
                 follower = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.header & 0x0f;
+                hdmi_print(INF, CEC "opernum:0x%x, follower:0x%x\n",opernum,follower);
                 if(opernum != 1 || follower == 0xf) break;
             }
             cec_user_control_pressed_irq();
