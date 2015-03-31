@@ -230,9 +230,11 @@ static void set_hpll_clk_out(unsigned clk)
     printk("%s[%d] clk = %d\n", __func__, __LINE__, clk);
     switch(clk){
         case 1488:
+        case 1490:
             WRITE_CBUS_REG(HHI_VID_PLL_CNTL, 0x43e);
             break;
         case 1080:
+        case 1081:
             WRITE_CBUS_REG(HHI_VID_PLL_CNTL, 0x42d);
             break;
         case 1066:
@@ -587,17 +589,32 @@ static enc_clk_val_t setting_enc_clk_val[] = {
     {VMODE_480I,       1080, 4, 1, VIU_ENCI,  5, 4, 2,-1,  2, -1, -1,  2,  -1},
     {VMODE_480CVBS,    1080, 4, 1, VIU_ENCI,  5, 4, 2,-1,  2, -1, -1,  2,  -1},
     {VMODE_480P,       1080, 4, 1, VIU_ENCP,  5, 4, 2, 1, -1, -1, -1,  1,  -1},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {VMODE_480P_59HZ,  1081, 4, 1, VIU_ENCP,  5, 4, 2, 1, -1, -1, -1,  1,  -1},
+#endif
     {VMODE_576I,       1080, 4, 1, VIU_ENCI,  5, 4, 2,-1,  2, -1, -1,  2,  -1},
     {VMODE_576CVBS,    1080, 4, 1, VIU_ENCI,  5, 4, 2,-1,  2, -1, -1,  2,  -1},
     {VMODE_576P,       1080, 4, 1, VIU_ENCP,  5, 4, 2, 1, -1, -1, -1,  1,  -1},
     {VMODE_720P,       1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {VMODE_720P_59HZ,  1490, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
+#endif
     {VMODE_1080I,      1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {VMODE_1080I_59HZ, 1490, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
+#endif
     {VMODE_1080P,      1488, 1, 1, VIU_ENCP, 10, 1, 1, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080P,      1488, 1, 1, VIU_ENCP, 10, 1, 1, 1, -1, -1, -1,  1,  -1},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {VMODE_1080P_59HZ, 1490, 1, 1, VIU_ENCP, 10, 1, 1, 1, -1, -1, -1,  1,  -1},
+#endif
     {VMODE_720P_50HZ,  1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080I_50HZ, 1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080P_50HZ, 1488, 1, 1, VIU_ENCP, 10, 1, 1, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080P_24HZ, 1488, 2, 1, VIU_ENCP, 10, 2, 1, 1, -1, -1, -1,  1,  -1},
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    {VMODE_1080P_23HZ, 1490, 2, 1, VIU_ENCP, 10, 2, 1, 1, -1, -1, -1,  1,  -1},
+#endif
     {VMODE_VGA,  1066, 3, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  1},
     {VMODE_SVGA, 1058, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  1},
     {VMODE_XGA, 1085, 1, 1, VIU_ENCP, 5, 1, 1, 1, -1, -1, -1,  1,  1},
