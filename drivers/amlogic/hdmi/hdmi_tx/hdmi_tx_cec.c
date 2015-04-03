@@ -1564,6 +1564,16 @@ void cec_routing_information(cec_rx_message_t* pcec_message)
 	    cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_status = DEVICE_MENU_INACTIVE;
 	}
 }
+
+void cec_usrcmd_device_menu_control(unsigned char log_addr, unsigned char button)
+{
+    MSG_P1(cec_global_info.my_node_index, log_addr, CEC_OC_USER_CONTROL_PRESSED, button);
+    cec_ll_tx(gbl_msg, 3);
+
+    MSG_P0(cec_global_info.my_node_index, log_addr, CEC_OC_USER_CONTROL_RELEASED);
+    cec_ll_tx(gbl_msg, 2);
+}
+
 /***************************** cec middle level code end *****************************/
 
 
@@ -1876,6 +1886,9 @@ void cec_usrcmd_set_dispatch(const char * buf, size_t count)
         break;
     case PING_TV:    //0x1a LA : For TV CEC detected.
         detect_tv_support_cec(param[1]);
+        break;
+    case DEVICE_MENU_CONTROL:    //0x1b
+        cec_usrcmd_device_menu_control(param[1], param[2]);
         break;
     default:
         break;

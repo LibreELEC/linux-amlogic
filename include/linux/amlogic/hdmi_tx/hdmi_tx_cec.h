@@ -477,6 +477,7 @@ typedef enum {
     SET_TEXT_VIEW_ON,
     POLLING_ONLINE_DEV, //0x19
     PING_TV,
+    DEVICE_MENU_CONTROL, //0x1b
     USR_CMD_MAX,
 } usr_cmd_type_e;
 
@@ -545,6 +546,7 @@ void cec_usrcmd_set_deactive_source(unsigned char log_addr);
 void cec_usrcmd_clear_node_dev_real_info_mask(unsigned char log_addr, cec_info_mask mask);
 void cec_usrcmd_set_report_physical_address(void);
 void cec_usrcmd_text_view_on(unsigned char log_addr);
+void cec_usrcmd_device_menu_control(unsigned char log_addr, unsigned char button);
 void cec_polling_online_dev(int log_addr, int *bool);
 void cec_device_vendor_id(cec_rx_message_t* pcec_message);
 void cec_report_power_status(cec_rx_message_t* pcec_message);
