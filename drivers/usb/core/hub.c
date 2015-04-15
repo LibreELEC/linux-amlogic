@@ -1706,7 +1706,8 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	 */
 #ifdef CONFIG_PM_RUNTIME
 	if (hdev->dev.power.autosuspend_delay >= 0)
-		pm_runtime_set_autosuspend_delay(&hdev->dev, 0);
+		/* for Amlogic dwc_otg usb controller, change to 100ms */
+		pm_runtime_set_autosuspend_delay(&hdev->dev, 100);
 #endif
 
 	/*

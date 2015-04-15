@@ -594,8 +594,9 @@ void __init mem_init(void)
 	max_mapnr   = pfn_to_page(max_pfn + PHYS_PFN_OFFSET) - mem_map;
 
 	/* this will put all unused low memory onto the freelists */
+#ifndef CONFIG_PLAT_MESON
 	free_unused_memmap(&meminfo);
-
+#endif
 	totalram_pages += free_all_bootmem();
 
 #ifdef CONFIG_SA1111

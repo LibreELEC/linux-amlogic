@@ -1,0 +1,9 @@
+# Amlogic RTC
+
+
+config AML_RTC
+    bool "RTC support"
+    default y
+    select RTC_CLASS
+    help
+      This is the Amlogic internal RTC driver
