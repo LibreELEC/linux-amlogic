@@ -315,7 +315,7 @@ static struct android_usb_function ffs_function = {
 	.attributes	= ffs_function_attributes,
 };
 
-static int functionfs_ready_callback(struct ffs_data *ffs)
+static int __maybe_unused functionfs_ready_callback(struct ffs_data *ffs)
 {
 	struct android_dev *dev = _android_dev;
 	struct functionfs_config *config = ffs_function.config;
@@ -338,7 +338,7 @@ err:
 	return ret;
 }
 
-static void functionfs_closed_callback(struct ffs_data *ffs)
+static void __maybe_unused functionfs_closed_callback(struct ffs_data *ffs)
 {
 	struct android_dev *dev = _android_dev;
 	struct functionfs_config *config = ffs_function.config;
@@ -356,12 +356,12 @@ static void functionfs_closed_callback(struct ffs_data *ffs)
 	mutex_unlock(&dev->mutex);
 }
 
-static void *functionfs_acquire_dev_callback(const char *dev_name)
+static void __maybe_unused *functionfs_acquire_dev_callback(const char *dev_name)
 {
 	return 0;
 }
 
-static void functionfs_release_dev_callback(struct ffs_data *ffs_data)
+static void __maybe_unused functionfs_release_dev_callback(struct ffs_data *ffs_data)
 {
 }
 
@@ -830,7 +830,7 @@ err_usb_add_function:
 	return ret;
 }
 
-static void mass_storage_function_unbind_config(struct android_usb_function *f,
+static void __maybe_unused mass_storage_function_unbind_config(struct android_usb_function *f,
 					       struct usb_configuration *c)
 {
 	int i;
