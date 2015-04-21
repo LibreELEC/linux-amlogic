@@ -184,7 +184,7 @@ static int aml_dai_pcm_resume(struct snd_soc_dai *dai)
 
 #endif
 
-#define AML_DAI_I2S_RATES		(SNDRV_PCM_RATE_8000_96000)
+#define AML_DAI_I2S_RATES		(SNDRV_PCM_RATE_8000_192000)
 #define AML_DAI_I2S_FORMATS		(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 #ifdef AML_DAI_PCM_SUPPORT
