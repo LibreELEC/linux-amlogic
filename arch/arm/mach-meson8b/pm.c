@@ -81,6 +81,7 @@ static void uart_change_buad(unsigned reg,unsigned clk_rate){
 	aml_clr_reg32_mask(reg, 0x7FFFFF);
 	aml_set_reg32_bits(reg, (((clk_rate / (115200 * 4)) - 1) & 0x7fffff)|(1<<23), 0, 24);
 }
+
 static void wait_uart_empty(void)
 {
 	do{
@@ -105,7 +106,8 @@ void clk_switch(int flag)
 					udelay(10);
 					aml_set_reg32_mask(clks[i].clk_addr,(1<<8));//switch to pll
 					udelay(10);
-					uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
+					if(!(aml_read_reg32(P_AO_UART_REG5) & (1 << 24)))//Not from crystal pad
+						uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
 					clks[i].clk_flag = 0;
 				}
 			printk(KERN_INFO "clk %s(%x) on\n", clks[i].clk_name, ((clks[i].clk_addr)&0xffff)>>2);
@@ -122,7 +124,8 @@ void clk_switch(int flag)
 					udelay(10);
 					aml_clr_reg32_mask(clks[i].clk_addr, (1 << 7)); // switch to 24M
 					udelay(10);
-					uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
+					if(!(aml_read_reg32(P_AO_UART_REG5) & (1 << 24)))//Not from crystal pad
+						uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
 					clks[i].clk_flag=1;
 				}
 			}
@@ -256,47 +259,111 @@ static void meson_system_late_resume(struct early_suspend *h)
 #endif
 
 #ifdef CONFIG_AO_TRIG_CLK
+int run_arc_program_rtc(void)
+{
+	//int i;
+	unsigned v;
+
+	if (cec_config & 0x1)// 4 bytes: use to control cec switch on/off,distinguish between Mbox and Tablet. bit[0]:1:Mbox; 0:Tablet
+	{
+		aml_write_reg32(P_AO_REMAP_REG0,0);
+		udelay(10);
+
+		v = ((IO_SRAM_PHY_BASE & 0xFFFFF)>>12);
+#ifdef CONFIG_MESON_TRUSTZONE
+		meson_secure_reg_write(P_AO_SECURE_REG0, v<<8 | meson_secure_reg_read(P_AO_SECURE_REG0)); //TEST_N : 1->output mode; 0->input mode
+#else
+		aml_write_reg32(P_AO_SECURE_REG0, v<<8 | aml_read_reg32(P_AO_SECURE_REG0)); //TEST_N : 1->output mode; 0->input mode
+#endif
+
+		aml_write_reg32(P_AO_RTI_STATUS_REG1, 0);//clean status
+
+		//    	writel(0x200,P_AO_CPU_CNTL);//halt first
+		aml_write_reg32(P_RESET2_REGISTER, aml_read_reg32(P_RESET2_REGISTER)|(1<<13));//reset AO_CPU
+
+		udelay(10);
+
+		//      enable arc
+		aml_write_reg32(P_AO_CPU_CNTL, 0x0c900101);//remap is right?
+
+		udelay(20);
+		if (aml_read_reg32(P_AO_RTI_STATUS_REG1) == 0xeeeeaaaa) {
+			printk("AO cpu runs ok.\n");
+			return 0;
+		}
+		else{
+			printk("AO cpu runs fail. 0x%x\n",aml_read_reg32(P_AO_RTI_STATUS_REG1));
+			return -1;
+		}
+	}
+	return -1;
+}
+
 int run_arc_program(void)
 {
 //	int i;
 	unsigned vaddr2,v;
+#ifndef CONFIG_MESON_TRUSTZONE
 	unsigned* pbuffer;
+#endif
+
+#ifdef CONFIG_MESON_TRUSTZONE
+	int ret_val;
+	struct sram_hal_api_arg arg;
+
+	vaddr2 = IO_SRAM_PHY_BASE;
+#else
 	vaddr2 = IO_SRAM_BASE;
+#endif
 
 	if(cec_config & 0x1)// 4 bytes: use to control cec switch on/off,distinguish between Mbox and Tablet. bit[0]:1:Mbox; 0:Tablet
-    {
-	aml_write_reg32(P_AO_REMAP_REG0,0);
-	udelay(10);
-	pbuffer = (unsigned*)vaddr2;
+	{
+		aml_write_reg32(P_AO_REMAP_REG0,0);
+		udelay(10);
 
-	memcpy(pbuffer,arc_code,sizeof(arc_code));//need not flush cache for sram. Sram locates at io mapping.
 
-//    	for(i = 0; i<sizeof(arc_code)/4; i+=4,pbuffer+=4)
-//    		printk(" 0x%x	0x%x	0x%x	0x%x \n",*(pbuffer),*(pbuffer+1),*(pbuffer+2),*(pbuffer+3));
-        v = ((IO_SRAM_PHY_BASE & 0xFFFFF)>>12);
-        aml_write_reg32(P_AO_SECURE_REG0, v<<8 | aml_read_reg32(P_AO_SECURE_REG0)); //TEST_N : 1->output mode; 0->input mode
+#ifdef CONFIG_MESON_TRUSTZONE
+		arg.cmd = (unsigned int)TRUSTZONE_HAL_API_SRAM_WR_ADDR;
+		arg.req_len = sizeof(arc_code);
+		arg.res_len = sizeof(arc_code);
+		arg.req_phy_addr = vaddr2;
+		arg.res_phy_addr = virt_to_phys(arc_code);
+		arg.ret_phy_addr = virt_to_phys(&ret_val);
+		meson_secure_sram_copy(&arg);
+#else
+		pbuffer = (unsigned*)vaddr2;
+		memcpy(pbuffer,arc_code,sizeof(arc_code));//need not flush cache for sram. Sram locates at io mapping.
+#endif
 
-        aml_write_reg32(P_AO_RTI_STATUS_REG1, 0);//clean status
+		//    	for(i = 0; i<sizeof(arc_code)/4; i+=4,pbuffer+=4)
+		//    		printk(" 0x%x	0x%x	0x%x	0x%x \n",*(pbuffer),*(pbuffer+1),*(pbuffer+2),*(pbuffer+3));
+		v = ((IO_SRAM_PHY_BASE & 0xFFFFF)>>12);
+#ifdef CONFIG_MESON_TRUSTZONE
+		meson_secure_reg_write(P_AO_SECURE_REG0, v<<8 | meson_secure_reg_read(P_AO_SECURE_REG0)); //TEST_N : 1->output mode; 0->input mode
+#else
+		aml_write_reg32(P_AO_SECURE_REG0, v<<8 | aml_read_reg32(P_AO_SECURE_REG0)); //TEST_N : 1->output mode; 0->input mode
+#endif
 
-//    	writel(0x200,P_AO_CPU_CNTL);//halt first
-	aml_write_reg32(P_RESET2_REGISTER, aml_read_reg32(P_RESET2_REGISTER)|(1<<13));//reset AO_CPU
+		aml_write_reg32(P_AO_RTI_STATUS_REG1, 0);//clean status
 
-	udelay(10);
+		//    	writel(0x200,P_AO_CPU_CNTL);//halt first
+		aml_write_reg32(P_RESET2_REGISTER, aml_read_reg32(P_RESET2_REGISTER)|(1<<13));//reset AO_CPU
 
-//      enable arc
-        aml_write_reg32(P_AO_CPU_CNTL, 0x0c900101);//remap is right?
+		udelay(10);
+		//      enable arc
+		aml_write_reg32(P_AO_CPU_CNTL, 0x0c900101);//remap is right?
 
-	udelay(20);
-	if(aml_read_reg32(P_AO_RTI_STATUS_REG1) == 0xeeeeaaaa){
-		printk("AO cpu runs ok.\n");
-		return 0;
+		udelay(20);
+		if (aml_read_reg32(P_AO_RTI_STATUS_REG1) == 0xeeeeaaaa) {
+			printk("AO cpu runs ok.\n");
+			return 0;
+		}
+		else {
+			printk("AO cpu runs fail. 0x%x\n",aml_read_reg32(P_AO_RTI_STATUS_REG1));
+			return -1;
+		}
 	}
-	else{
-		printk("AO cpu runs fail. 0x%x\n",aml_read_reg32(P_AO_RTI_STATUS_REG1));
-		return -1;
-	}
-    }
-    return -1;
+	return -1;
 }
 
 int stop_ao_cpu(void)

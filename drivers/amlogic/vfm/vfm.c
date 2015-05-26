@@ -253,13 +253,20 @@ char* vf_get_receiver_name(const char* provider_name)
 static void vfm_init(void)
 {
 
-#ifdef CONFIG_POST_PROCESS_MANAGER
+#if (defined CONFIG_POST_PROCESS_MANAGER)&&(defined CONFIG_DEINTERLACE)
     char def_id[] = "default";
-    char def_name_chain[] = "decoder ppmgr amvideo";
+    char def_name_chain[] = "decoder ppmgr deinterlace amvideo";
+#elif (defined CONFIG_POST_PROCESS_MANAGER)
+     char def_id[] = "default";
+     char def_name_chain[] = "decoder ppmgr amvideo";
+#elif (defined CONFIG_DEINTERLACE)
+    char def_id[] = "default";
+    char def_name_chain[] = "decoder deinterlace amvideo";
 #else
-    char def_id[] = "default";
-    char def_name_chain[] = "decoder amvideo";
+     char def_id[] = "default";
+     char def_name_chain[] = "decoder amvideo";
 #endif
+
 #ifdef CONFIG_TVIN_VIUIN
     char def_ext_id[] = "default_ext";
     char def_ext_name_chain[] = "vdin amvideo2";

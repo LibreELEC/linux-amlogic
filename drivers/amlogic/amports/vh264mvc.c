@@ -23,22 +23,29 @@
 #include <linux/interrupt.h>
 #include <linux/timer.h>
 #include <linux/platform_device.h>
+#include <mach/am_regs.h>
 #include <linux/amlogic/amports/amstream.h>
 #include <linux/amlogic/amports/ptsserv.h>
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/vformat.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
+#include <plat/io.h>
 #include <linux/module.h>
+#include <linux/slab.h>
+#include "amports_priv.h"
 
-#include <mach/am_regs.h>
+#include "vdec.h"
 #include "vdec_reg.h"
 
 #include "amvdec.h"
 #include "vh264mvc_mc.h"
+#define TIME_TASK_PRINT_ENABLE  0x100
+#define PUT_PRINT_ENABLE	0x200
 
 #define DRIVER_NAME "amvdec_h264mvc"
 #define MODULE_NAME "amvdec_h264mvc"
@@ -58,7 +65,10 @@
 #define STAT_VDEC_RUN       0x20
 
 #define DROPPING_THREAD_HOLD    4
-#define DROPPING_FIRST_WAIT     6
+#define DROPPING_FIRST_WAIT     16
+#define DISPLAY_INVALID_POS    -65536
+
+#define INIT_DROP_FRAME_CNT    8
 
 static int  vh264mvc_vf_states(vframe_states_t *states, void*);
 static vframe_t *vh264mvc_vf_peek(void*);
@@ -91,6 +101,7 @@ static u32 sync_outside = 0;
 static u32 vh264mvc_ratio;
 static u32 h264mvc_ar;
 static u32 no_dropping_cnt;
+static s32 init_drop_cnt;
 
 #ifdef DEBUG_SKIP
 static unsigned long view_total, view_dropped;
@@ -108,10 +119,7 @@ extern u32 trickmode_i;
 
 static DEFINE_SPINLOCK(lock);
 
-#define MODE_ERROR 0
-#define MODE_FULL  1
-
-static int vh264mvc_stop(int mode);
+static int vh264mvc_stop(void);
 static s32 vh264mvc_init(void);
 
 /***************************
@@ -153,6 +161,7 @@ static s32 vh264mvc_init(void);
 #define CMD_ALLOC_VIEW_0           1
 #define CMD_ALLOC_VIEW_1           2
 #define CMD_FRAME_DISPLAY          3
+#define CMD_FATAL_ERROR            4 
 
 #define CANVAS_INDEX_START         AMVDEC_H264MVC_CANVAS_INDEX
 
@@ -204,6 +213,7 @@ static int dbg_mode = 0;
 static int dbg_cmd = 0;
 static int view_mode = 3; /* 0, left; 1 ,right ; 2, left<->right 3, right<->left */
 static int drop_rate = 2;
+static int drop_thread_hold = 0;
 /**/
 
 #define MVC_BUF_NUM     (DECODE_BUFFER_NUM_MAX+DISPLAY_BUFFER_NUM)
@@ -244,7 +254,10 @@ static void uninit_vf_buf(void)
 typedef struct {
 	int view0_buf_id;
 	int view1_buf_id;
+    int view0_drop;
+    int view1_drop;	
 	int display_pos;
+	int used;
 	int slot;
 	unsigned stream_offset;
 } mvc_info_t;
@@ -256,6 +269,10 @@ static s32 view0_vfbuf_use[DECODE_BUFFER_NUM_MAX];
 static s32 view1_vfbuf_use[DECODE_BUFFER_NUM_MAX];
 
 static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
+static s32 dirty_frame_num = 0; 
+static s32 enable_recycle = 0 ;
+
+static s32 init_drop_frame_id[INIT_DROP_FRAME_CNT];
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
 {
@@ -316,6 +333,43 @@ static int  vh264mvc_vf_states(vframe_states_t *states, void* op_arg)
     return 0;
 }
 
+void send_drop_cmd(void)
+{
+	int ready_cnt = 0;
+    int temp_get_ptr = get_ptr;
+    int temp_fill_ptr = fill_ptr;
+	while(temp_get_ptr != temp_fill_ptr){
+		if((vfpool_idx[temp_get_ptr].view0_buf_id >= 0)&&(vfpool_idx[temp_get_ptr].view1_buf_id >= 0)
+		&&(vfpool_idx[temp_get_ptr].view0_drop == 0)&&(vfpool_idx[temp_get_ptr].view1_drop == 0)){
+			ready_cnt++;
+		}
+		INCPTR(temp_get_ptr);
+	}
+	if(dbg_mode&0x40){
+		printk("ready_cnt is %d ; no_dropping_cnt is %d \n", ready_cnt,no_dropping_cnt);
+	}
+    if((no_dropping_cnt >= DROPPING_FIRST_WAIT) && (ready_cnt < drop_thread_hold)) {
+        WRITE_VREG(DROP_CONTROL, (1 << 31) | (drop_rate));
+    } else {
+        WRITE_VREG(DROP_CONTROL, 0);
+    }   	
+}
+#if 0
+int get_valid_frame(void)
+{
+	int ready_cnt = 0;
+    int temp_get_ptr = get_ptr;
+    int temp_fill_ptr = fill_ptr;
+	while(temp_get_ptr != temp_fill_ptr){
+		if((vfpool_idx[temp_get_ptr].view0_buf_id >= 0)&&(vfpool_idx[temp_get_ptr].view1_buf_id >= 0)
+		&&(vfpool_idx[temp_get_ptr].view0_drop == 0)&&(vfpool_idx[temp_get_ptr].view1_drop == 0)){
+			ready_cnt++;
+		}
+		INCPTR(temp_get_ptr);
+	}
+	return ready_cnt;	
+}
+#endif
 static vframe_t *vh264mvc_vf_peek(void* op_arg)
 {
 
@@ -323,9 +377,7 @@ static vframe_t *vh264mvc_vf_peek(void* op_arg)
      if (get_ptr == fill_ptr) {
         return NULL;
     }
-	if((vfpool_idx[get_ptr].view0_buf_id < 0)||(vfpool_idx[get_ptr].view1_buf_id < 0)){
-		return NULL;
-	}
+    send_drop_cmd();
     return &vfpool[get_ptr];
 
 }
@@ -343,6 +395,8 @@ static vframe_t *vh264mvc_vf_get(void* op_arg)
     view0_buf_id = vfpool_idx[get_ptr].view0_buf_id;
     view1_buf_id = vfpool_idx[get_ptr].view1_buf_id;
     vf = &vfpool[get_ptr];
+    
+    if((view0_buf_id >=0 )&&(view1_buf_id >= 0)){
     if(view_mode==0 || view_mode==1){
         vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
         vf->canvas0Addr = vf->canvas1Addr = (view_mode==0)?spec2canvas(&buffer_spec0[view0_buf_id]):
@@ -371,6 +425,13 @@ static vframe_t *vh264mvc_vf_get(void* op_arg)
             vf->canvas1Addr = spec2canvas(&buffer_spec1[view1_buf_id]);
         }
     }
+	}
+    
+    if (((vfpool_idx[get_ptr].view0_drop != 0)||(vfpool_idx[get_ptr].view1_drop != 0))&&((no_dropping_cnt >= DROPPING_FIRST_WAIT))){
+    	vf->frame_dirty	= 1;
+    }else{
+        vf->frame_dirty = 0;
+    }
 
     INCPTR(get_ptr);
 
@@ -384,8 +445,9 @@ static vframe_t *vh264mvc_vf_get(void* op_arg)
 
         vf->width = frame_width;
         vf->height = frame_height;
-        vf->flag = 0;
     }
+    if ((no_dropping_cnt < DROPPING_FIRST_WAIT)&&(vf->frame_dirty ==0))
+        no_dropping_cnt++;    
     return vf;
 
 }
@@ -396,7 +458,26 @@ static void vh264mvc_vf_put(vframe_t *vf, void* op_arg)
     if(vf_buf_init_flag == 0){
         return;
     }
+    if(vf->frame_dirty){
+
+    	vf->frame_dirty = 0;	    
+    	dirty_frame_num++;	
+    	enable_recycle = 0;
+    	if(dbg_mode &PUT_PRINT_ENABLE){
+    		printk("invalid: dirty_frame_num is !!! %d\n",dirty_frame_num);	
+    	}    	
+    }else{
 	INCPTR(putting_ptr);
+		while(dirty_frame_num >0){
+			INCPTR(putting_ptr);
+			dirty_frame_num--;	
+		}
+		enable_recycle = 1;
+    	if(dbg_mode &PUT_PRINT_ENABLE){
+    		printk("valid: dirty_frame_num is @@@ %d \n",dirty_frame_num);	
+    	}  		
+    	//send_drop_cmd();		
+	}
 
 }
 
@@ -421,7 +502,7 @@ static int vh264mvc_event_cb(int type, void *data, void *private_data)
 }
 
 /**/
-long init_canvas( int start_addr, long dpb_size, int dpb_number, int mb_width, int mb_height, buffer_spec_t* buffer_spec) {
+static long init_canvas( int start_addr, long dpb_size, int dpb_number, int mb_width, int mb_height, buffer_spec_t* buffer_spec) {
 
   int dpb_addr, addr;
   int i;
@@ -556,7 +637,7 @@ int check_in_list(int pos , int* slot)
 	int i;
 	int ret = 0 ;
 	for(i = 0 ; i < VF_POOL_SIZE ; i++){
-		if(vfpool_idx[i].display_pos == pos){
+		if((vfpool_idx[i].display_pos == pos)&&(vfpool_idx[i].used == 0)){
 			ret =1;
 			*slot = vfpool_idx[i].slot ;
 			break;
@@ -573,6 +654,8 @@ static void vh264mvc_isr(void)
 {
         int drop_status;
         vframe_t *vf;
+        unsigned int pts, pts_valid = 0;
+	    u64 pts_us64;
         int ret = READ_VREG(MAILBOX_COMMAND);
         //printk("vh264mvc_isr, cmd =%x\n", ret);
         switch(ret & 0xff) {
@@ -765,38 +848,74 @@ static void vh264mvc_isr(void)
 				int slot =0 ;
 				in_list_flag  =  check_in_list(display_POC ,&slot);
 
+				if((dbg_mode&0x40)&&(drop_status)){
+					printk("drop_status:%dview_id=%d,buff_id=%d,offset=%d, display_POC = %d,fill_ptr=0x%x\n", drop_status, display_view_id, display_buff_id, stream_offset, display_POC, fill_ptr);
+				}	
+				
+				if((in_list_flag)&&(stream_offset !=0)){
+					printk("error case ,display_POC is %d, slot is %d \n",display_POC ,slot);
+					in_list_flag =0;	
+				}
 				if(!in_list_flag){
 					if(display_view_id ==0){
 						vfpool_idx[fill_ptr].view0_buf_id = display_buff_id;
 						view0_vfbuf_use[display_buff_id]++;
 						vfpool_idx[fill_ptr].stream_offset = stream_offset ;
-
+                        vfpool_idx[fill_ptr].view0_drop = drop_status;
 					}
 					if(display_view_id == 1){
 						vfpool_idx[fill_ptr].view1_buf_id = display_buff_id;
+						vfpool_idx[fill_ptr].view1_drop = drop_status;
 						view1_vfbuf_use[display_buff_id]++;
 					}
 					vfpool_idx[fill_ptr].slot = fill_ptr;
 					vfpool_idx[fill_ptr].display_pos = display_POC;
-					INCPTR(fill_ptr);
+					
 				}else{
 					if(display_view_id ==0){
 						vfpool_idx[slot].view0_buf_id = display_buff_id;
 						view0_vfbuf_use[display_buff_id]++;
 						vfpool_idx[slot].stream_offset = stream_offset ;
+						vfpool_idx[slot].view0_drop = drop_status;
+						
 					}
 					if(display_view_id == 1){
 						vfpool_idx[slot].view1_buf_id = display_buff_id;
 						view1_vfbuf_use[display_buff_id]++;
+						vfpool_idx[slot].view1_drop = drop_status;
 					}
 					vf = &vfpool[slot];
+#if 0					
 					if (pts_lookup_offset(PTS_TYPE_VIDEO, vfpool_idx[slot].stream_offset, &vf->pts, 0) != 0) {
 			vf->pts = 0;
                     }
+#endif                
+					if(vfpool_idx[slot].stream_offset == 0){
+						printk("error case , invalid stream offset \n");
+					}
+					if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, vfpool_idx[slot].stream_offset, &pts, 0x10000,&pts_us64) == 0){
+						pts_valid = 1;
+					} else {
+						pts_valid = 0;
+					}                    
+					vf->pts = (pts_valid) ? pts : 0;
+					vf->pts_us64= (pts_valid) ? pts_us64 : 0;  
+					//vf->pts =  vf->pts_us64 ? vf->pts_us64 : vf->pts ;  
+					//vf->pts =  vf->pts_us64;               
+					if(dbg_mode&0x80){
+						printk("vf->pts:%d\n", vf->pts);
+					}
+					vfpool_idx[slot].used = 1;
+					INCPTR(fill_ptr);	
                     set_frame_info(vf);
                     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
+                    
 				}
             }
+            break;
+            case CMD_FATAL_ERROR:
+            printk("fatal error !!!\n");
+            schedule_work(&error_wd_work);
             break;
           default : break;
         }
@@ -814,22 +933,43 @@ static void vh264mvc_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
+    int valid_frame = 0;
+    if(enable_recycle == 0){
+    	if(dbg_mode&TIME_TASK_PRINT_ENABLE){
+    		//valid_frame = get_valid_frame();
+    		printk("dirty_frame_num is %d , valid frame is %d\n",dirty_frame_num,valid_frame);
+    		
+    	}
+    	//goto RESTART;	    	
+    }
+
+
     while ((putting_ptr != put_ptr) && (READ_VREG(BUFFER_RECYCLE) == 0)) {
 	int view0_buf_id = vfpool_idx[put_ptr].view0_buf_id;
 	int view1_buf_id = vfpool_idx[put_ptr].view1_buf_id;
-		if(view0_vfbuf_use[view0_buf_id] == 1){
+		if((view0_buf_id >= 0)&&(view0_vfbuf_use[view0_buf_id] == 1)){
+                    if(dbg_mode&0x100){
+                        printk("round 0: put_ptr is %d ; view0_buf_id is %d==\n", put_ptr, view0_buf_id);
+                    }	
 			WRITE_VREG(BUFFER_RECYCLE, (0<<8)|( view0_buf_id +1));
 			view0_vfbuf_use[view0_buf_id] = 0;
 			vfpool_idx[put_ptr].view0_buf_id = -1;
-		}else if(view1_vfbuf_use[view1_buf_id] == 1){
+                    vfpool_idx[put_ptr].view0_drop = 0;
+		}else if((view1_buf_id >= 0)&&(view1_vfbuf_use[view1_buf_id] == 1)){
+                    if(dbg_mode&0x100){
+                        printk("round 1: put_ptr is %d ; view1_buf_id %d==\n", put_ptr , view1_buf_id);
+                    }	
 			 WRITE_VREG(BUFFER_RECYCLE, (1<<8)|( view1_buf_id +1));
 			 view1_vfbuf_use[view1_buf_id] = 0;
-			 vfpool_idx[put_ptr].display_pos = -1;
+                    vfpool_idx[put_ptr].display_pos = DISPLAY_INVALID_POS;
 			 vfpool_idx[put_ptr].view1_buf_id = -1;
+                    vfpool_idx[put_ptr].view1_drop = 0;
+                    vfpool_idx[put_ptr].used = 0;
 			 INCPTR(put_ptr);
 		}
     }
 
+//RESTART:
     timer->expires = jiffies + PUT_INTERVAL;
 
     add_timer(timer);
@@ -989,6 +1129,9 @@ static void vh264mvc_prot_init(void)
     WRITE_VREG(BUFFER_RECYCLE, 0);
     WRITE_VREG(DROP_CONTROL, 0);
     CLEAR_VREG_MASK(MDEC_PIC_DC_CTRL, 1<<17);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
+#endif
 }
 
 static void vh264mvc_local_init(void)
@@ -998,6 +1141,11 @@ static void vh264mvc_local_init(void)
     display_view_id = -1;
     display_POC = -1;
     no_dropping_cnt = 0;
+    init_drop_cnt = INIT_DROP_FRAME_CNT;
+
+    for (i=0;i<INIT_DROP_FRAME_CNT;i++) {
+        init_drop_frame_id[i] = 0;
+    }
 
 #ifdef DEBUG_PTS
     pts_missed = 0;
@@ -1028,6 +1176,7 @@ static void vh264mvc_local_init(void)
     max_dec_frame_buffering[0] = -1;
     max_dec_frame_buffering[1] = -1;
 	fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+	dirty_frame_num = 0;
 	for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++) {
         view0_vfbuf_use[i] = 0;
         view1_vfbuf_use[i] = 0;
@@ -1035,8 +1184,14 @@ static void vh264mvc_local_init(void)
 
     for(i=0 ;i < VF_POOL_SIZE ; i++){
 	vfpool_idx[i].display_pos = -1;
-	vfpool_idx[i].view0_buf_id = -1;
+    	vfpool_idx[i].view0_buf_id = DISPLAY_INVALID_POS;
 	vfpool_idx[i].view1_buf_id = -1;
+    	vfpool_idx[i].view0_drop = 0;
+    	vfpool_idx[i].view1_drop = 0;    	
+    	vfpool_idx[i].used = 0;
+	}
+	for(i=0 ;i < VF_POOL_SIZE ; i++){
+		memset(&vfpool[i],0, sizeof(struct vframe_s)) ;	
 	}
     init_vf_buf();
     return;
@@ -1096,8 +1251,6 @@ static s32 vh264mvc_init(void)
     vf_reg_provider(&vh264mvc_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
 
-    vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_HINT, (void *)vh264mvc_amstream_dec_info.rate);
-
     stat |= STAT_VF_HOOK;
 
     recycle_timer.data = (ulong) & recycle_timer;
@@ -1118,7 +1271,7 @@ static s32 vh264mvc_init(void)
     return 0;
 }
 
-static int vh264mvc_stop(int mode)
+static int vh264mvc_stop(void)
 {
     if (stat & STAT_VDEC_RUN) {
         amvdec_stop();
@@ -1141,11 +1294,6 @@ static int vh264mvc_stop(int mode)
 
     if (stat & STAT_VF_HOOK) {
         ulong flags;
-
-        if (mode == MODE_FULL) {
-            vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_END_HINT, NULL);
-        }
-
         spin_lock_irqsave(&lock, flags);
         spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vh264mvc_vf_prov);
@@ -1161,32 +1309,45 @@ static int vh264mvc_stop(int mode)
 static void error_do_work(struct work_struct *work)
 {
     if (atomic_read(&vh264mvc_active)) {
-        vh264mvc_stop(MODE_ERROR);
+        vh264mvc_stop();
         vh264mvc_init();
     }
 }
 
 static int amvdec_h264mvc_probe(struct platform_device *pdev)
 {
-    struct resource *mem;
+    struct resource mem;
     int buf_size;
 
+	struct vdec_dev_reg_s *pdata = (struct vdec_dev_reg_s *)pdev->dev.platform_data;
     printk("amvdec_h264mvc probe start.\n");
 
+#if 0
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
         printk("\namvdec_h264mvc memory resource undefined.\n");
         return -EFAULT;
     }
+#endif
 
-    buf_size = mem->end - mem->start + 1;
+    if (pdata == NULL) {
+        printk("\namvdec_h264mvc memory resource undefined.\n");
+        return -EFAULT;
+    }  
+    mem.start = pdata->mem_start ;
+    mem.end =  pdata->mem_end ;
+       
+    buf_size = mem.end - mem.start + 1;
     //buf_offset = mem->start - DEF_BUF_START_ADDR;
-    work_space_adr = mem->start;
+    work_space_adr = mem.start;
     DECODE_BUFFER_START = work_space_adr + work_space_size;
-    DECODE_BUFFER_END = mem->start + buf_size;
+    DECODE_BUFFER_END = mem.start + buf_size;
 
     printk("work_space_adr %x, DECODE_BUFFER_START %x, DECODE_BUFFER_END %x\n", work_space_adr, DECODE_BUFFER_START, DECODE_BUFFER_END);
-    memcpy(&vh264mvc_amstream_dec_info, (void *)mem[1].start, sizeof(vh264mvc_amstream_dec_info));
+    if (pdata->sys_info) {
+        vh264mvc_amstream_dec_info = *pdata->sys_info;
+    }
 
+	vdec_power_mode(1);
     if (vh264mvc_init() < 0) {
         printk("\namvdec_h264mvc init failed.\n");
 
@@ -1205,7 +1366,8 @@ static int amvdec_h264mvc_probe(struct platform_device *pdev)
 static int amvdec_h264mvc_remove(struct platform_device *pdev)
 {
     printk("amvdec_h264mvc_remove\n");
-    vh264mvc_stop(MODE_FULL);
+    cancel_work_sync(&error_wd_work);
+    vh264mvc_stop();
 
     atomic_set(&vh264mvc_active, 0);
 
@@ -1277,6 +1439,8 @@ MODULE_PARM_DESC(dbg_mode, "\n amvdec_h264mvc cmd mode \n");
 module_param(drop_rate, uint, 0664);
 MODULE_PARM_DESC(dbg_mode, "\n amvdec_h264mvc drop rate \n");
 
+module_param(drop_thread_hold, uint, 0664);
+MODULE_PARM_DESC(dbg_mode, "\n amvdec_h264mvc drop thread hold \n");
 module_init(amvdec_h264mvc_driver_init_module);
 module_exit(amvdec_h264mvc_driver_remove_module);
 

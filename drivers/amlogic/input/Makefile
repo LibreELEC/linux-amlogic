@@ -6,6 +6,7 @@
 
 obj-y	+= saradc/
 obj-y	+= remote/
+obj-y	+= irblaster/
 obj-y	+= new_remote/
 obj-y	+= keyboard/
 obj-y	+= touchscreen/

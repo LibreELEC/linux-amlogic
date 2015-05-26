@@ -558,11 +558,19 @@ static const struct snd_soc_dapm_route pmu3_intercon[] = {
 static int pmu3_set_bias_level(struct snd_soc_codec *codec,
 				 enum snd_soc_bias_level level)
 {
+	int value = 0;
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		break;
 
 	case SND_SOC_BIAS_PREPARE:
+		if (codec->dapm.bias_level == SND_SOC_BIAS_STANDBY){
+			value = snd_soc_read(codec,PMU3_SIDETONE_MIXING);
+			if(value & 0x20)
+				snd_soc_write(codec,PMU3_BLOCK_ENABLE_1,0xbc00);
+			else
+				snd_soc_write(codec,PMU3_BLOCK_ENABLE_1,0xbf00);
+		}
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
@@ -574,6 +582,11 @@ static int pmu3_set_bias_level(struct snd_soc_codec *codec,
 			/* Clear Fast Charge */
 			snd_soc_update_bits(codec, PMU3_BLOCK_ENABLE_1,
 						0x4000, 0x0);
+			value = snd_soc_read(codec,PMU3_SIDETONE_MIXING);
+			if(value & 0x20)
+				snd_soc_write(codec,PMU3_BLOCK_ENABLE_1,0xbc00);
+			else
+				snd_soc_write(codec,PMU3_BLOCK_ENABLE_1,0xbf00);
 		}
 		break;
 
@@ -806,6 +819,7 @@ static int pmu3_write(struct snd_soc_codec *codec, unsigned int reg,
 	uint32_t addr;
 
 	addr = PMU3_AUDIO_BASE + (reg<<1);
+	printk(KERN_DEBUG "pmu3_write,addr=0x%x, reg=0x%x, value=0x%x\n",addr,reg,value);
 	aml1218_write16(addr, value);
 
 	return 0;

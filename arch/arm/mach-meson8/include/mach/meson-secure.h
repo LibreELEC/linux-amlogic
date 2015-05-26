@@ -106,6 +106,7 @@ struct efuse_hal_api_arg{
 };
 #define EFUSE_HAL_API_READ	0
 #define EFUSE_HAL_API_WRITE 1
+#define EFUSE_HAL_API_VERIFY_IMG 3
 extern int meson_trustzone_efuse(struct efuse_hal_api_arg* arg);
 
 

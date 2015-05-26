@@ -96,8 +96,9 @@ static int __cpufreq_governor(struct cpufreq_policy *policy,
 		unsigned int event);
 static unsigned int __cpufreq_get(unsigned int cpu);
 static void handle_update(struct work_struct *work);
+#ifdef CONFIG_SMP
 static void handle_up_cpu(struct work_struct *work);
-
+#endif
 /**
  * Two notifier lists: the "policy" list is involved in the
  * validation process for a new CPU frequency policy; the
@@ -926,8 +927,9 @@ static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 
 	init_completion(&policy->kobj_unregister);
 	INIT_WORK(&policy->update, handle_update);
+#ifdef CONFIG_SMP
 	INIT_WORK(&policy->up_cpu, handle_up_cpu);
-
+#endif
 	/* call driver. From then on the cpufreq must be able
 	 * to accept all calls to ->verify and ->setpolicy for this CPU
 	 */
@@ -1145,6 +1147,7 @@ static void handle_update(struct work_struct *work)
 	pr_debug("handle_update for cpu %u called\n", cpu);
 	cpufreq_update_policy(cpu);
 }
+#ifdef CONFIG_SMP
 static void __ref handle_up_cpu(struct work_struct *work)
 {
 	int i;
@@ -1153,10 +1156,9 @@ static void __ref handle_up_cpu(struct work_struct *work)
 		if(cpu_online(i))
 			continue;
 		cpu_up(i);
-		break;
 	}
 }
-
+#endif
 /**
  *	cpufreq_out_of_sync - If actual and saved CPU frequency differs, we're in deep trouble.
  *	@cpu: cpu number

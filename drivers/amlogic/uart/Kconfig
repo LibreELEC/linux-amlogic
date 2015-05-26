@@ -17,3 +17,12 @@ config AM_UART_CONSOLE
 	default y
 	help
 		Support for running a console on the Amlogic serial
+		
+config PRINTK_NOBLOCK_MODE
+	bool "Printk run with no block"
+	depends on AM_UART_CONSOLE
+	select SERIAL_CORE_CONSOLE
+	default n
+	help
+		Support for printk running with no block
+source "drivers/amlogic/uart/gps_um220/Kconfig"

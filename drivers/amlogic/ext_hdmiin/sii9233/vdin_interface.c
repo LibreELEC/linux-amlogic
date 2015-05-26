@@ -1,5 +1,7 @@
 
 #include <mach/am_regs.h>
+#include <mach/power_gate.h>
+
 #include "sii9233_drv.h"
 #include "../../tvin/tvin_frontend.h"
 #include "sii9233_interface.h"
@@ -279,6 +281,7 @@ void sii9233a_stop_vdin(sii9233a_info_t *info)
 
 	stop_tvin_service(0);
 	set_invert_top_bot(false);
+	CLK_GATE_OFF(MISC_DVIN);
 	info->vdin_started = 0;
 	printk("%s: stop vdin\n", __FUNCTION__);
 	return ;
@@ -299,10 +302,13 @@ void sii9233a_start_vdin(sii9233a_info_t *info, int width, int height, int frame
 											(info->vdin_info.cur_frame_rate != frame_rate) )
 		{
 			stop_tvin_service(0);
+			CLK_GATE_OFF(MISC_DVIN);
 			info->vdin_started=0;
 			printk("%s: stop vdin\n", __func__);
 		}
 	}
+
+	CLK_GATE_ON(MISC_DVIN);
 
 	if( (info->vdin_started==0) && (width>0) && (height>0) && (frame_rate>0) )
 	{

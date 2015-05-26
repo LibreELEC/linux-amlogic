@@ -254,7 +254,7 @@ static int meson_vdac_switch_probe(struct platform_device *pdev)
     int val = 0;
     struct device_node *init_data;
 #endif
-	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vdac switch module \r\n");
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vdac switch module\n");
 #ifdef CONFIG_HAS_EARLYSUSPEND
     early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     early_suspend.suspend = meson_vdac_switch_early_suspend;

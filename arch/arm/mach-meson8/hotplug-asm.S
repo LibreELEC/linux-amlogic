@@ -61,6 +61,12 @@ ENTRY(meson_cleanup)
 	/* Flush the D-cache */
 	bl	v7_flush_dcache_louis
 
+	ldmfd	sp!, {r0-r11, pc}
+ENDPROC(meson_cleanup)
+
+ENTRY(meson_turn_off_smp)
+	stmfd	sp!, {r0-r11, lr}
+
 	mov r4, #0
 	mcr p15, 0, r4, c7, c10, 4
 	dsb
@@ -70,4 +76,4 @@ ENTRY(meson_cleanup)
 	exit_smp r4, r5
 
 	ldmfd	sp!, {r0-r11, pc}
-ENDPROC(meson_cleanup)
+ENDPROC(meson_turn_off_smp)

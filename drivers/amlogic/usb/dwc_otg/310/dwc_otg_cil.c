@@ -2041,8 +2041,12 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 			 *  use HW BC detection.
 			 */
 			if(core_if->charger_detect){
-				core_if->bc_mode = dwc_otg_charger_detect(core_if);
-				dwc_otg_charger_detect_notifier_call(core_if->bc_mode);
+	 			if (core_if->non_normal_usb_charger_detect_delay != 0) 
+					dwc_otg_non_normal_usb_charger_detect(core_if);
+				else {
+				  core_if->bc_mode = dwc_otg_charger_detect(core_if);
+				  dwc_otg_charger_detect_notifier_call(core_if->bc_mode);	
+				}
 			}
 
 			core_if->session_valid = 1;

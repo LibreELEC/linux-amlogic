@@ -52,7 +52,7 @@ static inline void enable_watchdog(unsigned int timeout)
 {
 	printk(KERN_INFO "** enable watchdog\n");
 	aml_write_reg32(P_WATCHDOG_RESET, 0);
-	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT |(timeout|WATCHDOG_COUNT_MASK));
+	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT  | (timeout & WATCHDOG_COUNT_MASK));
 }
 static inline void reset_watchdog(void)
 {

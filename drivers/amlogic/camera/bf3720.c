@@ -2072,13 +2072,14 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct bf3720_fh *fh = priv;
 	struct videobuf_queue *q = &fh->vb_vidq;
 	struct bf3720_device *dev = fh->dev;
-	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
+	int ret = 0;
 
         f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN-1) ) & (~(CANVAS_WIDTH_ALIGN-1));
 	if ((f->fmt.pix.pixelformat==V4L2_PIX_FMT_YVU420) ||
             (f->fmt.pix.pixelformat==V4L2_PIX_FMT_YUV420)){
                 f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN*2-1) ) & (~(CANVAS_WIDTH_ALIGN*2-1));
         }
+	ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
 		return ret;
 

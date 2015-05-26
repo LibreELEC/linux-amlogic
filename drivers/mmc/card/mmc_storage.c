@@ -40,6 +40,7 @@ void print_storage_node_info(void)
 	return;
 }
 
+#ifdef MMC_STORAGE_DEBUG
 static void show_data_buf(unsigned char *data_buf)
 {
 	int i= 0;
@@ -48,6 +49,7 @@ static void show_data_buf(unsigned char *data_buf)
 	}
 	return;
 }
+#endif
 
 struct mmc_card * storage_device = NULL;
 
@@ -77,7 +79,7 @@ static int check_data(void * cmp)
 	struct mmc_storage_head_t * head = (struct mmc_storage_head_t * )cmp;
 	int ret =0;
 	store_dbg("check_data :head->checksum = %d",head->checksum);
-	if(head->checksum != mmc_checksum(&(head->data[0]),MMC_STORAGE_AREA_VALID_SIZE)){
+	if(head->checksum != mmc_checksum((unsigned char *)&(head->data[0]),MMC_STORAGE_AREA_VALID_SIZE)){
 		ret = -1;
 		store_msg("mmc storage data check_sum failed\n");
 	}
@@ -135,9 +137,9 @@ static int storage_check(struct mmc_card *device, void * buf)
 // direct : 0 read  / 1 write
 int mmc_storage_rw_kernel(struct mmc_card *device, struct storage_node_t * storage_node, unsigned char * databuf, int len, int direct)
 {
-    int ret=0, start_blk, size, force_size,blk_cnt,tmp_size;
+    int ret=0, start_blk, size, force_size;
     int bit = device->csd.read_blkbits;
-    int blk_size = 1 << bit; // size of a block
+    //int blk_size = 1 << bit; // size of a block	
 
 	mmc_claim_host(device->host);
 
@@ -202,7 +204,7 @@ int mmc_storage_read(struct mmc_card *device, unsigned char * buf, int len)
 	list_for_each_entry(storage_node,&storage_node_list,storage_list){
 		if((storage_node != NULL) && (storage_node->valid_node_flag == 1)){
 			memset((unsigned char *)storage_data,0x0,sizeof(struct mmc_storage_head_t));
-			ret = mmc_storage_rw_kernel(device, storage_node, storage_data, read_len,0);
+			ret = mmc_storage_rw_kernel(device, storage_node, (unsigned char *)storage_data, read_len,0);
 			if(ret){
 				store_msg("storage read failed");
 			}
@@ -223,7 +225,7 @@ int mmc_storage_read(struct mmc_card *device, unsigned char * buf, int len)
 		list_for_each_entry(storage_node,&storage_node_list,storage_list){
 			if((storage_node != NULL) && (storage_node->valid_node_flag == 0)){
 				memset((unsigned char *)storage_data,0x0,sizeof(struct mmc_storage_head_t));
-				ret = mmc_storage_rw_kernel(device, storage_node, storage_data, read_len,0);
+				ret = mmc_storage_rw_kernel(device, storage_node, (unsigned char *)storage_data, read_len,0);
 				if(ret){
 					store_msg("storage read failed");
 				}
@@ -279,7 +281,7 @@ int mmc_storage_write(struct mmc_card *device, unsigned char * buf, int len)
 
 	init_magic(&storage_data->magic[0]);
 
-	storage_data->magic_checksum = mmc_checksum(&storage_data->magic[0],MMC_STORAGE_MAGIC_SIZE);
+	storage_data->magic_checksum = mmc_checksum((unsigned char *)&storage_data->magic[0],MMC_STORAGE_MAGIC_SIZE);
 	storage_data->timestamp = 0;
 	storage_data->version = 0;
 
@@ -288,7 +290,7 @@ int mmc_storage_write(struct mmc_card *device, unsigned char * buf, int len)
 	store_msg("mmc_storage_write : show write buf : ");
 	show_data_buf(&storage_data->data[0]);
 #endif
-	storage_data->checksum = mmc_checksum(&storage_data->data[0],MMC_STORAGE_AREA_VALID_SIZE);
+	storage_data->checksum = mmc_checksum((unsigned char *)&storage_data->data[0],MMC_STORAGE_AREA_VALID_SIZE);
 
 	//show_data_buf(&storage_data);
 	list_for_each_entry(storage_node,&storage_node_list,storage_list){
@@ -300,7 +302,7 @@ int mmc_storage_write(struct mmc_card *device, unsigned char * buf, int len)
 	list_for_each_entry(storage_node,&storage_node_list,storage_list){
 		if((storage_node != NULL) && (part_num < MMC_STORAGE_AREA_COUNT)){
 			write_failed_flag = 0;
-			ret = mmc_storage_rw_kernel(device, storage_node, storage_data, write_len,1);
+			ret = mmc_storage_rw_kernel(device, storage_node, (unsigned char *)storage_data, write_len,1);
 			if(ret){
 				store_msg("storage write part %d failed at %llx",part_num,storage_node->offset_addr );
 				write_failed_flag = 1;

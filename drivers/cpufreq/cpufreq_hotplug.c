@@ -37,6 +37,7 @@
 #include <linux/notifier.h>
 #include "cpufreq_governor.h"
 unsigned int max_cpu_num=NR_CPUS;
+EXPORT_SYMBOL(max_cpu_num);
 unsigned int last_max_cpu_num=NR_CPUS;
 
 /* greater than 80% avg load across online CPUs increases frequency */
@@ -607,7 +608,7 @@ static int __ref cpu_hotplug_thread(void *data)
 		if(*hotplug_flag == CPU_HOTPLUG_PLUG){
 			*hotplug_flag = CPU_HOTPLUG_NONE;
 			j = 0;
-			for(i = 0; i < max_cpu_num; i++){
+			for(i = 0; (i < max_cpu_num) && (num_online_cpus() < max_cpu_num); i++){
 				if(cpu_online(i))
 					continue;
 				j++;

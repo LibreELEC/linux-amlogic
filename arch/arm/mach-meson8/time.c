@@ -18,6 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 #include <linux/kernel.h>
+#include <linux/device.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -25,13 +26,14 @@
 #include <linux/mm.h>
 #include <linux/clockchips.h>
 #include <linux/clocksource.h>
+#include <linux/delay.h>
+#include <linux/stat.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
 #include <asm/sched_clock.h>
 #include <plat/io.h>
 #include <mach/am_regs.h>
-#include <linux/delay.h>
 
 
 
@@ -151,7 +153,7 @@ static int meson_tick_set_next_event(unsigned long evt,
 #define meson_tick_rating 300
 #endif
 
-#if 0
+#ifndef CONFIG_SMP
 static struct meson_clock meson_timer_a = {
         .clockevent={
             .name           = "MESON TIMER-A",
@@ -175,7 +177,8 @@ static struct meson_clock meson_timer_a = {
         .mux_reg=P_ISA_TIMER_MUX,
         .reg=P_ISA_TIMERA
 };
-#endif
+
+#else
 
 static struct meson_clock meson_timer_f = {
         .clockevent={
@@ -350,7 +353,7 @@ static struct meson_clock meson_timer_i = {
         .mux_reg=P_ISA_TIMER_MUX1,
         .reg=P_ISA_TIMERI,
 };
-
+#endif
 static struct meson_clock *clockevent_to_clock(struct clock_event_device *evt)
 {
 	//return container_of(evt, struct meson_clock, clockevent);
@@ -565,8 +568,10 @@ static void __init meson_clockevent_init(void)
  */
 void __init meson_timer_init(void)
 {
+#ifdef CONFIG_SMP
 	int i;
 	struct meson_clock *clk;
+#endif
 	meson_clocksource_init();
 	meson_clockevent_init();
 #ifdef CONFIG_SMP
@@ -583,3 +588,29 @@ void __init meson_timer_init(void)
 	register_current_timer_delay(&aml_delay_timer);
 
 }
+
+#define ADD_CLOCKSOURCE_SYSFS
+#ifdef ADD_CLOCKSOURCE_SYSFS
+static ssize_t timere_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", aml_read_reg32(P_ISA_TIMERE));
+}
+
+static struct class_attribute clocksource_class_attrs[] = {
+	__ATTR(timere, S_IRUGO, timere_show, NULL),
+	__ATTR_NULL,
+};
+
+static struct class clocksource_class = {
+	.name = "clocksource",
+	.class_attrs = clocksource_class_attrs,
+};
+ 
+static int __init clocksource_sysfs_init(void)
+{
+	class_register(&clocksource_class);
+	return 0;
+}
+ 
+core_initcall(clocksource_sysfs_init);
+#endif //ADD_CLOCKSOURCE_SYSFS

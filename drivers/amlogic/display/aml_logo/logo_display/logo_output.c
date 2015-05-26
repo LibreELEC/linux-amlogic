@@ -62,7 +62,7 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 #endif
 			if(res)
 			{
-				amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"resource: start=0x%x,end=0x%x\r\n",res->start,res->end);
+				amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"resource: start=0x%x,end=0x%x\n",res->start,res->end);
 				logo->platform_res[i].mem_start=res->start;
 				logo->platform_res[i].mem_end=res->end;
 			}else{

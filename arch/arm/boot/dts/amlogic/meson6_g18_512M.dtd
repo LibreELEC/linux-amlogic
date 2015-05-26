@@ -1,13 +1,3 @@
-/*
- * Amlogic-MX SKT Device Tree Source
- *
- * Copyright Amlogic 2013
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- */
 
 /dts-v1/;
 /// ***************************************************************************************\n
@@ -184,6 +174,22 @@ void root_func(){
 	};
 
 /// ***************************************************************************************
+///	-	vdac hardware switch
+//$$ MODULE = "vdac hardware switch"
+//$$ DEVICE = "vdacswitch"
+//$$ L2 PROP_STR = "hw-switch"
+    vdacswitch{
+        compatible = "amlogic,vdacswitch";
+        dev_name = "vdacswitch";
+        hw-switch = <&hw_switch>;
+        hw_switch: hw_switch{
+            vout_cvbs = "GPIOC_2", "H", "GPIOC_3", "H";
+            vout_ypbr = "GPIOC_2", "L", "GPIOC_3", "L";
+            vout_vga  = "GPIOC_2", "H", "GPIOC_3", "L";
+        };
+    };
+
+/// ***************************************************************************************
 ///	-	EARLY_INIT
 //$$ MODULE="early_init"
 //$$ DEVICE = "early_init"
@@ -267,10 +273,12 @@ void root_func(){
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_STR = "power_gpio"
     wifi_power{
+    	
         compatible = "amlogic,wifi_power";
         dev_name = "wifi_power";
 	status = "okay";
         power_gpio = "GPIOE_11";
+        valid = "low";
     };
 
 /// ***************************************************************************************
@@ -740,7 +748,7 @@ void root_func(){
 		bootloader:bootloader{
 			name = "bootloader";
 			offset = <0>;
-			size = <0x60000>;
+			size = <0x100000>;
 		};
 
 //$$ MATCH "Spi_nr-part-1_match" = <&ubootenv>
@@ -749,8 +757,8 @@ void root_func(){
 //$$ L2 PROP_U32 = "size"
 		ubootenv:ubootenv{
 			name = "ubootenv";
-      offset = <0x80000>;
-      size = <0x8000>;
+      offset = <0x100000>;
+      size = <0x10000>;
     };
 	};
 
@@ -865,6 +873,103 @@ void root_func(){
 	};
 
 /// ***************************************************************************************
+/// ***************************************************************************************
+///	-	Unifykey
+//$$ MODULE="Unifykey"
+//$$ DEVICE="securitykey"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 ="unifykey-num"
+//$$ L2 PROP_CHOICE "Unifykey_0_match" = "unifykey-index-0"
+//$$ L2 PROP_CHOICE "Unifykey_1_match" = "unifykey-index-1"
+//$$ L2 PROP_CHOICE "Unifykey_2_match" = "unifykey-index-2"
+    	unifykey{
+		compatible = "amlogic,unifykey";
+		status = "ok";
+
+		/*efuse-version = <20>;*/ /*m6 efuse version 2,m3 efuse version 1, not config efuse version in default*/
+		unifykey-num = <6>;
+		unifykey-index-0 = <&keysn_0>;
+		unifykey-index-1 = <&keysn_1>;
+		unifykey-index-2 = <&keysn_2>;
+		unifykey-index-3 = <&keysn_3>;
+		unifykey-index-4 = <&keysn_4>;
+		unifykey-index-5 = <&keysn_5>;
+
+
+//$$ MATCH "Unifykey_0_match" = <&keysn_0>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_0: key_0{
+			key-name = "usid";
+			key-device = "nandkey";
+			key-dataformat = "allascii";
+			key-permit = "read","write","del";
+		};
+		
+//$$ MATCH "Unifykey_1_match" = <&keysn_1>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_1:key_1{
+			key-name = "mac";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+		
+//$$ MATCH "Unifykey_2_match" = <&keysn_2>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_2:key_2{
+			key-name = "hdcp";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+
+//$$ MATCH "Unifykey_3_match" = <&keysn_3>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_3:key_3{
+			key-name = "secure_boot_set";
+			key-device = "efusekey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write";
+		};
+		
+//$$ MATCH "Unifykey_4_match" = <&keysn_4>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_4:key_4{
+			key-name = "mac_bt";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+		
+//$$ MATCH "Unifykey_5_match" = <&keysn_5>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_5:key_5{
+			key-name = "mac_wifi";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+	};
+	
+/// ***************************************************************************************
 ///	-	HDMI
 //$$ MODULE="HDMI"
 //$$ DEVICE="amhdmitx"
@@ -940,10 +1045,10 @@ void root_func(){
         status = "okay";
     };
 
-
-
-
-
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 
 /// ***************************************************************************************
 ///	-	Ethernet

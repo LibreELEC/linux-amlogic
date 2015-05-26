@@ -192,7 +192,7 @@ static inline int get_pulse_width(unsigned long data)
 	        remote_data->step == RC6_STATUS_CONTROL ? "control" :
 	        remote_data->step == RC6_STATUS_INFO ? "information" :
 	        remote_data->step == RC6_STATUS_FREE ? "free" : NULL;
-	dbg_printk("%02d:pulse_wdith:%d==>%s\r\n",
+	dbg_printk("%02d:pulse_wdith:%d==>%s\n",
 	           remote_data->bit_count - remote_data->bit_num, ret, state);
 
 	return ret;

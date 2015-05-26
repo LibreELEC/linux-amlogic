@@ -122,6 +122,7 @@ static struct snd_soc_ops dummy_codec_soc_ops = {
 };
 
 static int dummy_codec_set_bias_level(struct snd_soc_card *card,
+				struct snd_soc_dapm_context *dapm,
 			      enum snd_soc_bias_level level)
 {
     int ret = 0;
@@ -191,18 +192,18 @@ static void dummy_codec_device_init(void)
 	p = pinctrl_get(dummy_codec_dev);
 
 	if (IS_ERR(p))
-		return p;
+		return;
 
 	s = pinctrl_lookup_state(p, "dummy_codec_audio");
 	if (IS_ERR(s)) {
 		pinctrl_put(p);
-		return ERR_PTR(PTR_ERR(s));
+		return;
 	}
 
 	ret = pinctrl_select_state(p, s);
 	if (ret < 0) {
 		pinctrl_put(p);
-		return ERR_PTR(ret);
+		return;
 	}
 	printk("=%s==,dummy_codec_audio init done\n",__func__);
 #else
@@ -296,8 +297,10 @@ static int dummy_codec_audio_probe(struct platform_device *pdev)
 
     return ret;
 
+#if 0
 err_device_add:
     platform_device_put(dummy_codec_snd_device);
+#endif
 err:
 err1:
     kfree(dummy_codec_pdata);

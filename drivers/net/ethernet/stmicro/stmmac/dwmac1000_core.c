@@ -37,10 +37,17 @@ static void dwmac1000_core_init(void __iomem *ioaddr)
 	u32 value = readl(ioaddr + GMAC_CONTROL);
 	value |= GMAC_CORE_INIT;
 	writel(value, ioaddr + GMAC_CONTROL);
-
 	/* Mask GMAC interrupts */
-	writel(0x207, ioaddr + GMAC_INT_MASK);
-
+	writel(0x0, ioaddr + GMAC_INT_MASK);
+	//writel(0x207, ioaddr + GMAC_INT_MASK);
+/*close mmc interrupts this funtion is s812  chip bug*/
+	 if (IS_MESON_M8M2_CPU){
+	 	printk("mask interrupts MMC\n");
+		writel(0xffffffff, ioaddr + ETH_MMC_ipc_intr_mask_rx);
+		writel(0xffffffff, ioaddr + ETH_MMC_intr_mask_rx);
+		writel(0xffffffff, ioaddr + ETH_MMC_intr_mask_tx);
+	 }
+  
 #ifdef STMMAC_VLAN_TAG_USED
 	/* Tag detection without filtering */
 	writel(0x0, ioaddr + GMAC_VLAN_TAG);

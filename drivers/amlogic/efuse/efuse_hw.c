@@ -17,8 +17,10 @@
 #include <mach/meson-secure.h>
 #endif
 
+#ifndef CONFIG_MESON_TRUSTZONE
 static void __efuse_write_byte( unsigned long addr, unsigned long data );
 static void __efuse_read_dword( unsigned long addr, unsigned long *data);
+#endif
 
 extern int efuseinfo_num;
 extern int efuse_active_version;
@@ -80,6 +82,7 @@ void __efuse_debug_init(void)
 #endif
 
 
+#ifndef CONFIG_MESON_TRUSTZONE
 static void __efuse_write_byte( unsigned long addr, unsigned long data )
 {
 	unsigned long auto_wr_is_enabled = 0;
@@ -202,21 +205,22 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 
 	//printk(KERN_INFO "__efuse_read_dword: addr=%ld, data=0x%lx\n", addr, *data);
 }
+#endif
 
 static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 {
 	unsigned long* contents = (unsigned long*)kzalloc(sizeof(unsigned long)*EFUSE_DWORDS, GFP_KERNEL);
 	unsigned pos = *ppos;
-	unsigned long *pdw;
-	char* tmp_p;
-
 #ifdef CONFIG_MESON_TRUSTZONE
 	struct efuse_hal_api_arg arg;
 	unsigned int retcnt;
 	int ret;
-#endif
+#else
+	unsigned long *pdw;
+	char* tmp_p;
 	/*pos may not align to 4*/
 	unsigned int dwsize = (count + 3 +  pos%4) >> 2;
+#endif
 
 	if (!contents) {
 		printk(KERN_INFO "memory not enough\n");
@@ -277,13 +281,12 @@ static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 static ssize_t __efuse_write(const char *buf, size_t count, loff_t *ppos )
 {
 	unsigned pos = *ppos;
-	//loff_t *readppos = ppos;
-	unsigned char *pc;
-
 #ifdef CONFIG_MESON_TRUSTZONE
 	struct efuse_hal_api_arg arg;
 	unsigned int retcnt;
 	int ret;
+#else
+	unsigned char *pc;	
 #endif
 
 	if (pos >= EFUSE_BYTES)
@@ -316,6 +319,15 @@ static ssize_t __efuse_write(const char *buf, size_t count, loff_t *ppos )
 	else
 		return 0;
 #endif
+}
+
+ssize_t aml__efuse_read( char *buf, size_t count, loff_t *ppos )
+{
+	return __efuse_read( buf, count, ppos );
+}
+ssize_t aml__efuse_write(const char *buf, size_t count, loff_t *ppos )
+{
+	return __efuse_write(buf, count, ppos );
 }
 
 //=================================================================================================
@@ -367,6 +379,8 @@ struct efuse_chip_identify_t{
 	efuse_socchip_type_e type;
 };
 static const struct efuse_chip_identify_t efuse_chip_hw_info[]={
+	{.chiphw_mver=30, .chiphw_subver=0, .chiphw_thirdver=0, .type=EFUSE_SOC_CHIP_G9TVBABY},      //G9TVBB
+	{.chiphw_mver=28, .chiphw_subver=0, .chiphw_thirdver=0, .type=EFUSE_SOC_CHIP_G9TV},      //G9TV
 	{.chiphw_mver=27, .chiphw_subver=0, .chiphw_thirdver=0, .type=EFUSE_SOC_CHIP_M8BABY},      //M8BABY
 	{.chiphw_mver=26, .chiphw_subver=0, .chiphw_thirdver=0, .type=EFUSE_SOC_CHIP_M6TVD},      //M6TVD
 	{.chiphw_mver=25, .chiphw_subver=0, .chiphw_thirdver=0, .type=EFUSE_SOC_CHIP_M8},      //M8
@@ -378,7 +392,7 @@ static const struct efuse_chip_identify_t efuse_chip_hw_info[]={
 #define EFUSE_CHIP_HW_INFO_NUM  sizeof(efuse_chip_hw_info)/sizeof(efuse_chip_hw_info[0])
 
 
-static efuse_socchip_type_e efuse_get_socchip_type(void)
+efuse_socchip_type_e efuse_get_socchip_type(void)
 {
 	efuse_socchip_type_e type;
 	//unsigned int __iomem *bootrom_base;
@@ -1042,6 +1056,8 @@ int efuse_read_intlItem(char *intl_item,char *buf,int size)
 			break;
 		case EFUSE_SOC_CHIP_M8:
 		case EFUSE_SOC_CHIP_M8BABY:
+		case EFUSE_SOC_CHIP_G9TV:
+		case EFUSE_SOC_CHIP_G9TVBABY:
 			if(strcasecmp(intl_item,"temperature") == 0){
 				pos = 502;
 				len = 2;

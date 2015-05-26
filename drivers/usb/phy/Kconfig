@@ -218,4 +218,24 @@ config USB_ULPI_VIEWPORT
 	  Provides read/write operations to the ULPI phy register set for
 	  controllers with a viewport register (e.g. Chipidea/ARC controllers).
 
+config AMLOGIC_USBPHY
+	tristate "Amlogic USB PHY Driver"
+	help
+	  Enable this to support Amlogic USB phy helper driver for Amlogic SoCs.
+	  This driver provides common interface to interact, for Amlogic USB 2.0 PHY
+	  driver and later for Amlogic USB 3.0 PHY driver.
+
+config AMLOGIC_USB2PHY
+	tristate "Amlogic USB 2.0 PHY controller Driver"
+	select AMLOGIC_USBPHY
+	help
+	  Enable this to support Amlogic USB 2.0 (High Speed) PHY controller
+	  driver for Amlogic SoCs.
+
+config AMLOGIC_USB3PHY
+	tristate "Amlogic USB 3.0 PHY controller Driver"
+	select AMLOGIC_USBPHY
+	help
+	  Enable this to support Amlogic USB 3.0 (Super Speed) phy controller
+	  for Amlogic SoCs.
 endif # USB_PHY

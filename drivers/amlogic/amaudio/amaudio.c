@@ -68,6 +68,11 @@ extern unsigned int read_i2s_mute_swap_reg(void);
 extern void audio_i2s_swap_left_right(unsigned int flag);
 extern void audio_in_i2s_set_buf(u32 addr, u32 size);
 extern void audio_in_i2s_enable(int flag);
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+extern void audio_mute_left_right(unsigned flag);
+#endif
+extern void audio_i2s_unmute(void);
+extern void audio_i2s_mute(void);
 extern int audio_out_buf_ready ;
 extern int audio_in_buf_ready;
 
@@ -102,13 +107,17 @@ int resample_delta=0;
 EXPORT_SYMBOL(resample_delta);
 extern unsigned int timestamp_enable_resample_flag;
 extern unsigned int timestamp_resample_type_flag;
+int kernel_android_50=0;
+EXPORT_SYMBOL(kernel_android_50);
+
 //--------------------------------------------
 #define DEBUG_DUMP 1
 
 static unsigned short* dump_buf = 0;
 static unsigned int dump_size = 512*1024;
 static unsigned int dump_off = 0;
-
+static unsigned int mute_left_right = 0;
+static unsigned int mute_unmute = 0;
 
 extern int aml_i2s_playback_enable;
 extern unsigned int dac_mute_const;
@@ -1501,6 +1510,19 @@ static long amaudio_ioctl(struct file *file,
         case AMAUDIO_IOC_DIRECT_RIGHT_GAIN:
             direct_audio_right_gain(arg);
             break;
+        case AMAUDIO_IOC_MUTE_LEFT_RIGHT_CHANNEL:
+            #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+            audio_mute_left_right(arg);
+            #endif
+            break;
+        case AMAUDIO_IOC_MUTE_UNMUTE:
+            if (arg == 1) {
+                audio_i2s_mute();
+            } else if (arg == 0) {
+                audio_i2s_unmute();
+            }
+            break;
+
 		default:
 			break;
 
@@ -1601,6 +1623,19 @@ static long amaudio_utils_ioctl(struct file *file,
             put_user(resample_delta,(__s32 __user *)arg);
             printk("set resample_delta=%d\n ",resample_delta);
             break;
+        case AMAUDIO_IOC_MUTE_LEFT_RIGHT_CHANNEL:
+            #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+            audio_mute_left_right(arg);
+            #endif
+            break;
+        case AMAUDIO_IOC_MUTE_UNMUTE:
+            if (arg == 1) {
+                audio_i2s_mute();
+            } else if (arg == 0) {
+                audio_i2s_unmute();
+            }
+            break;
+
         default:
 		break;
     };
@@ -1957,9 +1992,16 @@ static ssize_t record_type_show(struct class* class, struct class_attribute* att
      }
 }
 
-
+static int dtsm6_stream_type=0;
+static int dtsm6_apre_cnt=0;
+static int dtsm6_apre_sel=0;
+static int dtsm6_apre_assets_sel=0;
+static int dtsm6_mulasset_hint=0;
+static char dtsm6_apres_assets_Array[32]={0};//Max num of Audiopresentation contains in a dtsm6 stream is 32 
+static int dtsm6_HPS_hint=0;
 static ssize_t store_debug(struct class* class, struct class_attribute* attr,  const char* buf, size_t count )
 {
+    char *after;
     if(strncmp(buf, "chstatus_set", 12)==0)
      {
                WRITE_MPEG_REG(AIU_958_VALID_CTRL,0);//disable 958 invalid bit
@@ -1969,15 +2011,112 @@ static ssize_t store_debug(struct class* class, struct class_attribute* attr,  c
 		WRITE_MPEG_REG(AIU_958_VALID_CTRL,3);//enable 958 invalid bit
 		WRITE_MPEG_REG(AIU_958_CHSTAT_L0, 0x1902);
               WRITE_MPEG_REG(AIU_958_CHSTAT_R0, 0x1902);
-      }
-      return count;
+     }else if(strncmp(buf, "dtsm6_stream_type_set", 21)==0){
+           dtsm6_stream_type=simple_strtoul(buf+21,&after,10); 
+     }else if(strncmp(buf, "dtsm6_apre_cnt_set",18)==0){
+           dtsm6_apre_cnt=simple_strtoul(buf+18,&after,10);
+     }else if(strncmp(buf, "dtsm6_apre_sel_set",18)==0){
+           dtsm6_apre_sel=simple_strtoul(buf+18,&after,10);
+     }else if(strncmp(buf, "dtsm6_apres_assets_set",22)==0){
+           if(dtsm6_apre_cnt>32){
+              printk("[%s %d]unvalid dtsm6_apre_cnt/%d\n",__FUNCTION__,__LINE__,dtsm6_apre_cnt);
+           }else{
+              memcpy(dtsm6_apres_assets_Array,buf+22,dtsm6_apre_cnt);
+           }
+     }else if(strncmp(buf, "dtsm6_apre_assets_sel_set",25)==0){
+           dtsm6_apre_assets_sel=simple_strtoul(buf+25,&after,10);
+     }else if(strncmp(buf, "dtsm6_mulasset_hint",19)==0){
+           dtsm6_mulasset_hint=simple_strtoul(buf+19,&after,10);
+     }else if(strncmp(buf, "dtsm6_clear_info",16)==0){
+           dtsm6_stream_type=0;
+           dtsm6_apre_cnt=0;
+           dtsm6_apre_sel=0;
+           dtsm6_apre_assets_sel=0;
+           dtsm6_mulasset_hint=0;
+           dtsm6_HPS_hint=0;
+           memset(dtsm6_apres_assets_Array,0,sizeof(dtsm6_apres_assets_Array));
+     }else if(strncmp(buf, "dtsm6_hps_hint",14)==0){
+           dtsm6_HPS_hint=simple_strtoul(buf+14,&after,10);;
+     }else if(strncmp(buf, "kernel_android_50",17)==0){
+           kernel_android_50=1;
+     }
+     return count;
 }
-
 static ssize_t show_debug(struct class* class, struct class_attribute* attr,  char* buf)
 {
-      return 0;
+    int pos=0;
+    pos +=sprintf(buf+pos,"dtsM6:StreamType%d \n",dtsm6_stream_type);
+    pos +=sprintf(buf+pos,"ApreCnt%d \n",dtsm6_apre_cnt);
+    pos +=sprintf(buf+pos,"ApreSel%d \n",dtsm6_apre_sel);
+    pos +=sprintf(buf+pos,"ApreAssetSel%d \n",dtsm6_apre_assets_sel);
+    pos +=sprintf(buf+pos,"MulAssetHint%d \n",dtsm6_mulasset_hint);
+    pos +=sprintf(buf+pos,"HPSHint%d \n",dtsm6_HPS_hint);
+    pos +=sprintf(buf+pos,"ApresAssetsArray");
+    memcpy(buf+pos,dtsm6_apres_assets_Array,sizeof(dtsm6_apres_assets_Array));
+    pos +=sizeof(dtsm6_apres_assets_Array);
+    return pos;
 }
 
+static ssize_t show_mute_left_right(struct class* class, struct class_attribute* attr, char* buf)
+{
+    ssize_t ret = 0;
+
+    ret = sprintf(buf, "echo l/r/s/c to /sys/class/amaudio/mute_left_right file to mute left or right channel\n"
+                         " 1: mute left channel \n"
+                         " 0: mute right channel \n"
+                         " mute_left_right:%d \n", mute_left_right);
+
+    return ret;
+}
+
+static ssize_t store_mute_left_right(struct class* class, struct class_attribute* attr, const char* buf, size_t count)
+{
+    switch(buf[0]) {
+        case '1':
+            #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+            audio_mute_left_right(1);
+            #endif
+            break;
+
+        case '0':
+            #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+            audio_mute_left_right(0);
+            #endif
+            break;
+
+        default:
+            printk("unknow command!\n");
+    }
+
+    return count;
+}
+
+static ssize_t show_mute_unmute(struct class* class, struct class_attribute* attr, char* buf)
+{
+    ssize_t ret = 0;
+
+    ret = sprintf(buf, " 1: mute, 0:unmute: mute_unmute:%d,\n", mute_unmute);
+
+    return ret;
+}
+
+static ssize_t store_mute_unmute(struct class* class, struct class_attribute* attr, const char* buf, size_t count)
+{
+    switch(buf[0]) {
+        case '1':
+            audio_i2s_mute();
+            break;
+
+        case '0':
+            audio_i2s_unmute();
+            break;
+
+        default:
+            printk("unknow command!\n");
+    }
+
+    return count;
+}
 
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
@@ -1994,7 +2133,9 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(dac_mute_const, S_IRUGO | S_IWUSR, dac_mute_const_show, dac_mute_const_store),
   __ATTR_RO(output_enable),
   __ATTR(record_type, S_IRUGO | S_IWUSR, record_type_show, record_type_store),
-   __ATTR(debug, S_IRUGO | S_IWUSR | S_IWGRP, show_debug, store_debug),
+  __ATTR(debug, S_IRUGO | S_IWUSR | S_IWGRP, show_debug, store_debug),
+  __ATTR(mute_left_right, S_IRUGO | S_IWUSR, show_mute_left_right, store_mute_left_right),  
+  __ATTR(mute_unmute, S_IRUGO | S_IWUSR, show_mute_unmute, store_mute_unmute),  
   __ATTR_NULL
 };
 

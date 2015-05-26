@@ -18,15 +18,15 @@
 #include "linux/amlogic/ve.h"
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
-#undef WRITE_CBUS_REG
-#undef WRITE_CBUS_REG_BITS
-#undef READ_CBUS_REG
-#undef READ_CBUS_REG_BITS
-
-#define WRITE_CBUS_REG(x,val)				WRITE_VCBUS_REG(x,val)
-#define WRITE_CBUS_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
-#define READ_CBUS_REG(x)				READ_VCBUS_REG(x)
-#define READ_CBUS_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#define WRITE_VPP_REG(x,val)				WRITE_VCBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_VCBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#else
+#define WRITE_VPP_REG(x,val)				WRITE_CBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_CBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_CBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_CBUS_REG_BITS(x,start,length)
 #endif
 
 typedef struct ve_regs_s {
@@ -44,7 +44,7 @@ typedef struct ve_regs_s {
 } ve_regs_t;
 
 
-//void ve_on_vs(vframe_t *vf, int* change_notify);
+void ve_on_vs(vframe_t *vf);
 
 void ve_set_bext(struct ve_bext_s *p);
 void ve_set_dnlp(struct ve_dnlp_s *p);
@@ -64,12 +64,20 @@ extern void vpp_enable_lcd_gamma_table(void);
 extern void vpp_disable_lcd_gamma_table(void);
 extern void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask);
 extern void vpp_set_rgb_ogo(struct tcon_rgb_ogo_s *p);
-extern void vd1_brightness_contrast(signed int brightness, signed int contrast);
 extern void vpp_phase_lock_on_vs(unsigned int cycle,
                                  unsigned int stamp,
                                  bool         lock50,
                                  unsigned int range_fast,
                                  unsigned int range_slow);
+#if (MESON_CPU_TYPE>=MESON_CPU_TYPE_MESON6TVD)
+extern void ve_frame_size_patch(unsigned int width,unsigned int height);
+#endif
+extern void ve_dnlp_latch_process(void);
+extern void ve_lcd_gamma_process(void);
+extern void lvds_freq_process(void);
+extern void ve_dnlp_param_update(void);
+extern void ve_new_dnlp_param_update(void);
+extern void ve_ogo_param_update(void);
 
 extern unsigned int vecm_latch_flag;
 extern unsigned int cm_size;

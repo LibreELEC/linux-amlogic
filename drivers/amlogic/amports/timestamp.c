@@ -11,7 +11,10 @@ u32 acc_pcrscr_inc = 0;
 u32 acc_pcrscr_dec = 0;
 /*need match to libplayer resample lib*/
 #define DEFALT_NUMSAMPS_PERCH   128
+
+#ifdef CONFIG_AMAUDIO
 extern int resample_delta;
+#endif
 
 static s32 system_time_inc_adj = 0;
 static u32 system_time = 0;
@@ -80,19 +83,23 @@ void timestamp_apts_inc(s32 inc)
 		if(timestamp_resample_type_flag==0){
 			//0-->no resample  processing
 		}else if(timestamp_resample_type_flag==1){//1-->down resample processing
+			#ifdef CONFIG_AMAUDIO
 				inc += inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 				acc_apts_inc += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_apts_inc*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc += acc_apts_inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_apts_inc = acc_apts_inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				}
+			#endif
 		}else if(timestamp_resample_type_flag==2){//2-->up resample processing
+			#ifdef CONFIG_AMAUDIO
 				inc -= inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 				acc_apts_dec += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_apts_dec*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc -= acc_apts_dec*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_apts_dec = acc_apts_dec*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				}
+			#endif
 		}
 	}
     WRITE_MPEG_REG(AUDIO_PTS, READ_MPEG_REG(AUDIO_PTS) + inc);
@@ -190,19 +197,23 @@ void timestamp_pcrscr_inc(s32 inc)
 			if(timestamp_resample_type_flag==0){	  //0-->no resample  processing
 
 			}else if(timestamp_resample_type_flag==1){//1-->down resample processing
+				#ifdef CONFIG_AMAUDIO
 				inc += inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 				acc_pcrscr_inc += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_pcrscr_inc*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc += acc_pcrscr_inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_pcrscr_inc = acc_pcrscr_inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				}
+				#endif
 			}else if(timestamp_resample_type_flag==2){//2-->up resample processing
+				#ifdef CONFIG_AMAUDIO
 				inc -= inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 				acc_pcrscr_dec += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_pcrscr_dec*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc -= acc_pcrscr_dec*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_pcrscr_dec = acc_pcrscr_dec*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				}
+				#endif
 			}
 		}
         system_time += inc + system_time_inc_adj;

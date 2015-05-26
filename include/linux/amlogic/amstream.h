@@ -23,7 +23,6 @@
 #define AMSTREAM_H
 
 //#include <linux/interrupt.h>
-#include "ve.h"
 
 #ifdef __KERNEL__
 #define PORT_FLAG_IN_USE    0x0001
@@ -100,24 +99,6 @@
 #define AMSTREAM_IOC_SET_VIDEO_AXIS     _IOW(AMSTREAM_IOC_MAGIC, 0x4c, unsigned long)
 #define AMSTREAM_IOC_GET_VIDEO_CROP     _IOR(AMSTREAM_IOC_MAGIC, 0x4d, unsigned long)
 #define AMSTREAM_IOC_SET_VIDEO_CROP     _IOW(AMSTREAM_IOC_MAGIC, 0x4e, unsigned long)
-
-// VPP.VE IOCTL command list
-#define AMSTREAM_IOC_VE_BEXT     _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )
-#define AMSTREAM_IOC_VE_DNLP     _IOW(AMSTREAM_IOC_MAGIC, 0x21, struct ve_dnlp_s  )
-#define AMSTREAM_IOC_VE_HSVS     _IOW(AMSTREAM_IOC_MAGIC, 0x22, struct ve_hsvs_s  )
-#define AMSTREAM_IOC_VE_CCOR     _IOW(AMSTREAM_IOC_MAGIC, 0x23, struct ve_ccor_s  )
-#define AMSTREAM_IOC_VE_BENH     _IOW(AMSTREAM_IOC_MAGIC, 0x24, struct ve_benh_s  )
-#define AMSTREAM_IOC_VE_DEMO     _IOW(AMSTREAM_IOC_MAGIC, 0x25, struct ve_demo_s  )
-#define AMSTREAM_IOC_VE_VDO_MEAS _IOW(AMSTREAM_IOC_MAGIC, 0x27, struct vdo_meas_s )
-#define AMSTREAM_IOC_VE_DEBUG    _IOWR(AMSTREAM_IOC_MAGIC, 0x28, unsigned long long)
-#define AMSTREAM_IOC_VE_REGMAP   _IOW(AMSTREAM_IOC_MAGIC, 0x29, struct ve_regmap_s)
-
-// VPP.CM IOCTL command list
-#define AMSTREAM_IOC_CM_REGION  _IOW(AMSTREAM_IOC_MAGIC, 0x30, struct cm_region_s)
-#define AMSTREAM_IOC_CM_TOP     _IOW(AMSTREAM_IOC_MAGIC, 0x31, struct cm_top_s   )
-#define AMSTREAM_IOC_CM_DEMO    _IOW(AMSTREAM_IOC_MAGIC, 0x32, struct cm_demo_s  )
-#define AMSTREAM_IOC_CM_DEBUG   _IOWR(AMSTREAM_IOC_MAGIC, 0x33, unsigned long long)
-#define AMSTREAM_IOC_CM_REGMAP  _IOW(AMSTREAM_IOC_MAGIC, 0x34, struct cm_regmap_s)
 
 //VPP.3D IOCTL command list
 #define  AMSTREAM_IOC_SET_3D_TYPE  _IOW(AMSTREAM_IOC_MAGIC, 0x3c, unsigned int)

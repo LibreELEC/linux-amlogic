@@ -74,8 +74,8 @@ static int meson_cpufreq_verify(struct cpufreq_policy *policy)
     return 0;
 }
 
-static int early_suspend_flag = 0;
 #if (defined CONFIG_SMP) && (defined CONFIG_HAS_EARLYSUSPEND)
+static int early_suspend_flag = 0;
 #include <linux/earlysuspend.h>
 static void meson_system_early_suspend(struct early_suspend *h)
 {
@@ -462,7 +462,9 @@ static unsigned long global_l_p_j_ref_freq;
 
 static void adjust_jiffies(unsigned int freqOld, unsigned int freqNew)
 {
+#ifdef	CONFIG_SMP
     int i;
+#endif
 
     if (!global_l_p_j_ref) {
         global_l_p_j_ref = loops_per_jiffy;

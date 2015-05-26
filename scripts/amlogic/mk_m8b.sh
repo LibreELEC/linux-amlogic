@@ -2,7 +2,7 @@
 
 #make UIMAGE_COMPRESSION=none uImage -j
 #make modules
-make uImage -j
+make uImage -j8
 
 make meson8b_skt.dtd
 make meson8b_skt.dtb

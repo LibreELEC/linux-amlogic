@@ -9,7 +9,9 @@
 #define AML_I2C_BUS_C 3
 #define AML_I2C_BUS_D 4
 
+#ifndef NAME_SIZE
 #define NAME_SIZE 32
+#endif
 
 typedef int(*aml_audio_codec_probe_fun_t)(struct i2c_adapter *);
 

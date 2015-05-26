@@ -112,7 +112,7 @@ static void register_remote_dev(struct input_struct *kp)
 	strcpy(kp->config_name, "virtualremote");
 	ret = register_chrdev(0, kp->config_name, &virtual_remote_fops);
 	if (ret <= 0) {
-		printk("register char dev (VirtualRemote) error\r\n");
+		printk("register char dev (VirtualRemote) error\n");
 		return;
 	}
 	kp->config_major = ret;
@@ -173,7 +173,7 @@ static int __init virtual_remote_probe(struct platform_device *pdev)
 		gp_input_device = NULL;
 		return -EINVAL;
 	}
-	printk("input_register_device completed \r\n");
+	printk("input_register_device completed\n");
 
 	register_remote_dev(apollo_kp);
 	return 0;
@@ -183,7 +183,7 @@ static int virtual_remote_remove(struct platform_device *pdev)
 {
 	struct input_struct *apollo_kp = platform_get_drvdata(pdev);
 	/* disable keypad interrupt handling */
-	printk("remove Virtual Remote. \r\n");
+	printk("remove Virtual Remote.\n");
 
 	/* unregister everything */
 	input_unregister_device(apollo_kp->input);

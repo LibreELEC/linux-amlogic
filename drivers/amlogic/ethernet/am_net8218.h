@@ -69,6 +69,7 @@
 #define RX_INTR_EN  1<<6
 #define EARLY_RX_INTR_EN 1<<14
 #define INTERNALPHY_ID 79898963
+#define PMU4_PHY_ID 20142014
 enum mii_reg_bits {
 	MDIO_ShiftClk = 0x10000, MDIO_DataIn = 0x80000, MDIO_DataOut = 0x20000,
 	MDIO_EnbOutput = 0x40000, MDIO_EnbIn = 0x00000,

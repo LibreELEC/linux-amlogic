@@ -404,6 +404,13 @@
 			amlogic,pins="GPIOAO_7";
 		};
 
+//$$ MATCH "irblaster_pin_0_match" = "&irblaster_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_STR = "amlogic,pins"
+        irblaster_pins:irblaster_pin{
+			amlogic,setmask=<10 0x80000000>;
+			amlogic,pins="GPIOAO_13";
+		};
 //$$ MATCH "Audio_pin_0_match" = "&audio_pins"
 //$$ L2 PROP_U32 4 = "amlogic,setmask"
 //$$ L2 PROP_U32 10 = "amlogic,clrmask"

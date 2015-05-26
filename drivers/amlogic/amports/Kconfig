@@ -15,6 +15,12 @@ config  VSYNC_RDMA
 	help
 	  Select to enable VSYNC CBUS RDMA.
 
+config TVIN_VIUIN
+	bool "Amlogic TVIN VIUIN device"
+	default n
+	help
+	  VIUIN device driver.
+
 config AM_VIDEO
 	bool "Video management"
 	default n
@@ -89,7 +95,7 @@ config AM_VDEC_H264
 
 config AM_VDEC_H264MVC
 	tristate "Amlogic H264MVC Video Decoder"
-	default n
+	default y
 
 	select AM_PTSSERVER
 	help
@@ -97,7 +103,7 @@ config AM_VDEC_H264MVC
 
 config AM_VDEC_H264_4K2K
         tristate "Amlogic H264_4K2K Video Decoder"
-	 depends on ARCH_MESON8 || ARCH_MESON6TVD
+	 depends on ARCH_MESON8 || ARCH_MESON6TVD || ARCH_MESONG9TV
         default y
 
         select AM_PTSSERVER
@@ -106,7 +112,7 @@ config AM_VDEC_H264_4K2K
 
 config AM_VDEC_H265
         tristate "Amlogic H265 Video Decoder"
-        depends on ARCH_MESON8B || ARCH_MESON8
+        depends on ARCH_MESON8B || ARCH_MESON8 || ARCH_MESONG9TV
         default y
 
         select AM_PTSSERVER

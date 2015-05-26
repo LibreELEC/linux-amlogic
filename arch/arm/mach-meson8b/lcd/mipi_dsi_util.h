@@ -7,40 +7,42 @@
 // --------------------------------------------------------
 // MIPI DSI Data Type/ MIPI DCS Command Type Definitions
 // --------------------------------------------------------
-typedef enum {DT_VSS                 = 0x01,
-        DT_VSE                 = 0x11,
-        DT_HSS                 = 0x21,
-        DT_HSE                 = 0x31,
-        DT_EOTP                = 0x08,
-        DT_CMOFF               = 0x02,
-        DT_CMON                = 0x12,
-        DT_SHUT_DOWN           = 0x22,
-        DT_TURN_ON             = 0x32,
-        DT_GEN_SHORT_WR_0      = 0x03,
-        DT_GEN_SHORT_WR_1      = 0x13,
-        DT_GEN_SHORT_WR_2      = 0x23,
-        DT_GEN_RD_0            = 0x04,
-        DT_GEN_RD_1            = 0x14,
-        DT_GEN_RD_2            = 0x24,
-        DT_DCS_SHORT_WR_0      = 0x05,
-        DT_DCS_SHORT_WR_1      = 0x15,
-        DT_DCS_RD_0            = 0x06,
-        DT_SET_MAX_RPS         = 0x37,
-        DT_NULL_PKT            = 0x09,
-        DT_BLANK_PKT           = 0x19,
-        DT_GEN_LONG_WR         = 0x29,
-        DT_DCS_LONG_WR         = 0x39,
-        DT_20BIT_LOOSE_YCBCR   = 0x0c,
-        DT_24BIT_YCBCR         = 0x1c,
-        DT_16BIT_YCBCR         = 0x2c,
-        DT_30BIT_RGB_101010    = 0x0d,
-        DT_36BIT_RGB_121212    = 0x1d,
-        DT_12BIT_YCBCR         = 0x3d,
-        DT_16BIT_RGB_565       = 0x0e,
-        DT_18BIT_RGB_666       = 0x1e,
-        DT_18BIT_LOOSE_RGB_666 = 0x2e,
-        DT_24BIT_RGB_888       = 0x3e
-} mipi_dsi_data_type_t;
+//Pheripheral to Host
+typedef enum {
+	DT_VSS                  = 0x01,
+	DT_VSE                  = 0x11,
+	DT_HSS                  = 0x21,
+	DT_HSE                  = 0x31,
+	DT_EOTP                 = 0x08,
+	DT_CMOFF                = 0x02,
+	DT_CMON                 = 0x12,
+	DT_SHUT_DOWN            = 0x22,
+	DT_TURN_ON              = 0x32,
+	DT_GEN_SHORT_WR_0       = 0x03,
+	DT_GEN_SHORT_WR_1       = 0x13,
+	DT_GEN_SHORT_WR_2       = 0x23,
+	DT_GEN_RD_0             = 0x04,
+	DT_GEN_RD_1             = 0x14,
+	DT_GEN_RD_2             = 0x24,
+	DT_DCS_SHORT_WR_0       = 0x05,
+	DT_DCS_SHORT_WR_1       = 0x15,
+	DT_DCS_RD_0             = 0x06,
+	DT_SET_MAX_RET_PKT_SIZE = 0x37,
+	DT_NULL_PKT             = 0x09,
+	DT_BLANK_PKT            = 0x19,
+	DT_GEN_LONG_WR          = 0x29,
+	DT_DCS_LONG_WR          = 0x39,
+	DT_20BIT_LOOSE_YCBCR    = 0x0c,
+	DT_24BIT_YCBCR          = 0x1c,
+	DT_16BIT_YCBCR          = 0x2c,
+	DT_30BIT_RGB_101010     = 0x0d,
+	DT_36BIT_RGB_121212     = 0x1d,
+	DT_12BIT_YCBCR          = 0x3d,
+	DT_16BIT_RGB_565        = 0x0e,
+	DT_18BIT_RGB_666        = 0x1e,
+	DT_18BIT_LOOSE_RGB_666  = 0x2e,
+	DT_24BIT_RGB_888        = 0x3e
+} mipi_dsi_data_type_host_t;
 
 // DCS Command List
 #define DCS_ENTER_IDLE_MODE          0x39
@@ -87,6 +89,32 @@ typedef enum {DT_VSS                 = 0x01,
 #define DCS_WRITE_LUT                0x2d
 #define DCS_WRITE_MEMORY_CONTINUE    0x3c
 #define DCS_WRITE_MEMORY_START       0x2c
+
+//Pheripheral to Host
+//normal: 0x87(LPDT), data_type, 0, 0, ecc.  //write or tearing-effect
+//error:  0x87(LPDT), 0x02, error_code[15:0], ecc.
+//short read: 0x87, data_type, data0, data1, ecc
+//long read:  0x87, data_type, word_cnt[15:0], ecc, data0, ... data(N-1), checksum(or 0)[15:0].
+typedef enum {
+	DT_RESP_TE             = 0xba,
+	DT_RESP_ACK            = 0x84,
+	DT_RESP_ACK_ERR        = 0x02,
+	DT_RESP_EOT            = 0x08,
+	DT_RESP_GEN_READ_1     = 0x11,
+	DT_RESP_GEN_READ_2     = 0x12,
+	DT_RESP_GEN_READ_LONG  = 0x1a,
+	DT_RESP_DCS_READ_LONG  = 0x1c,
+	DT_RESP_DCS_READ_1     = 0x21,
+	DT_RESP_DCS_READ_2     = 0x22,
+} mipi_dsi_data_type_peripheral_t;
+
+typedef struct {
+    unsigned char data_type;
+    unsigned char vc_id;
+    unsigned char *payload;
+    unsigned short pld_count;
+    unsigned int req_ack;
+} DSI_Cmd_Request_t;
 
 // --------------------------------------------------------
 // MIPI DCS Pixel-to-Byte Format
@@ -433,6 +461,7 @@ typedef struct DSI_Vid_s{
 }DSI_Vid_t;
 
 #define DSI_CMD_SIZE_MAX		2000
+#define DSI_CMD_READ_VALID
 
 extern void set_mipi_dsi_control_config(Lcd_Config_t *pConf);
 extern void set_mipi_dsi_control_config_post(Lcd_Config_t *pConf);

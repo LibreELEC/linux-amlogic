@@ -718,7 +718,7 @@ static int m6tv_pin_map_to_direction(unsigned int pin, unsigned int *reg, unsign
 
 static int m6tv_set_pullup(unsigned int pin, unsigned int config)
 {
-	unsigned int reg = 0, bit = 0, ret;
+	unsigned int reg = 0, bit = 0;
 	u16 pullarg = AML_PINCONF_UNPACK_PULL_ARG(config);
 
 	if (m6tv_pull_up[pin] == PULL_UP_NONE)

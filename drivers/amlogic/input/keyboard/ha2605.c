@@ -150,7 +150,7 @@ static void ha2605_work(struct work_struct *work)
 	}
 
 #if	__HA2605_DEBUG__
-	printk(KERN_INFO "button_val = 0x%04x\r\n", button_val);
+	printk(KERN_INFO "button_val = 0x%04x\n", button_val);
 #endif
 
 	key = kp->key;
@@ -303,11 +303,11 @@ static int ha2605_register_device(struct ha2605 *kp)
 	strcpy(kp->config_name,DRIVER_NAME);
 	ret=register_chrdev(0, kp->config_name, &ha2605_fops);
 	if(ret<=0) {
-		printk("register char device error\r\n");
+		printk("register char device error\n");
 		return  ret ;
 	}
 	kp->config_major=ret;
-	printk("ha2605 major:%d\r\n",ret);
+	printk("ha2605 major:%d\n",ret);
 	kp->config_class=class_create(THIS_MODULE,kp->config_name);
 	kp->config_dev=device_create(kp->config_class,	NULL,
 	MKDEV(kp->config_major,0),NULL,kp->config_name);

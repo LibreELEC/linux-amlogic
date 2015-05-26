@@ -12,6 +12,17 @@ typedef enum {
 	LCD_EXTERN_MAX,
 } Lcd_Extern_Type_t;
 
+struct lcd_extern_config_t {
+	char *name;
+	Lcd_Extern_Type_t type;
+	int status;
+	int i2c_addr;
+	int i2c_bus;
+	int spi_cs;
+	int spi_clk;
+	int spi_data;
+};
+
 //global API
 struct aml_lcd_extern_driver_t {
 	char *name;
@@ -26,17 +37,6 @@ struct aml_lcd_extern_driver_t {
 	//unsigned short *init_off_cmd_16;
 };
 
-struct lcd_extern_config_t {
-	char *name;
-	Lcd_Extern_Type_t type;
-	int status;
-	int i2c_addr;
-	int i2c_bus;
-	int spi_cs;
-	int spi_clk;
-	int spi_data;
-};
-
 #define LCD_EXTERN_DRIVER		"lcd_extern"
 
 #define lcd_extern_gpio_request(gpio) 				amlogic_gpio_request(gpio, LCD_EXTERN_DRIVER)
@@ -49,6 +49,5 @@ struct lcd_extern_config_t {
 extern struct aml_lcd_extern_driver_t* aml_lcd_extern_get_driver(void);
 extern int lcd_extern_driver_check(void);
 extern int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config_t *pdata);
-extern int remove_lcd_extern(struct lcd_extern_config_t *pdata);
 
 #endif

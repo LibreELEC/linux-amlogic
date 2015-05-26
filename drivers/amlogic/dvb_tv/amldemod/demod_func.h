@@ -8,13 +8,19 @@
 /*#include <mach/register.h>
 #include <mach/avosstyle_io.h>
 #include <mach/io.h>*/
-#include "aml_demod.h"
+#include <linux/dvb/aml_demod.h>
 #include "../aml_fe.h"
 #include "amlfrontend.h"
+#define G9_TV
+
+#define PWR_ON    1
+#define PWR_OFF   0
+
+#define dtmb_mobile_mode
 
 
 //#define DEMOD_BASE     APB_REG_ADDR(0x20000)
-#define DEMOD_BASE APB_REG_ADDR(0x20000)
+#define DEMOD_BASE DEMOD_REG_ADDR(0x0) //0xc8020000 //APB_REG_ADDR(0x20000)      0xd0020000
 
 //#define DEMOD_BASE 0xc8020000
 #define DTMB_BASE  (DEMOD_BASE+0x000)
@@ -24,6 +30,8 @@
 #define ATSC_BASE  (DEMOD_BASE+0x800)
 #define DEMOD_CFG_BASE  (DEMOD_BASE+0xC00)
 
+
+#ifndef G9_TV
 #define ADC_REG1_VALUE		 0x003b0232
 #define ADC_REG2_VALUE		 0x814d3928
 #define ADC_REG3_VALUE		 0x6b425012
@@ -38,7 +46,41 @@
 #define ADC_REG4	 0x10ad
 #define ADC_REG5	 0x1073
 #define ADC_REG6	 0x1074
+#else
 
+#define ADC_RESET_VALUE		 0x8a2a2110//0xce7a2110
+#define ADC_REG1_VALUE		 0x00100228
+#define ADC_REG2_VALUE		 0x34e0bf80//0x34e0bf81
+#define ADC_REG2_VALUE_CRY	 0x34e0bf81
+#define ADC_REG3_VALUE		 0x0a2a2110//0x4e7a2110
+#define ADC_REG4_VALUE		 0x02933800
+#define ADC_REG4_CRY_VALUE 0x301
+#define ADC_REG7_VALUE		 0x01411036
+#define ADC_REG8_VALUE		 0x00000000
+#define ADC_REG9_VALUE		 0x00430036
+#define ADC_REGA_VALUE		 0x80480240
+
+
+//DADC DPLL
+#define ADC_REG1	 0x10aa
+#define ADC_REG2	 0x10ab
+#define ADC_REG3	 0x10ac
+#define ADC_REG4	 0x10ad
+
+#define ADC_REG5	 0x1073
+#define ADC_REG6	 0x1074
+
+
+//DADC REG
+#define ADC_REG7	 0x1027
+#define ADC_REG8	 0x1028
+#define ADC_REG9	 0x102a
+#define ADC_REGA	 0x102b
+
+
+
+
+#endif
 
 #define DEMOD_REG1_VALUE		 0x0000d007
 #define DEMOD_REG2_VALUE		 0x2e805400
@@ -51,8 +93,54 @@
 
 
 
-#define Wr(addr, data)   WRITE_CBUS_REG(addr, data) /**(volatile unsigned long *)(0xc1100000|(addr<<2))=data*/
-#define Rd(addr)             READ_CBUS_REG(addr)            /**(volatile unsigned long *)(0xc1100000|(addr<<2))*/
+//#define Wr(addr, data)   WRITE_CBUS_REG(addr, data) /**(volatile unsigned long *)(0xc1100000|(addr<<2))=data*/
+//#define Rd(addr)             READ_CBUS_REG(addr)            /**(volatile unsigned long *)(0xc1100000|(addr<<2))*/
+
+#define Wr(addr, data) *(volatile unsigned long *)(addr)=(data)
+#define Rd(addr) *(volatile unsigned long *)(addr)
+
+typedef enum{
+	enable_mobile,
+	disable_mobile
+}dtmb_mobile_t;
+
+typedef enum{
+	OPEN_TIME_EQ,
+	CLOSE_TIME_EQ
+}dtmb_time_eq_t;
+
+typedef enum{
+	AMLOGIC_DTMB_STEP0,
+	AMLOGIC_DTMB_STEP1,
+	AMLOGIC_DTMB_STEP2,
+	AMLOGIC_DTMB_STEP3,
+	AMLOGIC_DTMB_STEP4,
+	AMLOGIC_DTMB_STEP5,		//time eq
+	AMLOGIC_DTMB_STEP6,		//set normal mode sc
+	AMLOGIC_DTMB_STEP7,
+	AMLOGIC_DTMB_STEP8,		//set time eq mode
+	AMLOGIC_DTMB_STEP9,		//reset
+	AMLOGIC_DTMB_STEP10,	//set normal mode mc
+	AMLOGIC_DTMB_STEP11,
+}dtmb_step_t;
+
+typedef enum{
+	DTMB_IDLE=0,
+	DTMB_AGC_READY=1,
+	DTMB_TS1_READY=2,
+	DTMB_TS2_READY=3,
+	DTMB_FE_READY=4,
+	DTMB_PNPHASE_READY=5,
+	DTMB_SFO_INIT_READY=6,
+	DTMB_TS3_READY=7,
+	DTMB_PM_INIT_READY=8,
+	DTMB_CHE_INIT_READY=9,
+	DTMB_FEC_READY=10
+	
+}dtmb_fec_status_t;
+
+
+
 // i2c functions
 //int aml_i2c_sw_test_bus(struct aml_demod_i2c *adap, char *name);
 int am_demod_i2c_xfer(struct aml_demod_i2c *adap, struct i2c_msg *msgs, int num);
@@ -68,10 +156,6 @@ int tda18273_tuner_set_frequncy(unsigned int dwFrequency,unsigned int dwStandard
 
 int tuner_set_ch (struct aml_demod_sta *demod_sta,
 		  struct aml_demod_i2c *demod_i2c);
-int demod_set_tuner(struct aml_demod_sta *demod_sta,
-		  struct aml_demod_i2c *demod_i2c,
-		  struct aml_tuner_sys *tuner_sys);
-
 
 //dvbt
 int dvbt_set_ch(struct aml_demod_sta *demod_sta,
@@ -108,7 +192,7 @@ u32 dvbc_get_status(void);
 u32 dvbc_set_auto_symtrack(void);
 int  dvbc_timer_init(void);
 void  dvbc_timer_exit(void);
-void dvbc_cci_task(void);
+int dvbc_cci_task(void *);
 int dvbc_get_cci_task(void);
 void dvbc_create_cci_task(void);
 void dvbc_kill_cci_task(void);
@@ -151,7 +235,7 @@ void dtmb_reset(void);
 int dtmb_read_snr(void);
 
 void dtmb_write_reg(int reg_addr, int reg_data);
-unsigned int dtmb_read_reg(int reg_addr);
+long dtmb_read_reg(int reg_addr);
 void dtmb_register_reset(void);
 
 
@@ -172,6 +256,7 @@ void demod_set_demod_reg(unsigned long data, unsigned long addr);
 unsigned long demod_read_demod_reg(unsigned long addr);
 
 
+extern int clk_measure(char index);
 
 
 
@@ -228,6 +313,81 @@ typedef signed     long    s64_t;*/
 
 //#define extadc
 
+//for g9tv
+void adc_dpll_setup(int clk_a, int clk_b, int clk_sys);
+void demod_power_switch(int pwr_cntl);
+
+
+
+typedef union adc_pll_cntl {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned pll_m:9;
+        unsigned pll_n:5;
+        unsigned pll_od0:2;
+        unsigned pll_od1:2;
+        unsigned pll_od2:2;
+        unsigned pll_xd0:6;
+        unsigned pll_xd1:6;
+    } b;
+} adc_pll_cntl_t;
+
+typedef union adc_pll_cntl2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned output_mux_ctrl:4;
+        unsigned div2_ctrl:1;
+        unsigned b_polar_control:1;        
+        unsigned a_polar_control:1;        
+        unsigned gate_ctrl:6;
+        unsigned tdc_buf:8;
+        unsigned lm_s:6;
+        unsigned lm_w:4;
+        unsigned reserved:1;
+    } b;
+} adc_pll_cntl2_t;
+
+typedef union adc_pll_cntl3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned afc_dsel_in:1;
+        unsigned afc_dsel_bypass:1;
+        unsigned dco_sdmck_sel:2;
+        unsigned dc_vc_in:2;
+        unsigned dco_m_en:1;        
+        unsigned dpfd_lmode:1;        
+        unsigned filter_acq1:11;
+        unsigned enable:1; 
+        unsigned filter_acq2:11;
+        unsigned reset:1; 
+    } b;
+} adc_pll_cntl3_t;
+
+typedef union adc_pll_cntl4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reve:12;
+        unsigned tdc_en:1;
+        unsigned dco_sdm_en:1;
+        unsigned dco_iup:2;
+        unsigned pvt_fix_en:1;
+        unsigned iir_bypass_n:1;
+        unsigned pll_od3:2;
+        unsigned filter_pvt1:4;
+        unsigned filter_pvt2:4;
+        unsigned reserved:4;
+    } b;
+} adc_pll_cntl4_t;
+
+///////////////////////////////////////////////////////////////////
 
 typedef union demod_dig_clk {
     /** raw register data */
@@ -449,65 +609,161 @@ typedef struct dtmb_cfg_regs {
     volatile uint32_t dtmb_cfg_62;
     volatile uint32_t dtmb_cfg_63;
     volatile uint32_t dtmb_cfg_64;
-    //volatile uint32_t dtmb_cfg_65;
-    //volatile uint32_t dtmb_cfg_66;
-    //volatile uint32_t dtmb_cfg_67;
-    //volatile uint32_t dtmb_cfg_68;
-    //volatile uint32_t dtmb_cfg_69;
-    //volatile uint32_t dtmb_cfg_6a;
-    //volatile uint32_t dtmb_cfg_6b;
-    //volatile uint32_t dtmb_cfg_6c;
-    //volatile uint32_t dtmb_cfg_6d;
-    //volatile uint32_t dtmb_cfg_6e;
-    //volatile uint32_t dtmb_cfg_6f;
-    //volatile uint32_t dtmb_cfg_70;
-    //volatile uint32_t dtmb_cfg_71;
-    //volatile uint32_t dtmb_cfg_72;
-    //volatile uint32_t dtmb_cfg_73;
-    //volatile uint32_t dtmb_cfg_74;
-    //volatile uint32_t dtmb_cfg_75;
-    //volatile uint32_t dtmb_cfg_76;
-    //volatile uint32_t dtmb_cfg_77;
-    //volatile uint32_t dtmb_cfg_78;
-    //volatile uint32_t dtmb_cfg_79;
-    //volatile uint32_t dtmb_cfg_7a;
-    //volatile uint32_t dtmb_cfg_7b;
-    //volatile uint32_t dtmb_cfg_7c;
-    //volatile uint32_t dtmb_cfg_7d;
-    //volatile uint32_t dtmb_cfg_7e;
-    //volatile uint32_t dtmb_cfg_7f;
-    //volatile uint32_t dtmb_cfg_80;
-    //volatile uint32_t dtmb_cfg_81;
-    //volatile uint32_t dtmb_cfg_82;
-    //volatile uint32_t dtmb_cfg_83;
-    //volatile uint32_t dtmb_cfg_84;
-    //volatile uint32_t dtmb_cfg_85;
-    //volatile uint32_t dtmb_cfg_86;
-    //volatile uint32_t dtmb_cfg_87;
-    //volatile uint32_t dtmb_cfg_88;
-    //volatile uint32_t dtmb_cfg_89;
-    //volatile uint32_t dtmb_cfg_8a;
-    //volatile uint32_t dtmb_cfg_8b;
-    //volatile uint32_t dtmb_cfg_8c;
-    //volatile uint32_t dtmb_cfg_8d;
-    //volatile uint32_t dtmb_cfg_8e;
-    //volatile uint32_t dtmb_cfg_8f;
-    //volatile uint32_t dtmb_cfg_90;
-    //volatile uint32_t dtmb_cfg_91;
-    //volatile uint32_t dtmb_cfg_92;
-    //volatile uint32_t dtmb_cfg_93;
-    //volatile uint32_t dtmb_cfg_94;
-    //volatile uint32_t dtmb_cfg_95;
-    //volatile uint32_t dtmb_cfg_96;
-    //volatile uint32_t dtmb_cfg_97;
-    //volatile uint32_t dtmb_cfg_98;
-    //volatile uint32_t dtmb_cfg_99;
-    //volatile uint32_t dtmb_cfg_9a;
-    //volatile uint32_t dtmb_cfg_9b;
-    //volatile uint32_t dtmb_cfg_9c;
-    //volatile uint32_t dtmb_cfg_9d;
-    //volatile uint32_t dtmb_cfg_9e;
-    //volatile uint32_t dtmb_cfg_9f;
+    volatile uint32_t dtmb_cfg_65;
+    volatile uint32_t dtmb_cfg_66;
+    volatile uint32_t dtmb_cfg_67;
+    volatile uint32_t dtmb_cfg_68;
+    volatile uint32_t dtmb_cfg_69;
+    volatile uint32_t dtmb_cfg_6a;
+    volatile uint32_t dtmb_cfg_6b;
+    volatile uint32_t dtmb_cfg_6c;
+    volatile uint32_t dtmb_cfg_6d;
+    volatile uint32_t dtmb_cfg_6e;
+    volatile uint32_t dtmb_cfg_6f;
+    volatile uint32_t dtmb_cfg_70;
+    volatile uint32_t dtmb_cfg_71;
+    volatile uint32_t dtmb_cfg_72;
+    volatile uint32_t dtmb_cfg_73;
+    volatile uint32_t dtmb_cfg_74;
+    volatile uint32_t dtmb_cfg_75;
+    volatile uint32_t dtmb_cfg_76;
+    volatile uint32_t dtmb_cfg_77;
+    volatile uint32_t dtmb_cfg_78;
+    volatile uint32_t dtmb_cfg_79;
+    volatile uint32_t dtmb_cfg_7a;
+    volatile uint32_t dtmb_cfg_7b;
+    volatile uint32_t dtmb_cfg_7c;
+    volatile uint32_t dtmb_cfg_7d;
+    volatile uint32_t dtmb_cfg_7e;
+    volatile uint32_t dtmb_cfg_7f;
+    volatile uint32_t dtmb_cfg_80;
+    volatile uint32_t dtmb_cfg_81;
+    volatile uint32_t dtmb_cfg_82;
+    volatile uint32_t dtmb_cfg_83;
+    volatile uint32_t dtmb_cfg_84;
+    volatile uint32_t dtmb_cfg_85;
+    volatile uint32_t dtmb_cfg_86;
+    volatile uint32_t dtmb_cfg_87;
+    volatile uint32_t dtmb_cfg_88;
+    volatile uint32_t dtmb_cfg_89;
+    volatile uint32_t dtmb_cfg_8a;
+    volatile uint32_t dtmb_cfg_8b;
+    volatile uint32_t dtmb_cfg_8c;
+    volatile uint32_t dtmb_cfg_8d;
+    volatile uint32_t dtmb_cfg_8e;
+    volatile uint32_t dtmb_cfg_8f;
+    volatile uint32_t dtmb_cfg_90;
+    volatile uint32_t dtmb_cfg_91;
+    volatile uint32_t dtmb_cfg_92;
+    volatile uint32_t dtmb_cfg_93;
+    volatile uint32_t dtmb_cfg_94;
+    volatile uint32_t dtmb_cfg_95;
+    volatile uint32_t dtmb_cfg_96;
+    volatile uint32_t dtmb_cfg_97;
+    volatile uint32_t dtmb_cfg_98;
+    volatile uint32_t dtmb_cfg_99;
+    volatile uint32_t dtmb_cfg_9a;
+    volatile uint32_t dtmb_cfg_9b;
+    volatile uint32_t dtmb_cfg_9c;
+    volatile uint32_t dtmb_cfg_9d;
+    volatile uint32_t dtmb_cfg_9e;
+    volatile uint32_t dtmb_cfg_9f;
+    volatile uint32_t dtmb_cfg_a0;
+    volatile uint32_t dtmb_cfg_a1;
+    volatile uint32_t dtmb_cfg_a2;
+    volatile uint32_t dtmb_cfg_a3;
+    volatile uint32_t dtmb_cfg_a4;
+    volatile uint32_t dtmb_cfg_a5;
+    volatile uint32_t dtmb_cfg_a6;
+    volatile uint32_t dtmb_cfg_a7;
+    volatile uint32_t dtmb_cfg_a8;
+    volatile uint32_t dtmb_cfg_a9;
+    volatile uint32_t dtmb_cfg_aa;
+    volatile uint32_t dtmb_cfg_ab;
+    volatile uint32_t dtmb_cfg_ac;
+    volatile uint32_t dtmb_cfg_ad;
+    volatile uint32_t dtmb_cfg_ae;
+    volatile uint32_t dtmb_cfg_af;
+    volatile uint32_t dtmb_cfg_b0;
+    volatile uint32_t dtmb_cfg_b1;
+    volatile uint32_t dtmb_cfg_b2;
+    volatile uint32_t dtmb_cfg_b3;
+    volatile uint32_t dtmb_cfg_b4;
+    volatile uint32_t dtmb_cfg_b5;
+    volatile uint32_t dtmb_cfg_b6;
+    volatile uint32_t dtmb_cfg_b7;
+    volatile uint32_t dtmb_cfg_b8;
+    volatile uint32_t dtmb_cfg_b9;
+    volatile uint32_t dtmb_cfg_ba;
+    volatile uint32_t dtmb_cfg_bb;
+    volatile uint32_t dtmb_cfg_bc;
+    volatile uint32_t dtmb_cfg_bd;
+    volatile uint32_t dtmb_cfg_be;
+    volatile uint32_t dtmb_cfg_bf;
+    volatile uint32_t dtmb_cfg_c0;
+    volatile uint32_t dtmb_cfg_c1;
+    volatile uint32_t dtmb_cfg_c2;
+    volatile uint32_t dtmb_cfg_c3;
+    volatile uint32_t dtmb_cfg_c4;
+    volatile uint32_t dtmb_cfg_c5;
+    volatile uint32_t dtmb_cfg_c6;
+    volatile uint32_t dtmb_cfg_c7;
+    volatile uint32_t dtmb_cfg_c8;
+    volatile uint32_t dtmb_cfg_c9;
+    volatile uint32_t dtmb_cfg_ca;
+    volatile uint32_t dtmb_cfg_cb;
+    volatile uint32_t dtmb_cfg_cc;
+    volatile uint32_t dtmb_cfg_cd;
+    volatile uint32_t dtmb_cfg_ce;
+    volatile uint32_t dtmb_cfg_cf;
+    volatile uint32_t dtmb_cfg_d0;
+    volatile uint32_t dtmb_cfg_d1;
+    volatile uint32_t dtmb_cfg_d2;
+    volatile uint32_t dtmb_cfg_d3;
+    volatile uint32_t dtmb_cfg_d4;
+    volatile uint32_t dtmb_cfg_d5;
+    volatile uint32_t dtmb_cfg_d6;
+    volatile uint32_t dtmb_cfg_d7;
+    volatile uint32_t dtmb_cfg_d8;
+    volatile uint32_t dtmb_cfg_d9;
+    volatile uint32_t dtmb_cfg_da;
+    volatile uint32_t dtmb_cfg_db;
+    volatile uint32_t dtmb_cfg_dc;
+    volatile uint32_t dtmb_cfg_dd;
+    volatile uint32_t dtmb_cfg_de;
+    volatile uint32_t dtmb_cfg_df;
+    volatile uint32_t dtmb_cfg_e0;
+    volatile uint32_t dtmb_cfg_e1;
+    volatile uint32_t dtmb_cfg_e2;
+    volatile uint32_t dtmb_cfg_e3;
+    volatile uint32_t dtmb_cfg_e4;
+    volatile uint32_t dtmb_cfg_e5;
+    volatile uint32_t dtmb_cfg_e6;
+    volatile uint32_t dtmb_cfg_e7;
+    volatile uint32_t dtmb_cfg_e8;
+    volatile uint32_t dtmb_cfg_e9;
+    volatile uint32_t dtmb_cfg_ea;
+    volatile uint32_t dtmb_cfg_eb;
+    volatile uint32_t dtmb_cfg_ec;
+    volatile uint32_t dtmb_cfg_ed;
+    volatile uint32_t dtmb_cfg_ee;
+    volatile uint32_t dtmb_cfg_ef;
+    volatile uint32_t dtmb_cfg_f0;
+    volatile uint32_t dtmb_cfg_f1;
+    volatile uint32_t dtmb_cfg_f2;
+    volatile uint32_t dtmb_cfg_f3;
+    volatile uint32_t dtmb_cfg_f4;
+    volatile uint32_t dtmb_cfg_f5;
+    volatile uint32_t dtmb_cfg_f6;
+    volatile uint32_t dtmb_cfg_f7;
+    volatile uint32_t dtmb_cfg_f8;
+    volatile uint32_t dtmb_cfg_f9;
+    volatile uint32_t dtmb_cfg_fa;
+    volatile uint32_t dtmb_cfg_fb;
+    volatile uint32_t dtmb_cfg_fc;
+    volatile uint32_t dtmb_cfg_fd;
+    volatile uint32_t dtmb_cfg_fe;
+    volatile uint32_t dtmb_cfg_ff;
 } dtmb_cfg_regs_t;
 
 typedef union dtmb_cfg_00 {
@@ -1779,6 +2035,1477 @@ typedef union dtmb_cfg_64 {
         unsigned reserved         :32;
     } b;
 } dtmb_cfg_64_t;
+
+typedef union dtmb_cfg_65 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_alpha_portable_sc:16;
+        unsigned reserved16:4;
+        unsigned che_alpha_portable1_mc:12;
+    } b;
+} dtmb_cfg_65_t;
+
+typedef union dtmb_cfg_66 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_beta_portable0_mc:32;
+    } b;
+} dtmb_cfg_66_t;
+
+typedef union dtmb_cfg_67 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:20;
+        unsigned che_beta_portable1_mc:12;
+    } b;
+} dtmb_cfg_67_t;
+
+typedef union dtmb_cfg_68 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_alpha_mobile0_mc:32;
+    } b;
+} dtmb_cfg_68_t;
+
+typedef union dtmb_cfg_69 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_alpha_mobile_sc:16;
+        unsigned reserved16:4;
+        unsigned che_alpha_mobile1_mc:12;
+    } b;
+} dtmb_cfg_69_t;
+
+typedef union dtmb_cfg_6a {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6a_t;
+
+typedef union dtmb_cfg_6b {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6b_t;
+
+typedef union dtmb_cfg_6c {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6c_t;
+
+typedef union dtmb_cfg_6d {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6d_t;
+
+typedef union dtmb_cfg_6e {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6e_t;
+
+typedef union dtmb_cfg_6f {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_6f_t;
+
+typedef union dtmb_cfg_70 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_70_t;
+
+typedef union dtmb_cfg_71 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_71_t;
+
+typedef union dtmb_cfg_72 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_72_t;
+
+typedef union dtmb_cfg_73 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_73_t;
+
+typedef union dtmb_cfg_74 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_74_t;
+
+typedef union dtmb_cfg_75 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_75_t;
+
+typedef union dtmb_cfg_76 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_76_t;
+
+typedef union dtmb_cfg_77 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_77_t;
+
+typedef union dtmb_cfg_78 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_78_t;
+
+typedef union dtmb_cfg_79 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_79_t;
+
+typedef union dtmb_cfg_7a {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7a_t;
+
+typedef union dtmb_cfg_7b {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7b_t;
+
+typedef union dtmb_cfg_7c {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7c_t;
+
+typedef union dtmb_cfg_7d {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7d_t;
+
+typedef union dtmb_cfg_7e {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7e_t;
+
+typedef union dtmb_cfg_7f {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_7f_t;
+
+typedef union dtmb_cfg_80 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_80_t;
+
+typedef union dtmb_cfg_81 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_81_t;
+
+typedef union dtmb_cfg_82 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_82_t;
+
+typedef union dtmb_cfg_83 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_83_t;
+
+typedef union dtmb_cfg_84 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_84_t;
+
+typedef union dtmb_cfg_85 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_85_t;
+
+typedef union dtmb_cfg_86 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_86_t;
+
+typedef union dtmb_cfg_87 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_87_t;
+
+typedef union dtmb_cfg_88 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_88_t;
+
+typedef union dtmb_cfg_89 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_89_t;
+
+typedef union dtmb_cfg_8a {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8a_t;
+
+typedef union dtmb_cfg_8b {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8b_t;
+
+typedef union dtmb_cfg_8c {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8c_t;
+
+typedef union dtmb_cfg_8d {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8d_t;
+
+typedef union dtmb_cfg_8e {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8e_t;
+
+typedef union dtmb_cfg_8f {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_8f_t;
+
+typedef union dtmb_cfg_90 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_90_t;
+
+typedef union dtmb_cfg_91 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_91_t;
+
+typedef union dtmb_cfg_92 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_92_t;
+
+typedef union dtmb_cfg_93 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_93_t;
+
+typedef union dtmb_cfg_94 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_94_t;
+
+typedef union dtmb_cfg_95 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_95_t;
+
+typedef union dtmb_cfg_96 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_96_t;
+
+typedef union dtmb_cfg_97 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_97_t;
+
+typedef union dtmb_cfg_98 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_98_t;
+
+typedef union dtmb_cfg_99 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_99_t;
+
+typedef union dtmb_cfg_9a {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9a_t;
+
+typedef union dtmb_cfg_9b {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9b_t;
+
+typedef union dtmb_cfg_9c {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9c_t;
+
+typedef union dtmb_cfg_9d {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9d_t;
+
+typedef union dtmb_cfg_9e {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9e_t;
+
+typedef union dtmb_cfg_9f {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_9f_t;
+
+typedef union dtmb_cfg_a0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a0_t;
+
+typedef union dtmb_cfg_a1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a1_t;
+
+typedef union dtmb_cfg_a2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a2_t;
+
+typedef union dtmb_cfg_a3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a3_t;
+
+typedef union dtmb_cfg_a4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a4_t;
+
+typedef union dtmb_cfg_a5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a5_t;
+
+typedef union dtmb_cfg_a6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a6_t;
+
+typedef union dtmb_cfg_a7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a7_t;
+
+typedef union dtmb_cfg_a8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a8_t;
+
+typedef union dtmb_cfg_a9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_a9_t;
+
+typedef union dtmb_cfg_aa {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_aa_t;
+
+typedef union dtmb_cfg_ab {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ab_t;
+
+typedef union dtmb_cfg_ac {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ac_t;
+
+typedef union dtmb_cfg_ad {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ad_t;
+
+typedef union dtmb_cfg_ae {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ae_t;
+
+typedef union dtmb_cfg_af {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_af_t;
+
+typedef union dtmb_cfg_b0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b0_t;
+
+typedef union dtmb_cfg_b1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b1_t;
+
+typedef union dtmb_cfg_b2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b2_t;
+
+typedef union dtmb_cfg_b3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b3_t;
+
+typedef union dtmb_cfg_b4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b4_t;
+
+typedef union dtmb_cfg_b5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b5_t;
+
+typedef union dtmb_cfg_b6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b6_t;
+
+typedef union dtmb_cfg_b7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b7_t;
+
+typedef union dtmb_cfg_b8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b8_t;
+
+typedef union dtmb_cfg_b9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_b9_t;
+
+typedef union dtmb_cfg_ba {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ba_t;
+
+typedef union dtmb_cfg_bb {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_bb_t;
+
+typedef union dtmb_cfg_bc {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_bc_t;
+
+typedef union dtmb_cfg_bd {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_bd_t;
+
+typedef union dtmb_cfg_be {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_be_t;
+
+typedef union dtmb_cfg_bf {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_bf_t;
+
+typedef union dtmb_cfg_c0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c0_t;
+
+typedef union dtmb_cfg_c1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c1_t;
+
+typedef union dtmb_cfg_c2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c2_t;
+
+typedef union dtmb_cfg_c3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c3_t;
+
+typedef union dtmb_cfg_c4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c4_t;
+
+typedef union dtmb_cfg_c5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c5_t;
+
+typedef union dtmb_cfg_c6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c6_t;
+
+typedef union dtmb_cfg_c7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_c7_t;
+
+typedef union dtmb_cfg_c8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned testbus_out:32;
+    } b;
+} dtmb_cfg_c8_t;
+
+typedef union dtmb_cfg_c9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned tbus_dc_addr:32;
+    } b;
+} dtmb_cfg_c9_t;
+
+typedef union dtmb_cfg_ca {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_iqib_check_b:12;
+        unsigned front_iqib_check_a:10;
+        unsigned reserved22:10;
+    } b;
+} dtmb_cfg_ca_t;
+
+typedef union dtmb_cfg_cb {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_ts_idx:2;
+        unsigned sync_ts_pos:13;
+        unsigned sync_ts_q:10;
+        unsigned reserved25:7;
+    } b;
+} dtmb_cfg_cb_t;
+
+typedef union dtmb_cfg_cc {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_cc_t;
+
+typedef union dtmb_cfg_cd {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_pnphase_max_q_idx:2;
+        unsigned sync_pnphase:8;
+        unsigned sync_pnphase_max_q:7;
+        unsigned reserved17:15;
+    } b;
+} dtmb_cfg_cd_t;
+
+typedef union dtmb_cfg_ce {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_ce_t;
+
+typedef union dtmb_cfg_cf {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_cf_t;
+
+typedef union dtmb_cfg_d0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_last_path_pos:10;
+        unsigned sync_first_path_pos:10;
+        unsigned sync_max_path_pos:10;
+        unsigned reserved30:2;
+    } b;
+} dtmb_cfg_d0_t;
+
+typedef union dtmb_cfg_d1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_path_num:11;
+        unsigned sync_timing_offset:11;
+        unsigned reserved22:10;
+    } b;
+} dtmb_cfg_d1_t;
+
+typedef union dtmb_cfg_d2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_ddc_icfo:20;
+        unsigned reserved20:12;
+    } b;
+} dtmb_cfg_d2_t;
+
+typedef union dtmb_cfg_d3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_src_sfo:12;
+        unsigned reserved12:1;
+        unsigned ctrl_ddc_fcfo:14;
+        unsigned reserved27:5;
+    } b;
+} dtmb_cfg_d3_t;
+
+typedef union dtmb_cfg_d4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_fsm_state0:32;
+    } b;
+} dtmb_cfg_d4_t;
+
+typedef union dtmb_cfg_d5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_fsm_state1:32;
+    } b;
+} dtmb_cfg_d5_t;
+
+typedef union dtmb_cfg_d6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_fsm_state2:32;
+    } b;
+} dtmb_cfg_d6_t;
+
+typedef union dtmb_cfg_d7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_fsm_state3:32;
+    } b;
+} dtmb_cfg_d7_t;
+
+typedef union dtmb_cfg_d8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_ts2_workcnt:8;
+        unsigned ctrl_pnphase_workcnt:8;
+        unsigned ctrl_sfo_workcnt:8;
+        unsigned sync_fe_workcnt:8;
+    } b;
+} dtmb_cfg_d8_t;
+
+typedef union dtmb_cfg_d9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_agc_if_gain:11;
+        unsigned front_agc_rf_gain:11;
+        unsigned front_agc_power:9;
+        unsigned reserved31:1;
+    } b;
+} dtmb_cfg_d9_t;
+
+typedef union dtmb_cfg_da {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_dagc_power:6;
+        unsigned reserved6:2;
+        unsigned front_dagc_gain:10;
+        unsigned reserved18:14;
+    } b;
+} dtmb_cfg_da_t;
+
+typedef union dtmb_cfg_db {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned fec_time_sts:32;
+    } b;
+} dtmb_cfg_db_t;
+
+typedef union dtmb_cfg_dc {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned fec_ldpc_sts:32;
+    } b;
+} dtmb_cfg_dc_t;
+
+typedef union dtmb_cfg_dd {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned fec_ldpc_it_avg:16;
+        unsigned fec_ldpc_per_rpt:13;
+        unsigned reserved29:3;
+    } b;
+} dtmb_cfg_dd_t;
+
+typedef union dtmb_cfg_de {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned fec_ldpc_unc_acc:32;
+    } b;
+} dtmb_cfg_de_t;
+
+typedef union dtmb_cfg_df {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned fec_bch_acc:32;
+    } b;
+} dtmb_cfg_df_t;
+
+typedef union dtmb_cfg_e0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_icfo_all:20;
+        unsigned reserved20:12;
+    } b;
+} dtmb_cfg_e0_t;
+
+typedef union dtmb_cfg_e1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_fcfo_all:20;
+        unsigned reserved20:12;
+    } b;
+} dtmb_cfg_e1_t;
+
+typedef union dtmb_cfg_e2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_sfo_all:20;
+        unsigned reserved20:12;
+    } b;
+} dtmb_cfg_e2_t;
+
+typedef union dtmb_cfg_e3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_snr:12;
+        unsigned fec_lock:1;
+        unsigned che_snr_average:12;
+        unsigned reserved25:7;
+    } b;
+} dtmb_cfg_e3_t;
+
+typedef union dtmb_cfg_e4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_seg_factor:14;
+        unsigned reserved14:18;
+    } b;
+} dtmb_cfg_e4_t;
+
+typedef union dtmb_cfg_e5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_che_workcnt:8;
+        unsigned ctrl_fec_workcnt:8;
+        unsigned ctrl_constell:2;
+        unsigned ctrl_code_rate:2;
+        unsigned ctrl_intlv_mode:1;
+        unsigned ctrl_qam4_nr:1;
+        unsigned ctrl_freq_reverse:1;
+        unsigned reserved23:9;
+    } b;
+} dtmb_cfg_e5_t;
+
+typedef union dtmb_cfg_e6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_obs_state1:32;
+    } b;
+} dtmb_cfg_e6_t;
+
+typedef union dtmb_cfg_e7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_obs_state2:32;
+    } b;
+} dtmb_cfg_e7_t;
+
+typedef union dtmb_cfg_e8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_obs_state3:32;
+    } b;
+} dtmb_cfg_e8_t;
+
+typedef union dtmb_cfg_e9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_obs_state4:32;
+    } b;
+} dtmb_cfg_e9_t;
+
+typedef union dtmb_cfg_ea {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_obs_state5:32;
+    } b;
+} dtmb_cfg_ea_t;
+
+typedef union dtmb_cfg_eb {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_pm_target0:24;
+        unsigned reserved24:8;
+    } b;
+} dtmb_cfg_eb_t;
+
+typedef union dtmb_cfg_ec {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_pm_target1:24;
+        unsigned reserved24:8;
+    } b;
+} dtmb_cfg_ec_t;
+
+typedef union dtmb_cfg_ed {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_pm_target2:24;
+        unsigned sync_pm_gain_delta:2;
+        unsigned reserved26:6;
+    } b;
+} dtmb_cfg_ed_t;
+
+typedef union dtmb_cfg_ee {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_cci_nf1_b1:10;
+        unsigned front_cci_nf1_a2:10;
+        unsigned front_cci_nf1_a1:10;
+        unsigned reserved30:2;
+    } b;
+} dtmb_cfg_ee_t;
+
+typedef union dtmb_cfg_ef {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_cci_nf2_b1:10;
+        unsigned front_cci_nf2_a2:10;
+        unsigned front_cci_nf2_a1:10;
+        unsigned reserved30:2;
+    } b;
+} dtmb_cfg_ef_t;
+
+typedef union dtmb_cfg_f0 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_cci_nf2_position:11;
+        unsigned front_cci_nf1_position:11;
+        unsigned front_cci_nf2_det:1;
+        unsigned front_cci_nf1_det:1;
+        unsigned reserved24:8;
+    } b;
+} dtmb_cfg_f0_t;
+
+typedef union dtmb_cfg_f1 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_sys_ofdm_cnt:8;
+        unsigned mobi_det_power_var:19;
+        unsigned reserved27:1;
+        unsigned ctrl_che_working_state:2;
+        unsigned reserved30:2;
+    } b;
+} dtmb_cfg_f1_t;
+
+typedef union dtmb_cfg_f2 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_tps_q_final:7;
+        unsigned ctrl_tps_suc_cnt:7;
+        unsigned reserved14:18;
+    } b;
+} dtmb_cfg_f2_t;
+
+typedef union dtmb_cfg_f3 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned front_dc_q:10;
+        unsigned front_dc_i:10;
+        unsigned reserved20:12;
+    } b;
+} dtmb_cfg_f3_t;
+
+typedef union dtmb_cfg_f4 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned clk_cnt_for_frame_min:32;
+    } b;
+} dtmb_cfg_f4_t;
+
+typedef union dtmb_cfg_f5 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned clk_cnt_for_frame_max:32;
+    } b;
+} dtmb_cfg_f5_t;
+
+typedef union dtmb_cfg_f6 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_debug:32;
+    } b;
+} dtmb_cfg_f6_t;
+
+typedef union dtmb_cfg_f7 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned corr_start_min:32;
+    } b;
+} dtmb_cfg_f7_t;
+
+typedef union dtmb_cfg_f8 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned corr_start_max:32;
+    } b;
+} dtmb_cfg_f8_t;
+
+typedef union dtmb_cfg_f9 {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_start_min:32;
+    } b;
+} dtmb_cfg_f9_t;
+
+typedef union dtmb_cfg_fa {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned che_start_max:32;
+    } b;
+} dtmb_cfg_fa_t;
+
+typedef union dtmb_cfg_fb {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned corr_start_cnt:16;
+        unsigned che_start_cnt:16;
+    } b;
+} dtmb_cfg_fb_t;
+
+typedef union dtmb_cfg_fc {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_fc_t;
+
+typedef union dtmb_cfg_fd {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned reserved0:32;
+    } b;
+} dtmb_cfg_fd_t;
+
+typedef union dtmb_cfg_fe {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned sync_pm_prt_gd:32;
+    } b;
+} dtmb_cfg_fe_t;
+
+typedef union dtmb_cfg_ff {
+    /** raw register data */
+    uint32_t d32;
+    /** register bits */
+    struct {
+        unsigned ctrl_dead_lock_det:1;
+        unsigned ctrl_dead_lock:1;
+        unsigned reserved2:2;
+        unsigned ctrl_dead_cnt:4;
+        unsigned reserved8:24;
+    } b;
+} dtmb_cfg_ff_t;
+
+// dvb-c -------------------------------------------------------------------
 
 typedef struct dvbc_cfg_regs {
     volatile uint32_t dvbc_cfg_00;

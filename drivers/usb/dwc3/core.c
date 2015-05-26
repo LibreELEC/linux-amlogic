@@ -99,6 +99,19 @@ static void dwc3_core_soft_reset(struct dwc3 *dwc)
 	reg |= DWC3_GUSB2PHYCFG_PHYSOFTRST;
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 
+#ifdef CONFIG_AMLOGIC_USB_3
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(1));
+	reg |= DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(1), reg);
+
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(2));
+	reg |= DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(2), reg);
+
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(3));
+	reg |= DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(3), reg);
+#endif
 	usb_phy_init(dwc->usb2_phy);
 	usb_phy_init(dwc->usb3_phy);
 	mdelay(100);
@@ -108,11 +121,33 @@ static void dwc3_core_soft_reset(struct dwc3 *dwc)
 	reg &= ~DWC3_GUSB3PIPECTL_PHYSOFTRST;
 	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
 
+#ifdef CONFIG_AMLOGIC_USB_3
+	/* Clear USB2 PHY reset */
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
+	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
+
+	/* Clear USB2 PHY reset */
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(1));
+	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(1), reg);
+
+	/* Clear USB2 PHY reset */
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(2));
+	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(2), reg);
+
+	/* Clear USB2 PHY reset */
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(3));
+	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(3), reg);
+#else
 	/* Clear USB2 PHY reset */
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
 	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
-
+#endif
 	mdelay(100);
 
 	/* After PHYs are stable we can take Core out of reset state */
@@ -286,6 +321,44 @@ static void dwc3_cache_hwparams(struct dwc3 *dwc)
 	parms->hwparams8 = dwc3_readl(dwc->regs, DWC3_GHWPARAMS8);
 }
 
+#ifdef  CONFIG_AMLOGIC_USB_3
+struct dwc3 *g_dwc;
+
+void aml_enable_scrambling(void)
+{
+	u32			reg;
+
+	reg = dwc3_readl(g_dwc->regs, DWC3_GCTL);
+	reg &= ~DWC3_GCTL_DISSCRAMBLE;
+	dwc3_writel(g_dwc->regs, DWC3_GCTL, reg);
+
+	udelay(500);
+
+	usb_phy_init(g_dwc->usb3_phy);
+
+	return;
+}
+EXPORT_SYMBOL_GPL(aml_enable_scrambling);
+
+void aml_disable_scrambling(void)
+{
+	u32			reg;
+
+	reg = dwc3_readl(g_dwc->regs, DWC3_GCTL);
+	if (!(reg & DWC3_GCTL_DISSCRAMBLE)) {
+		reg |= DWC3_GCTL_DISSCRAMBLE;
+		dwc3_writel(g_dwc->regs, DWC3_GCTL, reg);
+
+		udelay(500);
+
+		usb_phy_init(g_dwc->usb3_phy);
+	}
+
+	return;
+}
+EXPORT_SYMBOL_GPL(aml_disable_scrambling);
+#endif
+
 /**
  * dwc3_core_init - Low-level initialization of DWC3 Core
  * @dwc: Pointer to our controller context structure
@@ -328,7 +401,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	reg &= ~DWC3_GCTL_SCALEDOWN_MASK;
-	reg &= ~DWC3_GCTL_DISSCRAMBLE;
+	reg |= DWC3_GCTL_DISSCRAMBLE;
 
 	switch (DWC3_GHWPARAMS1_EN_PWROPT(dwc->hwparams.hwparams1)) {
 	case DWC3_GHWPARAMS1_EN_PWROPT_CLK:
@@ -364,6 +437,10 @@ static void dwc3_core_exit(struct dwc3 *dwc)
 }
 
 #define DWC3_ALIGN_MASK		(16 - 1)
+
+#ifdef CONFIG_AMLOGIC_USB_3
+static u64 dwc3_dmamask = DMA_BIT_MASK(32);
+#endif
 
 static int dwc3_probe(struct platform_device *pdev)
 {
@@ -426,6 +503,9 @@ static int dwc3_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	printk(KERN_INFO"dwc3_core probe:mem:0x%8x, iomap base:0x%8x	\n",
+	               (unsigned int)res->start,(unsigned int)regs);
+
 	if (node) {
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
 		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 1);
@@ -474,8 +554,16 @@ static int dwc3_probe(struct platform_device *pdev)
 	dwc->regs_size	= resource_size(res);
 	dwc->dev	= dev;
 
+#ifdef  CONFIG_AMLOGIC_USB_3
+	g_dwc = dwc;
+#endif
+
+#ifdef CONFIG_AMLOGIC_USB_3
+	dev->dma_mask	= &dwc3_dmamask;
+#else
 	dev->dma_mask	= dev->parent->dma_mask;
 	dev->dma_parms	= dev->parent->dma_parms;
+#endif
 	dma_set_coherent_mask(dev, dev->parent->coherent_dma_mask);
 
 	if (!strncmp("super", maximum_speed, 5))

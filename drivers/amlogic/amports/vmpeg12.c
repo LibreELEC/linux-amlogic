@@ -262,14 +262,14 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 {
     u32 reg, info, seqinfo, offset, pts, pts_valid = 0;
     vframe_t *vf;
-    u64 pts_us64 = 0;
+    u64 pts_us64 = 0;;
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
     reg = READ_VREG(MREG_BUFFEROUT);
 
     if ((reg >> 16) == 0xfe) {
-        wakeup_userdata_poll(reg & 0xffff, ccbuf_phyAddress, CCBUF_SIZE);
+        wakeup_userdata_poll(reg & 0xffff, ccbuf_phyAddress, CCBUF_SIZE, 0);
         WRITE_VREG(MREG_BUFFEROUT, 0);
     }
     else if (reg) {
@@ -282,8 +282,8 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             first_i_frame_ready = 1;
         }
 
-        if ((((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) || ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_P))
-             && (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 0, &pts_us64) == 0)) {
+        if ((pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 0, &pts_us64) == 0)
+             && (((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) || ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_P))) {
             pts_valid = 1;
         }
 
@@ -873,17 +873,22 @@ static s32 vmpeg12_init(void)
 
 static int amvdec_mpeg12_probe(struct platform_device *pdev)
 {
-    struct resource *mem;
+    struct vdec_dev_reg_s *pdata = (struct vdec_dev_reg_s *)pdev->dev.platform_data;
 
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 probe start.\n");
 
-    if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
-        amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 memory resource undefined.\n");
+    if (pdata == NULL) {
+        amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 platform data undefined.\n");
         return -EFAULT;
     }
 
-    buf_start = mem->start;
-    buf_size  = mem->end - mem->start + 1;
+
+    if (pdata->sys_info) {
+        vmpeg12_amstream_dec_info = *pdata->sys_info;
+    }
+
+    buf_start = pdata->mem_start;
+    buf_size  = pdata->mem_end - pdata->mem_start + 1;
 
     if (vmpeg12_init() < 0) {
         amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 init failed.\n");

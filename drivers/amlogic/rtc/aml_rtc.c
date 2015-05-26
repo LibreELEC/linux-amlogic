@@ -15,104 +15,104 @@
  #include <linux/of.h>
 
 int c_dbg_lvl = 0;
-#define RTC_DBG(lvl, x...) do{ if(c_dbg_lvl & lvl) printk(x);} while(0)
+#define RTC_DBG(lvl, x...) do{ if (c_dbg_lvl & lvl) printk(x);} while (0)
 #define RTC_DBG_VAL 1 << 0
 #define RTC_DBG_WR 1 << 1
 
 // Define register AO_RTC_ADDR0 bit map
-#define RTC_REG0_BIT_sclk_static     20
-#define RTC_REG0_BIT_ildo_ctrl_1      7
-#define RTC_REG0_BIT_ildo_ctrl_0      6
-#define RTC_REG0_BIT_test_mode      	5
-#define RTC_REG0_BIT_test_clk         4
-#define RTC_REG0_BIT_test_bypass    	3
-#define RTC_REG0_BIT_sdi              2
-#define RTC_REG0_BIT_sen              1
-#define RTC_REG0_BIT_sclk             0
+#define RTC_REG0_BIT_sclk_static	20
+#define RTC_REG0_BIT_ildo_ctrl_1	7
+#define RTC_REG0_BIT_ildo_ctrl_0	6
+#define RTC_REG0_BIT_test_mode		5
+#define RTC_REG0_BIT_test_clk		4
+#define RTC_REG0_BIT_test_bypass	3
+#define RTC_REG0_BIT_sdi		2
+#define RTC_REG0_BIT_sen		1
+#define RTC_REG0_BIT_sclk		0
 
 // Define register AO_RTC_ADDR1 bit map
-#define RTC_REG1_BIT_gpo_to_dig     	3
-#define RTC_REG1_BIT_gpi_to_dig      	2
-#define RTC_REG1_BIT_s_ready          1
-#define RTC_REG1_BIT_sdo              0
+#define RTC_REG1_BIT_gpo_to_dig		3
+#define RTC_REG1_BIT_gpi_to_dig		2
+#define RTC_REG1_BIT_s_ready		1
+#define RTC_REG1_BIT_sdo		0
 
 // Define register AO_RTC_ADDR3 bit map
-#define RTC_REG3_BIT_count_always   	17
+#define RTC_REG3_BIT_count_always	17
 
 // Define RTC serial protocal
-#define RTC_SER_DATA_BITS           	32
-#define RTC_SER_ADDR_BITS           	3
+#define RTC_SER_DATA_BITS		32
+#define RTC_SER_ADDR_BITS		3
 
 
-#define s_ready                  			1 << RTC_REG1_BIT_s_ready
-#define s_do                       		1 << RTC_REG1_BIT_sdo
-#define RESET_RETRY_TIMES           	3
+#define s_ready				1 << RTC_REG1_BIT_s_ready
+#define s_do				1 << RTC_REG1_BIT_sdo
+#define RESET_RETRY_TIMES		3
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #if (defined(CONFIG_MESON_TRUSTZONE) && defined(CONFIG_ARCH_MESON6))
 #include <mach/meson-secure.h>
-#define WR_RTC(addr, data)         meson_secure_reg_write(P_##addr, data)
-#define RD_RTC(addr)               meson_secure_reg_read(P_##addr)
+#define WR_RTC(addr, data)		meson_secure_reg_write(P_##addr, data)
+#define RD_RTC(addr)			meson_secure_reg_read(P_##addr)
 #else
-#define WR_RTC(addr, data)         aml_write_reg32(P_##addr, data)
-#define RD_RTC(addr)               aml_read_reg32(P_##addr)
+#define WR_RTC(addr, data)		aml_write_reg32(P_##addr, data)
+#define RD_RTC(addr)			aml_read_reg32(P_##addr)
 #endif
 #else
-#define WR_RTC(addr, data)         WRITE_AOBUS_REG(addr, data)
-#define RD_RTC(addr)                   READ_AOBUS_REG(addr)
+#define WR_RTC(addr, data)		WRITE_AOBUS_REG(addr, data)
+#define RD_RTC(addr)			READ_AOBUS_REG(addr)
 #endif
 
-#define RTC_sbus_LOW(x)             WR_RTC(AO_RTC_ADDR0, \
-                                                                      (RD_RTC(AO_RTC_ADDR0) & \
-                                                                      ~((1<<RTC_REG0_BIT_sen)|(1<<RTC_REG0_BIT_sclk)|(1<<RTC_REG0_BIT_sdi))))
+#define RTC_sbus_LOW(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) & \
+					~((1<<RTC_REG0_BIT_sen)|(1<<RTC_REG0_BIT_sclk)|(1<<RTC_REG0_BIT_sdi))))
 
-#define RTC_sdi_HIGH(x)             WR_RTC(AO_RTC_ADDR0, \
-                                                                  (RD_RTC(AO_RTC_ADDR0) | (1<<RTC_REG0_BIT_sdi) ))
+#define RTC_sdi_HIGH(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) | (1<<RTC_REG0_BIT_sdi) ))
 
-#define RTC_sdi_LOW(x)               WR_RTC(AO_RTC_ADDR0, \
-                                                                   (RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sdi) ))
+#define RTC_sdi_LOW(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sdi) ))
 
-#define RTC_sen_HIGH(x)             WR_RTC(AO_RTC_ADDR0, \
-                                                                   (RD_RTC(AO_RTC_ADDR0) | (1<<RTC_REG0_BIT_sen) ))
+#define RTC_sen_HIGH(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) | (1<<RTC_REG0_BIT_sen) ))
 
-#define RTC_sen_LOW(x)               WR_RTC(AO_RTC_ADDR0, \
-                                                                    (RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sen) ))
+#define RTC_sen_LOW(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sen) ))
 
-#define RTC_sclk_HIGH(x)             WR_RTC(AO_RTC_ADDR0, \
-                                                                    (RD_RTC(AO_RTC_ADDR0) |(1<<RTC_REG0_BIT_sclk)))
+#define RTC_sclk_HIGH(x)		WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) |(1<<RTC_REG0_BIT_sclk)))
 
-#define RTC_sclk_LOW(x)               WR_RTC(AO_RTC_ADDR0, \
-                                                                      (RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sclk)))
+#define RTC_sclk_LOW(x)			WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sclk)))
 
-#define RTC_sdo_READBIT             (RD_RTC(AO_RTC_ADDR1)&(1<<RTC_REG1_BIT_sdo))
+#define RTC_sdo_READBIT			(RD_RTC(AO_RTC_ADDR1)&(1<<RTC_REG1_BIT_sdo))
 
-#define RTC_sclk_static_HIGH(x)   WR_RTC(AO_RTC_ADDR0, \
-                                                                      (RD_RTC(AO_RTC_ADDR0) |(1<<RTC_REG0_BIT_sclk_static)))
+#define RTC_sclk_static_HIGH(x)		WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) |(1<<RTC_REG0_BIT_sclk_static)))
 
-#define RTC_sclk_static_LOW(x)      WR_RTC(AO_RTC_ADDR0, \
-                                                                        (RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sclk_static)))
+#define RTC_sclk_static_LOW(x)		WR_RTC(AO_RTC_ADDR0, \
+					(RD_RTC(AO_RTC_ADDR0) & ~(1<<RTC_REG0_BIT_sclk_static)))
 
-#define RTC_count_always_HIGH(x)     WR_RTC(AO_RTC_ADDR3, \
-                                                                       (RD_RTC(AO_RTC_ADDR3) |(1<<RTC_REG3_BIT_count_always)))
-#define RTC_count_always_LOW(x)      WR_RTC(AO_RTC_ADDR3, \
-                                                                              (RD_RTC(AO_RTC_ADDR3) & ~(1<<RTC_REG3_BIT_count_always)))
+#define RTC_count_always_HIGH(x)	WR_RTC(AO_RTC_ADDR3, \
+					(RD_RTC(AO_RTC_ADDR3) |(1<<RTC_REG3_BIT_count_always)))
+#define RTC_count_always_LOW(x)		WR_RTC(AO_RTC_ADDR3, \
+					(RD_RTC(AO_RTC_ADDR3) & ~(1<<RTC_REG3_BIT_count_always)))
 
-#define RTC_Sdo_READBIT                       RD_RTC(AO_RTC_ADDR1)&s_do`
+#define RTC_Sdo_READBIT			RD_RTC(AO_RTC_ADDR1)&s_do`
 
 
 //#define RTC_SER_REG_DATA_NOTIFIER   0xb41b// Define RTC register address mapping
 
-//#define P_ISA_TIMERE                (volatile unsigned long *)0xc1109954
+//#define P_ISA_TIMERE			(volatile unsigned long *)0xc1109954
 
 // Define RTC register address mapping
-#define RTC_COUNTER_ADDR            0
-#define RTC_GPO_COUNTER_ADDR        1
-#define RTC_SEC_ADJUST_ADDR         2
-#define RTC_UNUSED_ADDR_0           3
-#define RTC_REGMEM_ADDR_0           4
-#define RTC_REGMEM_ADDR_1           5
-#define RTC_REGMEM_ADDR_2           6
-#define RTC_REGMEM_ADDR_3           7
+#define RTC_COUNTER_ADDR		0
+#define RTC_GPO_COUNTER_ADDR		1
+#define RTC_SEC_ADJUST_ADDR		2
+#define RTC_UNUSED_ADDR_0		3
+#define RTC_REGMEM_ADDR_0		4
+#define RTC_REGMEM_ADDR_1		5
+#define RTC_REGMEM_ADDR_2		6
+#define RTC_REGMEM_ADDR_3		7
 
 static int  check_osc_clk(void);
 
@@ -191,7 +191,7 @@ static int  check_osc_clk(void)
 	// disable count always
 	WR_RTC(AO_RTC_ADDR3, RD_RTC(AO_RTC_ADDR3) & ~(1 << 17));
 
-	if( osc_clk_count1 == osc_clk_count2 ) {
+	if ( osc_clk_count1 == osc_clk_count2 ) {
 		RTC_DBG(RTC_DBG_VAL, "The osc_clk is not running now!"
 				" need to invcrease the power!\n");
 		return(-1);
@@ -205,24 +205,24 @@ static int  check_osc_clk(void)
 #endif
 void rtc_ser_static_write_auto (unsigned long static_reg_data_in)
 {
-    unsigned long data32;
+	unsigned long data32;
 
-    // Program MSB 15-8
-    data32  = (static_reg_data_in >> 8) & 0xff;
-    //WRITE_AOBUS_REG(AO_RTC_ADDR4,data32);
+	// Program MSB 15-8
+	data32  = (static_reg_data_in >> 8) & 0xff;
+	//WRITE_AOBUS_REG(AO_RTC_ADDR4,data32);
 	WR_RTC(AO_RTC_ADDR4, data32);
 
-    // Program LSB 7-0, and start serializing
-    //data32  = READ_AOBUS_REG(AO_RTC_ADDR0);
-    data32  = RD_RTC(AO_RTC_ADDR0);
-    data32 |= 1                           << 17; // auto_serialize_start
-    data32 &= ~(0xff << 24);
-    data32 |= (static_reg_data_in & 0xff) << 24; // auto_static_reg
-    //WRITE_AOBUS_REG(AO_RTC_ADDR0,data32);
-    WR_RTC(AO_RTC_ADDR0,data32);
-    // Poll auto_serializer_busy bit until it's low (IDLE)
-    //while ((READ_AOBUS_REG(AO_RTC_ADDR0)) & 1<<22) {}
-    while ((RD_RTC(AO_RTC_ADDR0)) & 1<<22) {}
+	// Program LSB 7-0, and start serializing
+	//data32  = READ_AOBUS_REG(AO_RTC_ADDR0);
+	data32  = RD_RTC(AO_RTC_ADDR0);
+	data32 |= 1 << 17; // auto_serialize_start
+	data32 &= ~(0xff << 24);
+	data32 |= (static_reg_data_in & 0xff) << 24; // auto_static_reg
+	//WRITE_AOBUS_REG(AO_RTC_ADDR0,data32);
+	WR_RTC(AO_RTC_ADDR0,data32);
+	// Poll auto_serializer_busy bit until it's low (IDLE)
+	//while ((READ_AOBUS_REG(AO_RTC_ADDR0)) & 1<<22) {}
+	while ((RD_RTC(AO_RTC_ADDR0)) & 1<<22) {}
 }
 
 
@@ -240,16 +240,16 @@ static int rtc_wait_s_ready(void)
 	if (get_rtc_status())
 		return i;
 	/*
-	while (i--){
-		if((*(volatile unsigned *)AO_RTC_ADDR1)&s_ready)
+	while (i--) {
+		if ((*(volatile unsigned *)AO_RTC_ADDR1)&s_ready)
 			break;
 		}
 	return i;
 	*/
 	while (!(RD_RTC(AO_RTC_ADDR1)&s_ready)) {
 		i--;
-		if(i == 0){
-			if(try_cnt > RESET_RETRY_TIMES){
+		if (i == 0) {
+			if (try_cnt > RESET_RETRY_TIMES) {
 				break;
 			}
 			rtc_reset_s_ready();
@@ -265,7 +265,7 @@ static int rtc_wait_s_ready(void)
 static int rtc_comm_init(void)
 {
 	RTC_sbus_LOW(0);
-	if(rtc_wait_s_ready()>0){
+	if (rtc_wait_s_ready()>0) {
 		RTC_sen_HIGH(1);
 		return 0;
 	}
@@ -285,9 +285,9 @@ static void rtc_send_bit(unsigned val)
 static void rtc_send_addr_data(unsigned type, unsigned val)
 {
 	unsigned cursor = (type? (1<<(RTC_SER_ADDR_BITS-1))
-					 : (1<<(RTC_SER_DATA_BITS-1)));
+				: (1<<(RTC_SER_DATA_BITS-1)));
 
-	while(cursor) {
+	while (cursor) {
 		rtc_send_bit(val&cursor);
 		cursor >>= 1;
 	}
@@ -316,11 +316,11 @@ static void rtc_set_mode(unsigned mode)
 }
 
 static void static_register_write(unsigned data);
-static void	 _ser_access_write_locked(unsigned long addr, unsigned long data);
+static void _ser_access_write_locked(unsigned long addr, unsigned long data);
 static void aml_rtc_reset(void)
 {
-    if (get_rtc_status())
-        return;
+	if (get_rtc_status())
+		return;
 	printk("error, the rtc serial communication abnormal,"
 		" reset the rtc!\n");
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -337,7 +337,7 @@ static void aml_rtc_reset(void)
 }
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
-extern int run_arc_program(void);
+extern int run_arc_program_rtc(void);
 extern int stop_ao_cpu(void);
 #endif
 
@@ -354,9 +354,9 @@ static unsigned int _ser_access_read_locked(unsigned long addr)
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 	ret = stop_ao_cpu();
 #endif
-	while(rtc_comm_init()<0){
+	while (rtc_comm_init()<0) {
 		RTC_DBG(RTC_DBG_VAL, "aml_rtc -- rtc_common_init fail\n");
-		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
+		if (s_nrdy_cnt>RESET_RETRY_TIMES) {
 			s_nrdy_cnt = 0;
 			rst_times++;
 			if (rst_times > 3) {
@@ -376,7 +376,7 @@ static unsigned int _ser_access_read_locked(unsigned long addr)
 out:
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 	if (ret >= 0)
-		run_arc_program();
+		run_arc_program_rtc();
 #endif
 	return val;
 }
@@ -393,9 +393,9 @@ static void _ser_access_write_locked(unsigned long addr, unsigned long data)
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 	ret = stop_ao_cpu();
 #endif
-	while(rtc_comm_init()<0){
+	while (rtc_comm_init()<0) {
 
-		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
+		if (s_nrdy_cnt>RESET_RETRY_TIMES) {
 			s_nrdy_cnt = 0;
 			rst_times++;
 			if (rst_times > 3) {
@@ -415,7 +415,7 @@ static void _ser_access_write_locked(unsigned long addr, unsigned long data)
 out:
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 	if (ret >= 0)
-		run_arc_program();
+		run_arc_program_rtc();
 #endif
 	return;
 }
@@ -426,7 +426,7 @@ static unsigned int ser_access_read(unsigned long addr)
 	unsigned long flags;
 
 	RTC_DBG(RTC_DBG_VAL, "aml_rtc --ser_access_read_1\n");
-	/*if(check_osc_clk() < 0){
+	/*if (check_osc_clk() < 0) {
 		RTC_DBG(RTC_DBG_VAL, "aml_rtc -- the osc clk does not work\n");
 		return val;
 	}*/
@@ -457,13 +457,13 @@ int rtc_reset_gpo(struct device *dev, unsigned level)
 	unsigned data = 0;
 	data |= 1<<20;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
-	if(level){
-		data |= 1<<22;         //gpo pin level high
+	if (level) {
+		data |= 1<<22;	//gpo pin level high
 		}
 #else
 	//reset mode
-	if(!level){
-		data |= 1<<22;         //gpo pin level high
+	if (!level) {
+		data |= 1<<22;	//gpo pin level high
 	}
 #endif
 
@@ -496,14 +496,14 @@ int rtc_set_alarm_aml(struct device *dev, alarm_data_t *alarm_data) {
 
 	rtc_reset_gpo(dev, !(alarm_data->level));
 
-	data |= 2 << 20;    //output defined level after time
+	data |= 2 << 20;	//output defined level after time
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
-	data |= (alarm_data->level & 1) << 22;    //
+	data |= (alarm_data->level & 1) << 22;	//
 #else
-	data |= (!(alarm_data->level & 1)) << 22;    //
+	data |= (!(alarm_data->level & 1)) << 22;	//
 #endif
-	if(alarm_data->alarm_sec >= 1024*1024){
+	if (alarm_data->alarm_sec >= 1024*1024) {
 		return -1;
 	}
 
@@ -526,15 +526,15 @@ int rtc_set_alarm_aml(struct device *dev, alarm_data_t *alarm_data) {
 
 
 // -----------------------------------------------------------------------------
-//                    Function: rtc_ser_static_write_manual
+//					Function: rtc_ser_static_write_manual
 // Use part of the serial bus: sclk_static, sdi and sen to shift
 // in a 16-bit static data. Manual mode.
 // -----------------------------------------------------------------------------
 //static void rtc_ser_static_write_manual (unsigned int static_reg_data_in)
 //{
 //	int i;
-//       RTC_DBG(RTC_DBG_VAL, "rtc_ser_static_write_manual: data=0x%0/x\n",
-//				 static_reg_data_in);
+//	RTC_DBG(RTC_DBG_VAL, "rtc_ser_static_write_manual: data=0x%0/x\n",
+//		static_reg_data_in);
 //
 //	// Initialize: sen low for 1 clock cycle
 //	RTC_sen_LOW(0);
@@ -543,42 +543,42 @@ int rtc_set_alarm_aml(struct device *dev, alarm_data_t *alarm_data) {
 //	RTC_sen_HIGH(1);
 //	RTC_sclk_static_LOW(0);
 //
-//        // Shift in 16-bit known sequence
-//	 for (i = 15; i >= 0; i --) {
+//		// Shift in 16-bit known sequence
+//	for (i = 15; i >= 0; i --) {
 //
-//	     if ((RTC_SER_REG_DATA_NOTIFIER >> i) & 0x1) {
-//		   RTC_sdi_HIGH(1);
-//	     }
-//		 else {
-//		   RTC_sdi_LOW(0);
-//	     }
-//
-//	    RTC_sclk_static_HIGH(1);
-//	    RTC_sclk_static_LOW(0);
-//	 }
-//
-//	  // 1 clock cycle turn around
-//	  RTC_sdi_LOW(0);
-//	  RTC_sclk_static_HIGH(1);
-//	  RTC_sclk_static_LOW(0);
-//
-//	  // Shift in 16-bit static register data
-//	  for (i = 15; i >= 0; i --) {
-//	  	if ((static_reg_data_in >> i) & 0x1) {
-//		    RTC_sdi_HIGH(1);
+//		if ((RTC_SER_REG_DATA_NOTIFIER >> i) & 0x1) {
+//			RTC_sdi_HIGH(1);
 //		}
 //		else {
-//		    RTC_sdi_LOW(0);
+//			RTC_sdi_LOW(0);
+//		}
+//
+//		RTC_sclk_static_HIGH(1);
+//		RTC_sclk_static_LOW(0);
+//	}
+//
+//	// 1 clock cycle turn around
+//	RTC_sdi_LOW(0);
+//	RTC_sclk_static_HIGH(1);
+//	RTC_sclk_static_LOW(0);
+//
+//	// Shift in 16-bit static register data
+//	for (i = 15; i >= 0; i --) {
+//		if ((static_reg_data_in >> i) & 0x1) {
+//			RTC_sdi_HIGH(1);
+//		}
+//		else {
+//			RTC_sdi_LOW(0);
 //		}
 //		RTC_sclk_static_HIGH(1);
 //		RTC_sclk_static_LOW(0);
-//	   }
+//	}
 //
-//	  // One more clock cycle to complete write
-//	  RTC_sen_LOW(0);
-//	  RTC_sdi_LOW(0);
-//	  RTC_sclk_static_HIGH(1);
-//	  RTC_sclk_static_LOW(0);
+//	// One more clock cycle to complete write
+//	RTC_sen_LOW(0);
+//	RTC_sdi_LOW(0);
+//	RTC_sclk_static_HIGH(1);
+//	RTC_sclk_static_LOW(0);
 //}
 
 
@@ -607,16 +607,16 @@ static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
 {
-      unsigned long time_t;
+	unsigned long time_t;
 
-      rtc_tm_to_time(tm, &time_t);
+	rtc_tm_to_time(tm, &time_t);
 
-      RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, "
-			"time is %ld\n", time_t);
-      ser_access_write(RTC_COUNTER_ADDR, time_t);
-      RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
+	RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, "
+		"time is %ld\n", time_t);
+	ser_access_write(RTC_COUNTER_ADDR, time_t);
+	RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
 
-      return 0;
+	return 0;
 }
 
 static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
@@ -637,7 +637,7 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 			return ret;
 		aml_rtc_read_time(dev, &cur_time);
 		ret = rtc_tm_to_time(&cur_time, &cur_secs);
-		if(alarm_secs >= cur_secs) {
+		if (alarm_secs >= cur_secs) {
 			/*3 seconds later then we real wanted,
 			  we do not need the alarm very acurate.*/
 			alarm_data.alarm_sec = alarm_secs - cur_secs + 3;
@@ -649,7 +649,7 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 		ser_access_write(RTC_GPO_COUNTER_ADDR,0x500000);
 #else
-	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+		ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 #endif
 		queue_work(priv->rtc_work_queue, &priv->work);
 	}
@@ -663,7 +663,7 @@ static int aml_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 	alarm_data_t alarm_data;
 	static int suspend_time = 0;
 	alarm_data.alarm_sec = AUTO_RESUME_INTERVAL;
-        alarm_data.level = 0;
+		alarm_data.level = 0;
 	rtc_set_alarm_aml(&pdev->dev, &alarm_data);
 	printk("suspend %d times, system will up %ds later!\n",
 			++suspend_time, alarm_data.alarm_sec);
@@ -683,10 +683,10 @@ int aml_rtc_resume(struct platform_device *pdev)
 }
 
 static char *rtc_reg[8]={
-	"RTC_COUNTER    ",
+	"RTC_COUNTER	",
 	"RTC_GPO_COUNTER",
 	"RTC_SEC_ADJUST ",
-	"UNUSED         ",
+	"UNUSED		 ",
 	"RTC_REGMEM_0   ",
 	"RTC_REGMEM_1   ",
 	"RTC_REGMEM_2   ",
@@ -729,6 +729,11 @@ extern int get_aml_key_kernel(const char* key_name, unsigned char* data, int asc
 extern int extenal_api_key_set_version(char *devvesion);
 #endif
 
+#define RTC_INIT_MARSK	0x13208d83
+extern unsigned int aml_read_rtc_mem_reg(unsigned char reg_id);
+extern int aml_write_rtc_mem_reg(unsigned char reg_id, unsigned int data);
+extern int board_has_battery(void);
+
 static int aml_rtc_probe(struct platform_device *pdev)
 {
 	struct aml_rtc_priv *priv;
@@ -741,9 +746,9 @@ static int aml_rtc_probe(struct platform_device *pdev)
 #endif
 #ifdef CONFIG_SECURITYKEY
 	ret = extenal_api_key_set_version("auto3");
-	if(ret >=0){
+	if (ret >=0) {
 		ret = get_aml_key_kernel("keyexample", keyexamples, 1);
-		if(ret >= 0){
+		if (ret >= 0) {
 			printk("key name:keyexample, key data:%s\n",keyexamples);
 		}
 		else{
@@ -754,7 +759,7 @@ static int aml_rtc_probe(struct platform_device *pdev)
 
 	priv = (struct aml_rtc_priv *)kzalloc(sizeof(*priv), GFP_KERNEL);
 
-	if(!priv)
+	if (!priv)
 		return -ENOMEM;
 
 	INIT_WORK(&priv->work, reset_gpo_work);
@@ -773,7 +778,7 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	priv->rtc = rtc_device_register("aml_rtc", &pdev->dev, &
 						aml_rtc_ops, THIS_MODULE);
 
-	if(IS_ERR(priv->rtc)){
+	if (IS_ERR(priv->rtc)) {
 		ret = PTR_ERR(priv->rtc);
 		goto out;
 	}
@@ -794,16 +799,21 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	}
 
 	//check_osc_clk();
-	//ser_access_write(RTC_COUNTER_ADDR, 0);
+	if (!board_has_battery() &&
+		RTC_INIT_MARSK != aml_read_rtc_mem_reg(3)) {
+		ser_access_write(RTC_COUNTER_ADDR, 0);
+		aml_write_rtc_mem_reg(3, RTC_INIT_MARSK);
+	}
+
 	ret = class_register(&aml_rtc_class);
-	if(ret){
+	if (ret) {
 		printk(" class register nand_class fail!\n");
 	}
 
 	return 0;
 
 out:
-	if(priv->rtc_work_queue)
+	if (priv->rtc_work_queue)
 		destroy_workqueue(priv->rtc_work_queue);
 	kfree(priv);
 	return ret;
@@ -820,7 +830,7 @@ static int get_gpo_flag(void)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	ret = !(data32 & (1 << 24));
 #else
-    ret = !!(data32 & (1 << 24));
+	ret = !!(data32 & (1 << 24));
 #endif
 
 	return ret;
@@ -856,9 +866,9 @@ EXPORT_SYMBOL(aml_write_rtc_mem_reg);
 
 unsigned int aml_get_rtc_counter(void)
 {
-    unsigned int val;
-    val = ser_access_read(RTC_COUNTER_ADDR);
-    return val;
+	unsigned int val;
+	val = ser_access_read(RTC_COUNTER_ADDR);
+	return val;
 }
 EXPORT_SYMBOL(aml_get_rtc_counter);
 
@@ -873,7 +883,7 @@ static void reset_gpo_work(struct work_struct *work)
 		ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 #endif
 		count--;
-		if(count <= 0) {
+		if (count <= 0) {
 			printk("error: can not reset gpo !\n");
 			//count = 5;
 			return;
@@ -900,7 +910,7 @@ static void aml_rtc_shutdown(struct platform_device *pdev)
 #else
 	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 #endif
-//    return 0;
+//	return 0;
 }
 
 static int aml_rtc_remove(struct platform_device *dev)
@@ -950,7 +960,7 @@ static int  __init aml_rtc_init(void)
 
 static void __init aml_rtc_exit(void)
 {
-       return platform_driver_unregister(&aml_rtc_driver);
+	return platform_driver_unregister(&aml_rtc_driver);
 }
 
 module_init(aml_rtc_init);

@@ -140,6 +140,7 @@ unsigned int read_iec958_rd_ptr(void);
 void audio_in_spdif_enable(int flag);
 unsigned audio_spdifout_pg_enable(unsigned char enable);
 unsigned audio_aiu_pg_enable(unsigned char enable);
+void audio_mute_left_right(unsigned flag);
 
 #include "mach/cpu.h"
 

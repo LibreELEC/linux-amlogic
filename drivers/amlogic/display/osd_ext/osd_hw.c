@@ -591,7 +591,7 @@ void osd_ext_set_colorkey_hw(u32 index, u32 color_index, u32 colorkey)
 	data32 = r << 24 | g << 16 | b << 8 | a;
 	if (osd_ext_hw.color_key[index] != data32) {
 		osd_ext_hw.color_key[index] = data32;
-		amlog_mask_level(LOG_MASK_HARDWARE, LOG_LEVEL_LOW, "bpp:%d--r:0x%x g:0x%x b:0x%x ,a:0x%x\r\n",
+		amlog_mask_level(LOG_MASK_HARDWARE, LOG_LEVEL_LOW, "bpp:%d--r:0x%x g:0x%x b:0x%x ,a:0x%x\n",
 				 color_index, r, g, b, a);
 		add_to_update_list(index, OSD_COLOR_KEY);
 
@@ -848,7 +848,7 @@ void osd_ext_free_scale_enable_hw(u32 index, u32 enable)
 #endif
 #endif
 
-	amlog_level(LOG_LEVEL_HIGH, "osd%d free scale %s\r\n", index, enable ? "ENABLE" : "DISABLE");
+	amlog_level(LOG_LEVEL_HIGH, "osd%d free scale %s\n", index, enable ? "ENABLE" : "DISABLE");
 	osd_ext_hw.free_scale_enable[index] = enable;
 	if (index == OSD1) {
 		if (enable) {
@@ -1069,7 +1069,7 @@ void osd_ext_set_block_mode_hw(u32 index, u32 mode)
 
 void osd_ext_set_2x_scale_hw(u32 index, u16 h_scale_enable, u16 v_scale_enable)
 {
-	amlog_level(LOG_LEVEL_HIGH, "osd[%d] set scale, h_scale: %s, v_scale: %s\r\n",
+	amlog_level(LOG_LEVEL_HIGH, "osd[%d] set scale, h_scale: %s, v_scale: %s\n",
 		    index, h_scale_enable ? "ENABLE" : "DISABLE", v_scale_enable ? "ENABLE" : "DISABLE");
 	amlog_level(LOG_LEVEL_HIGH, "osd[%d].scaledata: %d %d %d %d\n",
 		    index,
@@ -2284,7 +2284,7 @@ void osd_ext_init_hw(u32 logo_loaded)
 	if (request_irq(INT_VIU2_VSYNC, &vsync_isr, IRQF_SHARED, "am_osd_ext_vsync", osd_ext_setup))
 #endif
 	{
-		amlog_level(LOG_LEVEL_HIGH, "can't request irq for vsync\r\n");
+		amlog_level(LOG_LEVEL_HIGH, "can't request irq for vsync\n");
 	}
 #ifdef FIQ_VSYNC
 	request_fiq(INT_VIU2_VSYNC, &osd_ext_fiq_isr);
@@ -2381,6 +2381,7 @@ void osd_ext_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_ext_w, u32 
 void osd_ext_suspend_hw(void)
 {
 	osd_ext_hw.reg_status_save = aml_read_reg32(P_VPP2_MISC) & OSD_RELATIVE_BITS;
+
 	aml_clr_reg32_mask(P_VPP2_MISC, OSD_RELATIVE_BITS);
 
 	printk("osd_ext_suspended\n");
@@ -2391,6 +2392,7 @@ void osd_ext_suspend_hw(void)
 void osd_ext_resume_hw(void)
 {
 	aml_set_reg32_mask(P_VPP2_MISC, osd_ext_hw.reg_status_save);
+
 	printk("osd_ext_resumed\n");
 
 	return;

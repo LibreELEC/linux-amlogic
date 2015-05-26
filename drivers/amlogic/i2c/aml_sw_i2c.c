@@ -298,7 +298,7 @@ static int aml_sw_i2c_probe(struct platform_device *pdev)
 	if ((ret = i2c_bit_add_numbered_bus(&(drv_data->adapter)) != 0))
 	{
 		printk(KERN_ERR "\033[0;40;36mERROR: Could not add %s to i2c bit"
-							"algos\033[0m\r\n", drv_data->adapter.name);
+							"algos\033[0m\n", drv_data->adapter.name);
 		return ret;
 	}
 
@@ -309,7 +309,7 @@ static int aml_sw_i2c_probe(struct platform_device *pdev)
 		printk(" class register sw_i2c_class[%d] fail![ret=0x%x]\n", drv_data->adapter.nr, ret);
 	}
 
-	printk("aml gpio i2c bus [%d] initialized\r\n", drv_data->adapter.nr);
+	printk("aml gpio i2c bus [%d] initialized\n", drv_data->adapter.nr);
 	return 0;
 }
 

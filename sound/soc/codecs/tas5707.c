@@ -10,6 +10,7 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 #include <sound/tas57xx.h>
+#include <linux/amlogic/aml_gpio_consumer.h>
 
 #include "tas5707.h"
 
@@ -73,8 +74,8 @@ struct tas5707_priv {
 	const char **eq_conf_texts;
 	int eq_cfg;
 	struct soc_enum eq_conf_enum;
-        unsigned char Ch1_vol;
-        unsigned char Ch2_vol;
+	unsigned char Ch1_vol;
+	unsigned char Ch2_vol;
 	unsigned mclk;
 };
 
@@ -244,7 +245,7 @@ static int tas5707_set_drc1(struct snd_soc_codec *codec)
 	//using user BSP defined drc1 config;
 	if(pdata && pdata->custom_drc1_table && pdata->custom_drc1_table_len == 24){
 		p = pdata->custom_drc1_table;
-		CODEC_DEBUG("tas5707_set_drc1::using BSP defined drc1 config\n");
+		CODEC_DEBUG("tas5707_set_drc1::using dtd defined drc1 config\n");
 		for(i = 0;i < 3;i++){
 			for(j = 0;j < 8;j++)
 				TAS5707_drc1_table[i][j] = p[i*8 + j];
@@ -257,7 +258,7 @@ static int tas5707_set_drc1(struct snd_soc_codec *codec)
 
 	if(pdata && pdata->custom_drc1_tko_table && pdata->custom_drc1_tko_table_len == 12){
 		p = pdata->custom_drc1_tko_table;
-		CODEC_DEBUG("tas5707_set_drc1::using BSP defined drc1 TKO config\n");
+		CODEC_DEBUG("tas5707_set_drc1::using dtd defined drc1 TKO config\n");
 		for(i = 0;i < 3;i++){
 			for(j = 0;j < 4;j++)
 				tas5707_drc1_tko_table[i][j]= p[i*4 + j];
@@ -300,8 +301,8 @@ static int tas5707_set_eq_biquad(struct snd_soc_codec *codec)
 	if(!(cfg = pdata->eq_cfgs))
 		return 0;
 
-	CODEC_DEBUG("tas5707_set_eq_biquad::using BSP defined EQ biquad config::%s\n",
-										cfg[tas5707->eq_cfg].name);
+	CODEC_DEBUG("tas5707_set_eq_biquad::using dtd defined EQ biquad config::%s\n", cfg[tas5707->eq_cfg].name);
+
 	p = cfg[tas5707->eq_cfg].regs;
 
 	for(i = 0;i < 2;i++){
@@ -311,7 +312,6 @@ static int tas5707_set_eq_biquad(struct snd_soc_codec *codec)
 				tas5707_bq_table[k]= p[i*7*20 + j*20 + k];
 				printk(KERN_DEBUG "[%d]=%#x\n",k,tas5707_bq_table[k]);
 			}
-			printk(KERN_DEBUG "\n");
 			snd_soc_bulk_write_raw(codec, addr, tas5707_bq_table, 20);
 		}
 	}
@@ -358,14 +358,11 @@ static int tas5707_set_eq(struct snd_soc_codec *codec)
 
 	if(pdata->num_eq_cfgs){
 		struct snd_kcontrol_new control =
-			SOC_ENUM_EXT("EQ Mode", tas5707->eq_conf_enum,
-					tas5707_get_eq_enum, tas5707_put_eq_enum);
+			SOC_ENUM_EXT("EQ Mode", tas5707->eq_conf_enum, tas5707_get_eq_enum, tas5707_put_eq_enum);
 
 		tas5707->eq_conf_texts = kzalloc(sizeof(char *) * pdata->num_eq_cfgs, GFP_KERNEL);
 		if(!tas5707->eq_conf_texts){
-			dev_err(codec->dev,
-				"Fail to allocate %d EQ config tests\n",
-				pdata->num_eq_cfgs);
+			dev_err(codec->dev,"Fail to allocate %d EQ config tests\n",pdata->num_eq_cfgs);
 			return -ENOMEM;
 		}
 
@@ -383,8 +380,7 @@ static int tas5707_set_eq(struct snd_soc_codec *codec)
 	tas5707_set_eq_biquad(codec);
 
 	tas5707_eq_ctl_table[3] &= 0x7F;
-	snd_soc_bulk_write_raw(codec, DDX_BANKSWITCH_AND_EQCTL,
-						tas5707_eq_ctl_table, 4);
+	snd_soc_bulk_write_raw(codec, DDX_BANKSWITCH_AND_EQCTL,tas5707_eq_ctl_table, 4);
 	return 0;
 }
 
@@ -410,6 +406,28 @@ static int tas5707_customer_init(struct snd_soc_codec *codec)
 	return 0;
 }
 
+
+static int reset_tas5707_GPIO(struct snd_soc_codec *codec){
+
+	struct tas5707_priv *tas5707 = snd_soc_codec_get_drvdata(codec);
+	struct tas57xx_platform_data *pdata = tas5707->pdata;
+	int reset_pin = pdata->reset_pin;
+
+	if (reset_pin <= 0) {
+		CODEC_DEBUG("tas5707 can't find gpio reset pinmux\n");
+		return -1;
+	}
+	amlogic_gpio_request_one((unsigned int)reset_pin, GPIOF_OUT_INIT_HIGH, "tas5707");
+	msleep(1);
+	amlogic_set_value((unsigned int)reset_pin, 0, "tas5707");
+	msleep(1);
+	amlogic_set_value((unsigned int)reset_pin, 1, "tas5707");
+	msleep(15);
+	amlogic_gpio_free((unsigned int)reset_pin, "tas5707");
+
+	return 0;
+}
+
 static int tas5707_init(struct snd_soc_codec *codec)
 {
 	int ret = 0;
@@ -419,6 +437,8 @@ static int tas5707_init(struct snd_soc_codec *codec)
 		{0x01,0x02,0x13,0x45},
 	};
 	struct tas5707_priv *tas5707 = snd_soc_codec_get_drvdata(codec);
+
+	reset_tas5707_GPIO(codec);
 
 	CODEC_DEBUG("tas5707_init\n");
 	snd_soc_write(codec, DDX_OSC_TRIM, 0x00);
@@ -463,6 +483,7 @@ static int tas5707_init(struct snd_soc_codec *codec)
 
 	return ret;
 }
+
 static int tas5707_probe(struct snd_soc_codec *codec)
 {
 	int ret = 0;

@@ -127,7 +127,7 @@ static int __devinit holdkey_probe(struct platform_device *pdev)
 
     switch_dev_register(&sdev);
 
-    printk("HoldKey register  completed.\r\n");
+    printk("HoldKey register  completed.\n");
     return 0;
 }
 

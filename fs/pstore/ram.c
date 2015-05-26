@@ -586,7 +586,7 @@ static int ramoops_probe(struct platform_device *pdev)
 
 	if(cxt->cprz->old_log){
 	//	pstore_iomap = ioremap(cxt->cprz->old_log,cxt->cprz->old_log_size);
-		printk("cprz old_log=0x%x\n",(unsigned int *)cxt->cprz->old_log);
+		printk("cprz old_log=0x%x\n",(unsigned int )cxt->cprz->old_log);
 		entry = proc_create_data("last_kmsg", S_IFREG | S_IRUGO, NULL,&ram_console_file_ops,NULL);
 	}
 

@@ -568,11 +568,11 @@ static int it7230_register_device(struct it7230 *kp)
     strcpy(kp->config_name,DRIVER_NAME);
     ret=register_chrdev(0, kp->config_name, &it7230_fops);
     if(ret<=0) {
-        printk("register char device error\r\n");
+        printk("register char device error\n");
         return  ret ;
     }
     kp->config_major=ret;
-    printk("it7230 major:%d\r\n",ret);
+    printk("it7230 major:%d\n",ret);
     kp->config_class=class_create(THIS_MODULE,kp->config_name);
     kp->config_dev=device_create(kp->config_class,  NULL,
     MKDEV(kp->config_major,0),NULL,kp->config_name);

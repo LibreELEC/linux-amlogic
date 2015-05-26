@@ -26,7 +26,7 @@
 #include <mach/gpio.h>
 #include <linux/amlogic/vout/aml_lcd_extern.h>
 
-static struct lcd_extern_config_t *lcd_ext_config = NULL;
+static struct lcd_extern_config_t *lcd_extern_config = NULL;
 
 static struct i2c_client *aml_tc101_i2c_client;
 
@@ -142,24 +142,33 @@ static int lcd_extern_i2c_remove(void)
     return ret;
 }
 
-static int lcd_extern_driver_update(void)
+static int get_lcd_extern_config(struct device_node* of_node, struct lcd_extern_config_t *lcd_ext_cfg)
 {
+    int ret = 0;
     struct aml_lcd_extern_driver_t* lcd_ext;
 
+    ret = get_lcd_extern_dt_data(of_node, lcd_ext_cfg);
+    if (ret) {
+        printk("[error] %s: failed to get dt data\n", LCD_EXTERN_NAME);
+        return ret;
+    }
+
+    //lcd extern driver update
     lcd_ext = aml_lcd_extern_get_driver();
     if (lcd_ext) {
-        lcd_ext->type      = lcd_ext_config->type;
-        lcd_ext->name      = lcd_ext_config->name;
+        lcd_ext->type      = lcd_ext_cfg->type;
+        lcd_ext->name      = lcd_ext_cfg->name;
         lcd_ext->reg_read  = i2c_reg_read;
         lcd_ext->reg_write = i2c_reg_write;
         lcd_ext->power_on  = lcd_extern_i2c_init;
         lcd_ext->power_off = lcd_extern_i2c_remove;
     }
     else {
-        printk("[error] %s get lcd_extern_driver failed\n", lcd_ext_config->name);
+        printk("[error] %s get lcd_extern_driver failed\n", lcd_ext_cfg->name);
+        ret = -1;
     }
 
-    return 0;
+    return ret;
 }
 
 static int aml_tc101_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -171,7 +180,6 @@ static int aml_tc101_i2c_probe(struct i2c_client *client, const struct i2c_devic
     }
     else {
         aml_tc101_i2c_client = client;
-        lcd_extern_driver_update();
     }
 
     printk("%s OK\n", __FUNCTION__);
@@ -210,31 +218,31 @@ static int aml_tc101_probe(struct platform_device *pdev)
     if (lcd_extern_driver_check()) {
         return -1;
     }
-    if (lcd_ext_config == NULL)
-        lcd_ext_config = kzalloc(sizeof(*lcd_ext_config), GFP_KERNEL);
-    if (lcd_ext_config == NULL) {
+    if (lcd_extern_config == NULL)
+        lcd_extern_config = kzalloc(sizeof(*lcd_extern_config), GFP_KERNEL);
+    if (lcd_extern_config == NULL) {
         printk("[error] %s probe: failed to alloc data\n", LCD_EXTERN_NAME);
         return -1;
     }
 
-    pdev->dev.platform_data = lcd_ext_config;
+    pdev->dev.platform_data = lcd_extern_config;
 
-    if (get_lcd_extern_dt_data(pdev->dev.of_node, lcd_ext_config) != 0) {
-        printk("[error] %s probe: failed to get dt data\n", LCD_EXTERN_NAME);
+    ret = get_lcd_extern_config(pdev->dev.of_node, lcd_extern_config);
+    if (ret) {
         goto lcd_extern_probe_failed;
     }
 
     memset(&i2c_info, 0, sizeof(i2c_info));
 
-    adapter = i2c_get_adapter(lcd_ext_config->i2c_bus);
+    adapter = i2c_get_adapter(lcd_extern_config->i2c_bus);
     if (!adapter) {
         printk("[error] %s£ºfailed to get i2c adapter\n", LCD_EXTERN_NAME);
         goto lcd_extern_probe_failed;
     }
 
-    strncpy(i2c_info.type, lcd_ext_config->name, I2C_NAME_SIZE);
-    i2c_info.addr = lcd_ext_config->i2c_addr;
-    i2c_info.platform_data = lcd_ext_config;
+    strncpy(i2c_info.type, lcd_extern_config->name, I2C_NAME_SIZE);
+    i2c_info.addr = lcd_extern_config->i2c_addr;
+    i2c_info.platform_data = lcd_extern_config;
     i2c_info.flags=0;
     if(i2c_info.addr>0x7f)
         i2c_info.flags=0x10;
@@ -259,14 +267,15 @@ static int aml_tc101_probe(struct platform_device *pdev)
     return ret;
 
 lcd_extern_probe_failed:
-    if (lcd_ext_config)
-        kfree(lcd_ext_config);
+    if (lcd_extern_config) {
+        kfree(lcd_extern_config);
+        lcd_extern_config = NULL;
+    }
     return -1;
 }
 
 static int aml_tc101_remove(struct platform_device *pdev)
 {
-    remove_lcd_extern(lcd_ext_config);
     if (pdev->dev.platform_data)
         kfree (pdev->dev.platform_data);
     return 0;

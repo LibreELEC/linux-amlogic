@@ -441,7 +441,7 @@ static bool_t fill_sync_info_from_video_table(sync_info_type *p_sync_info, uint8
 static uint8_t detect_video_resolution(sync_info_type *p_sync_info)
 {
 	uint8_t detected_video_idx = get_video_index_from_hdmi_vsif();
-	bool_t bb;
+//	bool_t bb;
 
 	if(SI_VIDEO_MODE_NON_STD == detected_video_idx)
 	{

@@ -19,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:  Tim Yao <timyao@amlogic.com>
- *
- *		    jianfeng_wang : add ge2d support 09/05/21
+ *		   
+ *		    jianfeng_wang : add ge2d support 09/05/21	
  */
 
 #include <linux/version.h>
@@ -77,13 +77,13 @@ static char request2XScaleValue[32];
 static char videohole[32];
 
 
-const color_bit_define_t*
+const color_bit_define_t*	
 _find_color_format(struct fb_var_screeninfo * var)
 {
 	u32	upper_margin,lower_margin,i,level;
 	const color_bit_define_t *ret=NULL;
-
-	level=(var->bits_per_pixel -1)/8;
+	
+	level=(var->bits_per_pixel -1)/8; 
 	switch(level)
 	{
 		case 0:
@@ -93,18 +93,18 @@ _find_color_format(struct fb_var_screeninfo * var)
 		case 1:
 		upper_margin=COLOR_INDEX_16_565;
 		lower_margin=COLOR_INDEX_16_655;
-		break;
+		break;	
 		case 2:
 		upper_margin=COLOR_INDEX_24_RGB;
 		lower_margin=COLOR_INDEX_24_6666_A;
-		break;
+		break;		
 		case 3:
 		upper_margin=COLOR_INDEX_32_ARGB;
 		lower_margin=COLOR_INDEX_32_BGRA;
 		break;
 		case 4:
 		upper_margin=COLOR_INDEX_YUV_422;
-		lower_margin=COLOR_INDEX_YUV_422;
+		lower_margin=COLOR_INDEX_YUV_422;	
 		break;
 		default :
 		return NULL;
@@ -113,7 +113,7 @@ _find_color_format(struct fb_var_screeninfo * var)
 	if((var->red.length==0)||(var->green.length==0)||(var->blue.length==0)||
 		var->bits_per_pixel != (var->red.length+var->green.length+var->blue.length+var->transp.length))
 	{
-		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"not provide color component length,use default color \n");
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"not provide color component length,use default color\n");
 		ret =&default_color_format_array[upper_margin];
 	}
 	else
@@ -139,7 +139,7 @@ _find_color_format(struct fb_var_screeninfo * var)
 static void __init
 _fbdev_set_default(struct myfb_dev *fbdev,int index )
 {
-	/* setup default value */
+    	/* setup default value */
 	fbdev->fb_info->var = mydef_var[index];
 	fbdev->fb_info->fix = mydef_fix;
 	fbdev->color=_find_color_format(&fbdev->fb_info->var);
@@ -149,17 +149,17 @@ static int
 osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct fb_fix_screeninfo *fix;
-	struct myfb_dev *fbdev=( struct myfb_dev*)info->par;
+    	struct myfb_dev *fbdev=( struct myfb_dev*)info->par;
 	const color_bit_define_t   *color_format_pt;
 
 	fix = &info->fix;
-
+	
 	color_format_pt=_find_color_format(var);
 	if (color_format_pt == NULL || color_format_pt->color_index==0)
 	{
 		return -EFAULT ;
 	}
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"select color format :index%d,bpp %d\r\n",color_format_pt->color_index, \
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"select color format :index%d,bpp %d\n",color_format_pt->color_index, \
 												color_format_pt->bpp) ;
 	fbdev->color=color_format_pt;
 	var->red.offset = color_format_pt->red_offset;
@@ -181,12 +181,12 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 					var->blue.length,var->blue.offset,
 					var->transp.length,var->transp.offset);
 	fix->visual=color_format_pt->color_type ;
-	//adjust memory length.
-	fix->line_length = var->xres_virtual*var->bits_per_pixel/8;
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"xvirtual=%d,bpp:%d,kernel_line_length=%d\r\n",var->xres_virtual,var->bits_per_pixel,fix->line_length);
+	//adjust memory length.	
+ 	fix->line_length = var->xres_virtual*var->bits_per_pixel/8;
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"xvirtual=%d,bpp:%d,kernel_line_length=%d\n",var->xres_virtual,var->bits_per_pixel,fix->line_length);
 	if(var->xres_virtual*var->yres_virtual*var->bits_per_pixel/8> fbdev->fb_len )
 	{
-		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"no enough memory for %d*%d*%d\r\n",var->xres,var->yres,var->bits_per_pixel);
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"no enough memory for %d*%d*%d\n",var->xres,var->yres,var->bits_per_pixel);
 		return  -ENOMEM;
 	}
 	if (var->xres_virtual < var->xres)
@@ -195,14 +195,14 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if (var->yres_virtual < var->yres)
 		var->yres_virtual = var->yres;
 
-	var->left_margin = var->right_margin = var->upper_margin = var->lower_margin = 0;
-
+    	var->left_margin = var->right_margin = var->upper_margin = var->lower_margin = 0;
+    
 	if (var->xres + var->xoffset > var->xres_virtual)
 		var->xoffset = var->xres_virtual - var->xres;
 	if (var->yres + var->yoffset > var->yres_virtual)
 		var->yoffset = var->yres_virtual - var->yres;
-
-	return 0;
+    
+    	return 0;
 }
 
 static int
@@ -210,13 +210,13 @@ osd_set_par(struct fb_info *info)
 {
 	const vinfo_t *vinfo;
 	struct myfb_dev *fbdev = (struct myfb_dev *)info->par;
-	osd_ctl_t *osd_ctrl=&fbdev->osd_ctl;
+	osd_ctl_t *osd_ctrl=&fbdev->osd_ctl; 
 	u32  virt_end_x,virt_end_y;
-
+	
 	vinfo = get_current_vinfo();
 	virt_end_x=osd_ctrl->disp_start_x+info->var.xres;
 	virt_end_y=osd_ctrl->disp_start_y+info->var.yres;
-
+	
 	if(virt_end_x > vinfo->width)
 	{
 		osd_ctrl->disp_end_x=vinfo->width - 1 ;
@@ -230,8 +230,8 @@ osd_set_par(struct fb_info *info)
 		osd_ctrl->disp_end_y=vinfo->height - 1;
 	}
 	else
-	{
-		osd_ctrl->disp_end_y=virt_end_y - 1;
+	{     
+		osd_ctrl->disp_end_y=virt_end_y - 1; 
 	}
 	osddev_set((struct myfb_dev *)info->par);
 	return  0;
@@ -270,20 +270,14 @@ osd_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	return 0;
 }
 
-#ifdef CONFIG_FB_AMLOGIC_UMP
-int (*disp_get_ump_secure_id) (struct fb_info *info, myfb_dev_t *g_fbi,
-					unsigned long arg, int buf);
-EXPORT_SYMBOL(disp_get_ump_secure_id);
-#endif
-
 static int
 osd_ioctl(struct fb_info *info, unsigned int cmd,
                unsigned long arg)
 {
 	 struct myfb_dev *fbdev = (struct myfb_dev *)info->par;
 	 void __user *argp = (void __user *)arg;
-	 u32  src_colorkey;//16 bit or 24 bit
-	 u32  srckey_enable;
+   	 u32  src_colorkey;//16 bit or 24 bit 
+   	 u32  srckey_enable;
 	 u32  gbl_alpha;
 	 u32  osd_order;
 	 s32  osd_axis[4] = {0};
@@ -295,17 +289,12 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 	fb_sync_request_t  sync_request;
 
 
-	unsigned int karg = 0;
-#ifdef CONFIG_FB_AMLOGIC_UMP
-	int secure_id_buf_num = 0;
-#endif
-
-	switch (cmd)
-	{
-		case  FBIOPUT_OSD_SRCKEY_ENABLE:
+    	switch (cmd)
+  	{
+   		case  FBIOPUT_OSD_SRCKEY_ENABLE:
 			ret=copy_from_user(&srckey_enable,argp,sizeof(u32));
 			break;
-		case  FBIOPUT_OSD_SRCCOLORKEY:
+   		case  FBIOPUT_OSD_SRCCOLORKEY:
 			ret=copy_from_user(&src_colorkey,argp,sizeof(u32));
 			break ;
 		case FBIOPUT_OSD_SET_GBL_ALPHA:
@@ -323,7 +312,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_ORDER:
 		case FBIOGET_OSD_ORDER:
 		case FBIOGET_OSD_GET_GBL_ALPHA:
-		case FBIOPUT_OSD_2X_SCALE:
+		case FBIOPUT_OSD_2X_SCALE:	
 		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		case FBIOPUT_OSD_FREE_SCALE_MODE:
@@ -349,75 +338,37 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_WINDOW_AXIS:
 			ret=copy_from_user(&osd_dst_axis, argp, 4 * sizeof(s32));
 			break;
-#ifdef CONFIG_FB_AMLOGIC_UMP
-		case GET_UMP_SECURE_ID_BUF2:	/* flow trough */
-		{
-			secure_id_buf_num = 1;
-			if (!disp_get_ump_secure_id)
-				request_module("osd_ump");
-			if (disp_get_ump_secure_id)
-				return disp_get_ump_secure_id(info, fbdev, arg,
-							      secure_id_buf_num);
-			else
-				return -ENOTSUPP;
-		}
-		break;
-		case GET_UMP_SECURE_ID_BUF1:	/* flow trough */
-		{
-			secure_id_buf_num = 0;
-			if (!disp_get_ump_secure_id)
-				request_module("osd_ump");
-			if (disp_get_ump_secure_id)
-				return disp_get_ump_secure_id(info, fbdev, arg,
-							      secure_id_buf_num);
-			else
-				return -ENOTSUPP;
-		}
-		break;
-#endif
-		case FBIOPUT_OSD2_CURSOR_DATA:
-		{
-			if (copy_from_user(&karg, argp, sizeof(unsigned int))) {
-				return -EFAULT;
-			}
-			aml_hwc_addr_t para;
-			if (copy_from_user(&para, (void __user *)karg, sizeof(aml_hwc_addr_t))) {
-				return -EFAULT;
-			}
-			ret = osddev_copy_data_tocursor(fbdev, &para);
-		}
-		break;
 		default :
-			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
+			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\n ");
 			return -1;
 	}
 	mutex_lock(&fbdev->lock);
 
-	switch (cmd)
-	{
-		case FBIOPUT_OSD_ORDER:
-		osddev_change_osd_order(info->node,arg);
+  	switch (cmd)
+    	{
+    		case FBIOPUT_OSD_ORDER:
+		osddev_change_osd_order(info->node,arg);	
 		break;
 		case FBIOGET_OSD_ORDER:
 		osd_order=osddev_get_osd_order(info->node);
 		ret=copy_to_user(argp, &osd_order, sizeof(u32));
-		break;
+		break;	
 		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
 		osddev_free_scale_width(info->node,arg);
 		break;
 		case FBIOPUT_OSD_FREE_SCALE_HEIGHT:
 		osddev_free_scale_height(info->node,arg);
 		break;
-		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
+    		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		osddev_free_scale_enable(info->node,arg);
 		break;
 		case FBIOPUT_OSD_FREE_SCALE_MODE:
 		osddev_free_scale_mode(info->node, arg);
 		break;
-		case FBIOPUT_OSD_ENABLE_3D_MODE:
+    		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		osddev_enable_3d_mode(info->node,arg);
 		break;
-		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
+    		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
 		break;
 		case FBIOGET_OSD_FLUSH_RATE:
@@ -436,30 +387,30 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 		case FBIOPUT_OSD_SRCCOLORKEY:
 		switch(fbdev->color->color_index)
-		{
-			case COLOR_INDEX_16_655:
+	  	{
+	 		case COLOR_INDEX_16_655:
 			case COLOR_INDEX_16_844:
 			case COLOR_INDEX_16_565:
 			case COLOR_INDEX_24_888_B:
 			case COLOR_INDEX_24_RGB:
 			case COLOR_INDEX_YUV_422:
-			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key 0x%x\r\n",src_colorkey);
+	  	   	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key 0x%x\n",src_colorkey);
             fbdev->color_key = src_colorkey;
-			osddev_set_colorkey(info->node,fbdev->color->color_index,src_colorkey);
+	  	 	osddev_set_colorkey(info->node,fbdev->color->color_index,src_colorkey);
 			break;
 			default: break;
-		}
-		break ;
-		case FBIOPUT_OSD_SRCKEY_ENABLE:
-		switch(fbdev->color->color_index)
-		{
-			case COLOR_INDEX_16_655:
+	  	}
+	   	break ;
+	  	case FBIOPUT_OSD_SRCKEY_ENABLE:
+	   	switch(fbdev->color->color_index)
+	  	{
+	 		case COLOR_INDEX_16_655:
 			case COLOR_INDEX_16_844:
 			case COLOR_INDEX_16_565:
 			case COLOR_INDEX_24_888_B:
 			case COLOR_INDEX_24_RGB:
-			case COLOR_INDEX_YUV_422:
-			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key %s\r\n",srckey_enable?"enable":"disable");
+			case COLOR_INDEX_YUV_422:	
+			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key %s\n",srckey_enable?"enable":"disable");
 			if (srckey_enable != 0) {
 				fbdev->enable_key_flag |= KEYCOLOR_FLAG_TARGET;
 				if (!(fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD)) {
@@ -472,15 +423,15 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			}
 			break;
 			default:break;
-		}
-		break;
-		case FBIOPUT_OSD_SET_GBL_ALPHA:
-		osddev_set_gbl_alpha(info->node,gbl_alpha);
-		break;
-		case  FBIOGET_OSD_GET_GBL_ALPHA:
-		gbl_alpha=osddev_get_gbl_alpha(info->node);
-		ret=copy_to_user(argp, &gbl_alpha, sizeof(u32));
-		break;
+	 	}
+	   	break;
+	 	case FBIOPUT_OSD_SET_GBL_ALPHA:
+	 	osddev_set_gbl_alpha(info->node,gbl_alpha);
+	 	break;
+	 	case  FBIOGET_OSD_GET_GBL_ALPHA:
+	 	gbl_alpha=osddev_get_gbl_alpha(info->node);
+	 	ret=copy_to_user(argp, &gbl_alpha, sizeof(u32));
+	  	break;
 
 		case FBIOGET_OSD_SCALE_AXIS:
 			osddev_get_scale_axis(info->node, &osd_axis[0], &osd_axis[1], &osd_axis[2], &osd_axis[3]);
@@ -518,7 +469,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			osddev_set_window_axis(info->node, osd_dst_axis[0], osd_dst_axis[1], osd_dst_axis[2], osd_dst_axis[3]);
 			break;
 		 case FBIOPUT_OSD_SYNC_ADD:
-			sync_request.out_fen_fd=osddev_sync_request(info, sync_request.xoffset,sync_request.yoffset,sync_request.in_fen_fd);
+		 	sync_request.out_fen_fd=osddev_sync_request(info, sync_request.xoffset,sync_request.yoffset,sync_request.in_fen_fd);
 			ret=copy_to_user(argp, &sync_request, sizeof(fb_sync_request_t));
 			if(sync_request.out_fen_fd  <0 ) // fence create fail.
 			ret=-1;
@@ -530,32 +481,32 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 
 		default:
 			break;
-	}
+    	}
 
-	mutex_unlock(&fbdev->lock);
-
+   	mutex_unlock(&fbdev->lock);
+	
 	return  ret;
 }
 static int osd_open(struct fb_info *info, int arg)
 {
 	return 0;
-
+	
 }
 
 
 static int
 osd_blank(int blank_mode, struct fb_info *info)
 {
-	osddev_enable((blank_mode != 0) ? 0 : 1,info->node);
+ 	osddev_enable((blank_mode != 0) ? 0 : 1,info->node);
 
-	return 0;
+    	return 0;
 }
 
 static int osd_pan_display(struct fb_var_screeninfo *var,
                         struct fb_info *fbi)
 {
 	osddev_pan_display(var,fbi);
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd_pan_display:=>osd%d\r\n",fbi->node);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd_pan_display:=>osd%d\n",fbi->node);
 	return 0;
 }
 
@@ -611,11 +562,11 @@ static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *
 
 	if(virt_end_x > vinfo->width)
 	{
-		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis
+		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
 	}
 	else
 	{
-		osd_ctrl->disp_end_x=virt_end_x- 1 ;//screen axis
+		osd_ctrl->disp_end_x=virt_end_x- 1 ;//screen axis 
 	}
 	if(virt_end_y > vinfo->height)
 	{
@@ -623,7 +574,7 @@ static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *
 	}
 	else
 	{
-		osd_ctrl->disp_end_y=virt_end_y- 1 ;//screen axis
+		osd_ctrl->disp_end_y=virt_end_y- 1 ;//screen axis 
 	}
 	return ;
 }
@@ -634,14 +585,14 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 	myfb_dev_t *fb_dev;
 	int  i,blank;
 	disp_rect_t  *disp_rect;
-
+	
 	vinfo = get_current_vinfo();
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tv_server:vmode=%s\r\n", vinfo->name);
-
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tv_server:vmode=%s\n", vinfo->name);
+	
 	switch(cmd)
 	{
 		case  VOUT_EVENT_MODE_CHANGE:
-		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"recevie change mode  message \r\n");
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"recevie change mode  message\n");
 		for(i=0;i<OSD_COUNT;i++)
 		{
 			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
@@ -654,7 +605,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		break;
 
 		case VOUT_EVENT_OSD_BLANK:
-		blank=*(int*)para ;
+		blank=*(int*)para ;	
 		for(i=0;i<OSD_COUNT;i++)
 		{
 			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
@@ -664,16 +615,16 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		}
 		break;
 		case   VOUT_EVENT_OSD_DISP_AXIS:
-		disp_rect=(disp_rect_t*)para;
-
+		disp_rect=(disp_rect_t*)para;	
+		
 		for(i=0;i<OSD_COUNT;i++)
-		{
+		{	
 			if(!disp_rect)  break;
 			fb_dev=gp_fbdev_list[i];
 			if(fb_dev->preblend_enable) break;  //if osd layer preblend ,it's position is controled by vpp.
 			fb_dev->osd_ctl.disp_start_x=disp_rect->x  ;
 			fb_dev->osd_ctl.disp_start_y=disp_rect->y  ;
-			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"set disp axis: x:%d y:%d w:%d h:%d\r\n"  , \
+			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"set disp axis: x:%d y:%d w:%d h:%d\n"  , \
 					disp_rect->x, disp_rect->y,\
 					disp_rect->w, disp_rect->h );
 			if(disp_rect->x+disp_rect->w > vinfo->width)
@@ -682,7 +633,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 			}
 			else
 			{
-				fb_dev->osd_ctl.disp_end_x=fb_dev->osd_ctl.disp_start_x+disp_rect->w -1 ;
+				fb_dev->osd_ctl.disp_end_x=fb_dev->osd_ctl.disp_start_x+disp_rect->w -1 ; 
 			}
 			if(disp_rect->y+ disp_rect->h>vinfo->height)
 			{
@@ -693,14 +644,14 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 				fb_dev->osd_ctl.disp_end_y=fb_dev->osd_ctl.disp_start_y + disp_rect->h - 1 ;
 			}
 			disp_rect ++;
-			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new disp axis: startx:%d starty:%d endx:%d endy:%d\r\n"  , \
+			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new disp axis: startx:%d starty:%d endx:%d endy:%d\n"  , \
 					fb_dev->osd_ctl.disp_start_x, fb_dev->osd_ctl.disp_start_y,\
 					fb_dev->osd_ctl.disp_end_x,fb_dev->osd_ctl.disp_end_y);
 			console_lock();
 			osddev_update_disp_axis(fb_dev,0);
 			console_unlock();
 		}
-
+		
 		break;
 	}
 	return 0;
@@ -752,18 +703,18 @@ static ssize_t store_color_key(struct device *device, struct device_attribute *a
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
 	int r = simple_strtoul(buf, NULL, 16);
 	switch(fbdev->color->color_index)
-		{
-			case COLOR_INDEX_16_655:
+	  	{
+	 		case COLOR_INDEX_16_655:
 			case COLOR_INDEX_16_844:
 			case COLOR_INDEX_16_565:
 			case COLOR_INDEX_24_888_B:
 			case COLOR_INDEX_24_RGB:
 			case COLOR_INDEX_YUV_422:
             fbdev->color_key = r;
-			osddev_set_colorkey(fb_info->node, fbdev->color->color_index, fbdev->color_key);
+	  	 	osddev_set_colorkey(fb_info->node, fbdev->color->color_index, fbdev->color_key);
 			break;
 			default: break;
-		}
+	  	}
 	return count;
 }
 
@@ -973,7 +924,7 @@ static ssize_t store_scale_width(struct device *device, struct device_attribute 
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	unsigned int free_scale_width=0;
-
+    
 	free_scale_width= simple_strtoul(buf, NULL, 0);
 	osddev_free_scale_width(fb_info->node, free_scale_width);
 
@@ -988,7 +939,7 @@ static ssize_t show_scale_width(struct device *device, struct device_attribute *
 
 	osddev_get_free_scale_width(fb_info->node, &free_scale_width);
 	return snprintf(buf, PAGE_SIZE, "free_scale_width:%d\n",free_scale_width);
-
+	
 }
 
 static ssize_t store_scale_height(struct device *device, struct device_attribute *attr,
@@ -1040,7 +991,7 @@ static ssize_t store_freescale_mode(struct device *device, struct device_attribu
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	unsigned int free_scale_mode=0;
-
+    
 	free_scale_mode= simple_strtoul(buf, NULL, 0);
 	osddev_free_scale_mode(fb_info->node, free_scale_mode);
 
@@ -1052,10 +1003,14 @@ static ssize_t show_freescale_mode(struct device *device, struct device_attribut
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	unsigned int free_scale_mode=0;
+	char *help_info = "free scale mode:\n"\
+						"    0: VPU free scaler\n" \
+						"    1: OSD free scaler\n" \
+						"    2: OSD super scaler\n";
 
 	osddev_get_free_scale_mode(fb_info->node, &free_scale_mode);
 
-	return snprintf(buf, PAGE_SIZE, "free_scale_mode:%s\n",free_scale_mode?"new":"default");
+	return snprintf(buf, PAGE_SIZE, "%scurrent free_scale_mode:%d\n", help_info, free_scale_mode);
 }
 
 static ssize_t store_scale(struct device *device, struct device_attribute *attr,
@@ -1123,13 +1078,13 @@ static ssize_t store_osd_info(struct device *device, struct device_attribute *at
 	} else {
 		amlog_level(LOG_LEVEL_HIGH, "set store_osd_info *buf* is NULL error\n");
 	}
-
+	
 	if (osd_info_flag == 0){
 		amlog_level(LOG_LEVEL_HIGH, "pandata[%d].x_start :  %d\n"
 									  "pandata[%d].x_end   :  %d\n"
 									  "pandata[%d].y_start :  %d\n"
 									  "pandata[%d].y_end   :  %d\n",
-									fb_info->node, osd_val[0][0], fb_info->node,
+									fb_info->node, osd_val[0][0], fb_info->node, 
 									osd_val[0][1], fb_info->node, osd_val[0][2],
 									fb_info->node, osd_val[0][3]);
 		amlog_level(LOG_LEVEL_HIGH, "dispdata[%d].x_start :  %d\n"
@@ -1162,7 +1117,7 @@ static ssize_t store_osd_info(struct device *device, struct device_attribute *at
 	}else if(osd_info_flag == 2){
 		amlog_level(LOG_LEVEL_HIGH, "set store_osd_info osd_info_flag is error\n");
 	}
-
+	
 	return count;
 }
 
@@ -1197,7 +1152,7 @@ static ssize_t show_block_windows(struct device *device, struct device_attribute
 
 	osddev_get_block_windows(fb_info->node, wins);
 
-    return snprintf(buf, PAGE_SIZE, "0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
+    return snprintf(buf, PAGE_SIZE, "0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", 
 			wins[0], wins[1], wins[2], wins[3], wins[4], wins[5], wins[6], wins[7]);
 }
 
@@ -1307,7 +1262,7 @@ static ssize_t show_rotate_angle(struct device *device, struct device_attribute 
 {
         struct fb_info *fb_info = dev_get_drvdata(device);
         unsigned int osd_rotate_angle = 0;
-
+                
         osddev_get_osd_rotate_angle(fb_info->node, &osd_rotate_angle);
         return snprintf(buf, PAGE_SIZE, "osd_rotate:%d\n", osd_rotate_angle);
 }
@@ -1377,6 +1332,25 @@ static ssize_t store_antiflicker(struct device *device, struct device_attribute 
 	}
 
 	return count;
+}
+
+ static ssize_t show_update_freescale(struct device *device, struct device_attribute *attr,
+     char *buf)
+{
+  struct fb_info *fb_info = dev_get_drvdata(device);
+  unsigned int update_state = 0;
+  osddev_get_update_state(fb_info->node, &update_state);
+  return snprintf(buf, PAGE_SIZE, "update_state:[%s]\n", update_state?"TRUE":"FALSE");
+}
+
+static ssize_t store_update_freescale(struct device *device, struct device_attribute *attr,
+  const char *buf, size_t count)
+{
+  struct fb_info *fb_info = dev_get_drvdata(device);
+  unsigned int update_state = 0;
+  update_state = simple_strtoul(buf, NULL, 0);
+  osddev_set_update_state(fb_info->node, update_state);
+  return count;
 }
 
 static ssize_t show_ver_angle(struct device *device, struct device_attribute *attr,
@@ -1569,10 +1543,11 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(osd_reverse, S_IRUGO|S_IWUSR, show_osd_reverse, store_osd_reverse),
 	__ATTR(prot_state, S_IRUGO|S_IWUSR, show_prot_state, NULL),
 	__ATTR(osd_antiflicker, S_IRUGO|S_IWUSR, show_antiflicker, store_antiflicker),
+	__ATTR(update_freescale, S_IRUGO|S_IWUSR, show_update_freescale, store_update_freescale),
 	__ATTR(ver_angle, S_IRUGO|S_IWUSR, show_ver_angle, store_ver_angle),
 	__ATTR(ver_clone, S_IRUGO|S_IWUSR, show_ver_clone, store_ver_clone),
 	__ATTR(ver_update_pan, S_IRUGO|S_IWUSR, NULL, store_ver_update_pan),
-};
+};		
 
 #ifdef  CONFIG_PM
 static int osd_suspend(struct platform_device *dev, pm_message_t state)
@@ -1601,7 +1576,7 @@ static int osd_resume(struct platform_device * dev)
        osddev_resume();
        return 0;
 }
-#endif
+#endif 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void osd_early_suspend(struct early_suspend *h)
@@ -1637,7 +1612,7 @@ EXPORT_SYMBOL(osd_resume_early);
 #endif
 
 static struct resource memobj;
-static int
+static int 
 osd_probe(struct platform_device *pdev)
 {
 #ifdef CONFIG_AM_HDMI_ONLY
@@ -1648,7 +1623,7 @@ osd_probe(struct platform_device *pdev)
     struct fb_info *fbi=NULL;
 	const vinfo_t *vinfo;
     struct fb_var_screeninfo *var;
-	struct fb_fix_screeninfo *fix;
+  	struct fb_fix_screeninfo *fix;
 	struct resource *mem;
 	int  index,Bpp;
 	logo_object_t  *init_logo_obj=NULL;
@@ -1662,7 +1637,7 @@ osd_probe(struct platform_device *pdev)
 	const void *prop;
 	int prop_idx=0;
 	int rotation = 0;
-
+	
 	vout_register_client(&osd_notifier_nb);
 
 #ifdef CONFIG_AM_LOGO
@@ -1695,14 +1670,14 @@ osd_probe(struct platform_device *pdev)
 
 	if (NULL==init_logo_obj )
 	{
-		prop = of_get_property(pdev->dev.of_node, "vmode", NULL);
+    		prop = of_get_property(pdev->dev.of_node, "vmode", NULL);
 		if(prop){
 			prop_idx = of_read_ulong(prop,1);
 		}
 
 		if(prop_idx == 3){
 			if(get_current_mode_state() == VMODE_SETTED){
-				amlog_level(LOG_LEVEL_HIGH,"vmode has setted in aml logo module\r\n");
+				amlog_level(LOG_LEVEL_HIGH,"vmode has setted in aml logo module\n");
 			}else{
 				DisableVideoLayer();
 				#ifdef CONFIG_AM_HDMI_ONLY
@@ -1729,14 +1704,14 @@ osd_probe(struct platform_device *pdev)
 			set_current_vmode(VMODE_LVDS_1080P);
 		}
 		osddev_init();
-	}
+    	}
 	vinfo = get_current_vinfo();
 	printk("%s, vinfo:%p\n", __func__, vinfo);
 
-	for (index=0;index<OSD_COUNT;index++)
-	{
+    	for (index=0;index<OSD_COUNT;index++)
+    	{
 #if 0
-		//platform resource
+    		//platform resource 
 		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index)))
 		{
 			amlog_level(LOG_LEVEL_HIGH,"No frame buffer memory define.\n");
@@ -1774,8 +1749,8 @@ osd_probe(struct platform_device *pdev)
 
 		mutex_init(&fbdev->lock);
 
-		var = &fbi->var;
-		fix = &fbi->fix;
+    		var = &fbi->var;
+    		fix = &fbi->fix;
 
 		gp_fbdev_list[index]=fbdev;
 		fbdev->fb_mem_paddr = mem->start;
@@ -1788,10 +1763,10 @@ osd_probe(struct platform_device *pdev)
 			r = -ENOMEM;
 			goto failed1;
 		}
-
+	
 		//clear framebuffer memory
 		amlog_level(LOG_LEVEL_HIGH,"Frame buffer memory assigned at phy:0x%08x, vir:0x%p, size=%dK\n",
-		fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
+	    	fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
 		printk("%s, mydef_var:%p, vinfo:%p\n", __func__, mydef_var, vinfo);
 
 		mydef_var[index].width=vinfo->screen_real_width;
@@ -1801,12 +1776,12 @@ osd_probe(struct platform_device *pdev)
 			int  bpp=init_logo_obj->dev->output_dev.osd.color_depth;//bytes per pixel
 			printk("don't find to display_size_default from mesonfb-dts\n");
 			mydef_var[index].xres=init_logo_obj->dev->vinfo->width;
-			mydef_var[index].yres=init_logo_obj->dev->vinfo->height;
+			mydef_var[index].yres=init_logo_obj->dev->vinfo->height;	
 			mydef_var[index].xres_virtual=init_logo_obj->dev->vinfo->width;
 			mydef_var[index].yres_virtual=init_logo_obj->dev->vinfo->height<<1;//logo always use double buffer
 			mydef_var[index].bits_per_pixel=bpp;
-
-			amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
+			
+			amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\n",mydef_var[index].bits_per_pixel);
 			if(mydef_var[index].bits_per_pixel>32){
 				mydef_var[index].bits_per_pixel=32;
 			}
@@ -1816,22 +1791,22 @@ osd_probe(struct platform_device *pdev)
 				if(ret){
 					printk("don't find to display_size_default from mesonfb-dts\n");
 				}
-				else {
+				else {			
 					int  bpp=var_screeninfo[4];//bytes per pixel
 					mydef_var[index].xres=var_screeninfo[0];
-					mydef_var[index].yres=var_screeninfo[1];
+					mydef_var[index].yres=var_screeninfo[1];	
 					mydef_var[index].xres_virtual=var_screeninfo[2];
 					mydef_var[index].yres_virtual=var_screeninfo[3];//logo always use double buffer
 					mydef_var[index].bits_per_pixel=bpp;
-
-					amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
-					if(mydef_var[index].bits_per_pixel>32)
+				
+					amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\n",mydef_var[index].bits_per_pixel);
+					if(mydef_var[index].bits_per_pixel>32) 
 					{
 						mydef_var[index].bits_per_pixel=32;
 					}
 				}
 			}
-			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
+			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory\n",index);
 			memset((char*)fbdev->fb_mem_vaddr, 0x00, fbdev->fb_len);
 		}
 
@@ -1857,7 +1832,7 @@ osd_probe(struct platform_device *pdev)
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate color map memory\n");
 			r = -ENOMEM;
 			goto failed2;
-		}
+    		}
 
 		if (!(fbi->pseudo_palette = kmalloc(sizeof(u32) * 16, GFP_KERNEL))) {
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate pseudo palette memory\n");
@@ -1866,12 +1841,12 @@ osd_probe(struct platform_device *pdev)
 		}
 		memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
 
-		fbi->fbops = &osd_ops;
-		fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
+	   	fbi->fbops = &osd_ops;
+    		fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
 		fbi->screen_size = fix->smem_len;
 		set_default_display_axis(&fbdev->fb_info->var,&fbdev->osd_ctl,vinfo);
 		osd_check_var(var, fbi);
-		register_framebuffer(fbi);
+    		register_framebuffer(fbi);
 		if(index == OSD0 && init_logo_obj != NULL)
 		{
 			osddev_set(fbdev);
@@ -1886,8 +1861,8 @@ osd_probe(struct platform_device *pdev)
 		}
 		for(i=0;i<ARRAY_SIZE(osd_attrs);i++)
 		r=device_create_file(fbi->dev, &osd_attrs[i]);
-
-	}
+		
+   	}	
 
 	index=0;
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1913,23 +1888,23 @@ osd_probe(struct platform_device *pdev)
 	}else{
 		osddev_set_osd_reverse(osd_info.index, osd_info.osd_reverse);
 	}
-	amlog_level(LOG_LEVEL_HIGH,"osd probe ok  \r\n");
+	amlog_level(LOG_LEVEL_HIGH,"osd probe ok\n");
 	return 0;
 
 failed2:
 	fb_dealloc_cmap(&fbi->cmap);
 failed1:
-	amlog_level(LOG_LEVEL_HIGH,"Driver module insert failed.\n");
-	return r;
+    	amlog_level(LOG_LEVEL_HIGH,"Driver module insert failed.\n");
+   	return r;
 }
 
 static int
 osd_remove(struct platform_device *pdev)
 {
-	struct fb_info *fbi;
+   	struct fb_info *fbi;
 	int i=0;
 
-	amlog_level(LOG_LEVEL_HIGH,"osd_remove.\n");
+    	amlog_level(LOG_LEVEL_HIGH,"osd_remove.\n");
 	if (!pdev)
 		return -ENODEV;
 
@@ -1937,14 +1912,14 @@ osd_remove(struct platform_device *pdev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
     unregister_early_suspend(&early_suspend);
 #endif
-
+	
 	vout_unregister_client(&osd_notifier_nb);
-
-
+	
+	
 	for(i=0;i<OSD_COUNT;i++)
 	{
 		int j;
-
+		
 		if(gp_fbdev_list[i])
 		{
 			myfb_dev_t * fbdev=gp_fbdev_list[i];
@@ -1953,9 +1928,9 @@ osd_remove(struct platform_device *pdev)
 			for(j=0;j<ARRAY_SIZE(osd_attrs);j++)
 			device_remove_file(fbi->dev, &osd_attrs[j]);
 			iounmap(fbdev->fb_mem_vaddr);
-			kfree(fbi->pseudo_palette);
-			fb_dealloc_cmap(&fbi->cmap);
-			unregister_framebuffer(fbi);
+      			kfree(fbi->pseudo_palette);
+     			fb_dealloc_cmap(&fbi->cmap);
+         		unregister_framebuffer(fbi);
 			framebuffer_release(fbi);
 		}
 	}
@@ -2001,10 +1976,10 @@ static struct platform_driver
 osd_driver = {
     .probe      = osd_probe,
     .remove     = osd_remove,
-#ifdef  CONFIG_PM
+#ifdef  CONFIG_PM      
     .suspend  =osd_suspend,
     .resume    =osd_resume,
-#endif
+#endif    
     .driver     = {
         .name   = "mesonfb",
         .of_match_table=meson_fb_dt_match,
@@ -2018,12 +1993,12 @@ osd_init_module(void)
 
 #ifndef MODULE
     {
-	char *option;
+      	char *option;
       if (fb_get_options("mesonfb", &option)) {
            return -ENODEV;
-	}
-
-	osd_setup_attribute(option);
+   	}
+	  
+   	osd_setup_attribute(option);
     }
 #endif
 

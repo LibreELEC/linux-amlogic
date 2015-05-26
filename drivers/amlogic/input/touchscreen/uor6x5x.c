@@ -345,82 +345,82 @@ void SendGestureKey(VUINT8 Gesture ){
 		case Tap:
 			ts.GesNo = 'T';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is TAP\r\n");
+				printk(KERN_INFO "Gesture is TAP\n");
 			break;
 		case RHorizontal:
 			ts.GesNo = 'R';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is RHorizontal\r\n");
+				printk(KERN_INFO "Gesture is RHorizontal\n");
 			break;
 		case LHorizontal:
 			ts.GesNo = 'L';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is LHorizontal\r\n");
+				printk(KERN_INFO "Gesture is LHorizontal\n");
 			break;
 		case UVertical:
 			ts.GesNo = 'U';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is UVertical\r\n");
+				printk(KERN_INFO "Gesture is UVertical\n");
 			break;
 		case DVertical:
 			ts.GesNo = 'D';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is DVertical\r\n");
+				printk(KERN_INFO "Gesture is DVertical\n");
 			break;
 		case RArc:
 			ts.GesNo = 'A';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is RArc\r\n");
+				printk(KERN_INFO "Gesture is RArc\n");
 			break;
 		case LArc:
 			ts.GesNo = 'A';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is LArc\r\n");
+				printk(KERN_INFO "Gesture is LArc\n");
 			break;
 		case CWCircle:
 			ts.GesNo = 'C';
 			if(UOR6X5X_DEBUG
-				printk(KERN_INFO "Gesture is CWCircle\r\n");
+				printk(KERN_INFO "Gesture is CWCircle\n");
 			break;
 		case CCWCircle:
 			ts.GesNo = 'c';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is CCWCircle\r\n");
+				printk(KERN_INFO "Gesture is CCWCircle\n");
 			break;
 		case RPan:
 			ts.GesNo = 'r';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is RPan\r\n");
+				printk(KERN_INFO "Gesture is RPan\n");
 			break;
 		case LPan:
 			ts.GesNo = 'l';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is LPan\r\n");
+				printk(KERN_INFO "Gesture is LPan\n");
 			break;
 		case DPan:
 			ts.GesNo = 'd';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is DPan\r\n");
+				printk(KERN_INFO "Gesture is DPan\n");
 			break;
 		case UPan:
 			ts.GesNo = 'u';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is UPan\r\n");
+				printk(KERN_INFO "Gesture is UPan\n");
 			break;
 		case PressTap:
 			ts.GesNo = 'p';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is PressTap\r\n");
+				printk(KERN_INFO "Gesture is PressTap\n");
 			break;
 		case PinchIn:
 			ts.GesNo = 'I';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is PinchIn\r\n");
+				printk(KERN_INFO "Gesture is PinchIn\n");
 			break;
 		case PinchOut:
 			ts.GesNo = 'O';
 			if(UOR6X5X_DEBUG)
-				printk(KERN_INFO "Gesture is PinchOut\r\n");
+				printk(KERN_INFO "Gesture is PinchOut\n");
 			break;
 		default:
 			if(UOR6X5X_DEBUG)

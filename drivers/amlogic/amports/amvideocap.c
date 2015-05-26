@@ -147,6 +147,28 @@ static int amvideocap_release(struct inode *inode, struct file *file)
     return 0;
 }
 
+static int amvideocap_format_to_byte4pix(int fmt)
+{
+    switch(fmt){
+        case GE2D_FORMAT_S16_RGB_565:
+            return 2;
+        case GE2D_FORMAT_S24_BGR:
+            return 3;
+        case GE2D_FORMAT_S24_RGB:
+            return 3;
+        case GE2D_FORMAT_S32_ABGR:
+            return 4;
+        case GE2D_FORMAT_S32_RGBA:
+            return 4;
+        case GE2D_FORMAT_S32_BGRA:
+            return 4;
+        case GE2D_FORMAT_S32_ARGB:
+            return 4;
+        default:
+            return 4;
+    }
+};
+
 static int amvideocap_capture_get_frame(struct amvideocap_private *priv, vframe_t **vf, int *cur_index)
 {
     int ret;
@@ -209,7 +231,7 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
     }
 
 
-    canvas_config(canvas_idx, (unsigned long)priv->phyaddr, w * 3, h, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+    canvas_config(canvas_idx, (unsigned long)priv->phyaddr, w * amvideocap_format_to_byte4pix(outfmt), h, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     if(priv->src_rect.x < 0 || priv->src_rect.x > vf->width) {
         input_x = 0;
     } else {
@@ -332,15 +354,7 @@ static int amvideocap_capture_one_frame_l(struct amvideocap_private *priv, int c
     switch_mod_gate_by_name("ge2d", 0);
     return ret;
 }
-static int amvideocap_format_to_byte4pix(int fmt)
-{
-    switch(fmt){
-        case GE2D_FORMAT_S24_RGB:return 3;
-        case GE2D_FORMAT_S32_RGBA:return 4;
-        default:
-                                  return 4;
-    }
-};
+
 
 
 static int amvideocap_capture_one_frame(struct amvideocap_private *priv,vframe_t *vfput, int index)

@@ -16,6 +16,13 @@ config AML_VOUT_FRAMERATE_AUTOMATION
 	help
 		framerate adjustment automatically from video source
 
+config AML_VDAC_HW_SWITCH
+	bool "vdac hardware switch"
+	default n
+	depends on AM_TV_OUTPUT
+	help
+		vdac hardware switch of cvbs/ypbpr for mx.
+
 config AM_LCD_OUTPUT
 	tristate "LCD output"
 	default y

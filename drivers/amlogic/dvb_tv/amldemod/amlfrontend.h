@@ -54,6 +54,7 @@ enum M6_Demod_Dvb_Mode
 
 #define Adc_Clk_25M			25000   //dtmb
 #define Demod_Clk_100M 	  100000//
+#define Demod_Clk_180M 	  180000//
 
 
 

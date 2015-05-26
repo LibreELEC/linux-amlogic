@@ -22,9 +22,9 @@ typedef struct{
 	dma_addr_t paddr;
 	char* addr;
 	unsigned size;
-	signed int wr;
-	signed int rd;
-	signed int level;
+	unsigned wr;
+	unsigned rd;
+	unsigned level;
 	spinlock_t lock;
 }BUF;
 
@@ -68,3 +68,6 @@ extern unsigned int aml_i2s_alsa_write_addr;
 #define AMAUDIO_IOC_GET_PTR_READ		_IOW(AMAUDIO_IOC_MAGIC, 0x08, int)
 #define AMAUDIO_IOC_UPDATE_APP_PTR_READ	_IOW(AMAUDIO_IOC_MAGIC, 0x09, int)
 #define AMAUDIO_IOC_OUT_READ_ENABLE		_IOW(AMAUDIO_IOC_MAGIC, 0x0a, int)
+#define AMAUDIO_IOC_SET_ANDROID_VOLUME_ENABLE		_IOW(AMAUDIO_IOC_MAGIC, 0x0b, int)
+#define AMAUDIO_IOC_SET_ANDROID_LEFT_VOLUME	        _IOW(AMAUDIO_IOC_MAGIC, 0x0c, int)
+#define AMAUDIO_IOC_SET_ANDROID_RIGHT_VOLUME		_IOW(AMAUDIO_IOC_MAGIC, 0x0d, int)

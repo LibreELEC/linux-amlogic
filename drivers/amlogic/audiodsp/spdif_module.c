@@ -71,7 +71,8 @@ static int audio_spdif_open(struct inode *inode, struct file *file)
 static int audio_spdif_release(struct inode *inode, struct file *file)
 {
    // audio_enable_ouput(0);
-    audio_output_iec958_enable(0);
+    //audio_output_iec958_enable(0);  
+    aml_alsa_hw_reprepare();
     device_opened--;
     module_put(THIS_MODULE);
 	IEC958_mode_codec = 0;
@@ -89,6 +90,11 @@ static long audio_spdif_ioctl(struct file *file, unsigned int cmd, unsigned long
 			break;
 		case AUDIO_SPDIF_GET_958_BUF_SIZE:
 			tmp = READ_MPEG_REG(AIU_MEM_IEC958_END_PTR) -READ_MPEG_REG(AIU_MEM_IEC958_START_PTR)+64;//iec958_info.iec958_buffer_size;
+            if(tmp == 64)
+                tmp = 0;
+            if(READ_MPEG_REG(AIU_MEM_IEC958_START_PTR) == READ_MPEG_REG(AIU_MEM_I2S_START_PTR)){
+                tmp = tmp * 4;
+            }
 			put_user(tmp,(__s32 __user *)args);
 			break;
 		case AUDIO_SPDIF_GET_958_ENABLE_STATUS:
@@ -240,12 +246,12 @@ err0:
     unregister_chrdev(major_spdif, DEVICE_NAME);
     return PTR_ERR(ptr_err);
 }
-static int __exit  audio_spdif_exit_module(void)
+static void __exit  audio_spdif_exit_module(void)
 {
     device_destroy(class_spdif, MKDEV(major_spdif, 0));
     class_destroy(class_spdif);
     unregister_chrdev(major_spdif, DEVICE_NAME);
-    return 0;
+    return;
 }
 module_init(audio_spdif_init_module);
 module_exit(audio_spdif_exit_module);

@@ -427,4 +427,18 @@ extern int aml1218_otg_change(struct notifier_block *nb, unsigned long value, vo
 extern int aml1218_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata);
 #endif      /* CONFIG_AML1218 */
 
+#ifdef CONFIG_AML1220
+
+//add aml1220 pmu4 power register
+
+#define AML1220_PMU_CTR_04    0x05
+
+extern int  aml1220_write(int32_t add, uint8_t val);
+extern int  aml1220_write16(int32_t add, uint16_t val);
+extern int  aml1220_read    (int add, uint8_t *val);
+extern int  aml1220_read16(int add, uint16_t *val);
+
+//#define AML1220
+#endif
+
 #endif /* __AML_PMU_H__ */

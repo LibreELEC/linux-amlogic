@@ -348,7 +348,7 @@ static int aml_m8_set_bias_level(struct snd_soc_codec *codec,
 }
 static void acodec_delay_us (int us)
 {
-	msleep(us/1000);
+	udelay(us);
 } /* acodec_delay_us */
 
 void acodec_normal_startup (struct snd_soc_codec *codec)
@@ -356,7 +356,7 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
 	unsigned int data32;
     // Apply reset for at least 3 clk_ext cycles
     WRITE_MPEG_REG_BITS(AIU_AUDAC_CTRL0, 1, 15, 1);
-    acodec_delay_us(20);
+    acodec_delay_us(5);
     WRITE_MPEG_REG_BITS(AIU_AUDAC_CTRL0, 0, 15, 1);
 
     acodec_delay_us(2);
@@ -373,20 +373,12 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     data32 |= 0 << 0;   // [    0] rstdacdpz
     snd_soc_write(codec, 0, data32);
 
-	acodec_delay_us(1);
+	acodec_delay_us(2);
 
     data32  = 0;
     data32 |= 1 << 1;   // [    1] rstadcdpz
     data32 |= 1 << 0;   // [    0] rstdacdpz
     snd_soc_write(codec, 0, data32);
-
-	data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
 
 	//set the nominal current
 	snd_soc_write(codec, 0x12, 0x0);
@@ -399,8 +391,23 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     data32 |= 3 << 2;   // [ 3: 2] dem_cfg
     data32 |= 0 << 0;   // [ 1: 0] cfg_adc_dither
     snd_soc_write(codec, 0xF3, data32);
-	snd_soc_write(codec, 24, 0xf3);
+	data32  = 0;
+    data32 |= 0 << 1;   // [    1] rstadcdpz
+    data32 |= 0 << 0;   // [    0] rstdacdpz
+    snd_soc_write(codec, 0, data32);
 
+    data32  = 0;
+    data32 |= 1 << 1;   // [    1] rstadcdpz
+    data32 |= 1 << 0;   // [    0] rstdacdpz
+    snd_soc_write(codec, 0, data32);
+	snd_soc_write(codec, 24, 0xf3);
+    data32  = 0;
+    data32 |= 1 << 4;   // [    4] pd_micb2z
+    data32 |= 1 << 3;   // [    3] pd_micb1z
+    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
+    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
+    data32 |= 1 << 0;   // [    0] pdz
+    snd_soc_write(codec, 21, data32);
 }
 
 void acodec_config(unsigned int clk_ext_sel,           // [3:0]: 0=1.958M~2.65M; 1=2.6M~3.5M; 2=3.9M~5.3M; 3=5.2M~7.06M; 4=10.2M~13.8M;

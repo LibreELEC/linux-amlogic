@@ -8,3 +8,4 @@ obj-$(CONFIG_AM_VDEC_MJPEG) += mjpeg/
 obj-$(CONFIG_AM_VDEC_REAL) += real/
 obj-$(CONFIG_AM_JPEGDEC) += jpeg/
 obj-$(CONFIG_AM_ENCODER) += encoder/
+obj-$(CONFIG_AM_VDEC_AVS) += avs/

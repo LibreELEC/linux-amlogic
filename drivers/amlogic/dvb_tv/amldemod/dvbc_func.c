@@ -1,7 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#include "aml_demod.h"
+#include <linux/dvb/aml_demod.h>
 #include "demod_func.h"
 #include <linux/kthread.h>
 
@@ -18,8 +18,6 @@ static void dvbc_cci_timer(unsigned long data)
 	int maxCCI_p,re,im,j,i,times,maxCCI,sum,sum1,reg_0xf0,tmp1,tmp,tmp2,reg_0xa8,reg_0xac;
 	int reg_0xa8_t, reg_0xac_t;
 	count=100;
-//	while(1){
-		    // search cci((si2176_get_strength()-256)<(-85))
 		if((((apb_read_reg(QAM_BASE+0x18))&0x1)==1)){
 				printk("[cci]lock ");
 				if(cciflag==0){
@@ -30,7 +28,7 @@ static void dvbc_cci_timer(unsigned long data)
 				 printk("\n");
 				 mdelay(500);
 			mod_timer(&mytimer, jiffies + 2*HZ);
-			return 0;
+			return;
 		}
 		 if(cciflag==1){
 			printk("[cci]cciflag is 1,wait 20\n");
@@ -114,7 +112,7 @@ static void dvbc_cci_timer(unsigned long data)
 
 		printk("[cci][%s]--------------------------\n",__func__);
 		mod_timer(&mytimer, jiffies + 2*HZ);
-		return 0;
+		return;
 //	}
 #endif
 }
@@ -132,7 +130,7 @@ void  dvbc_timer_exit(void)
 	del_timer(&mytimer);
 }
 
-void dvbc_cci_task(void)
+int dvbc_cci_task(void *data)
 {
 	int count;
 	int maxCCI_p,re,im,j,i,times,maxCCI,sum,sum1,reg_0xf0,tmp1,tmp,tmp2,reg_0xa8,reg_0xac;
@@ -140,7 +138,6 @@ void dvbc_cci_task(void)
 	count=100;
 	while(1){
 			msleep(200);
-		    // search cci((si2176_get_strength()-256)<(-85))
 		if((((apb_read_reg(QAM_BASE+0x18))&0x1)==1)){
 				printk("[cci]lock ");
 				if(cciflag==0){
@@ -238,7 +235,7 @@ void dvbc_cci_task(void)
 
 		printk("[cci][%s]--------------------------\n",__func__);
 	}
-
+	return 0;
 }
 
 int dvbc_get_cci_task(void)
@@ -264,7 +261,7 @@ void dvbc_create_cci_task(void)
 	{
 		printk ("[%s]Create cci kthread error!\n",__func__);
 		cci_task=NULL;
-		return 0;
+		return;
 	}
 	wake_up_process(cci_task);
 	printk ("[%s]Create cci kthread and wake up!\n",__func__);

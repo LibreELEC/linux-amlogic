@@ -105,6 +105,8 @@ struct dmx_sct_filter_params
 #define DMX_ONESHOT         2
 #define DMX_IMMEDIATE_START 4
 #define DMX_KERNEL_CLIENT   0x8000
+#define DMX_USE_SWFILTER    0x100
+
 };
 
 

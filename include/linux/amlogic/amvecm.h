@@ -27,14 +27,7 @@
 #include <linux/amlogic/amstream.h>
 
 
-struct ve_dnlp_s          video_ve_dnlp;
-struct tcon_gamma_table_s video_gamma_table_r;
-struct tcon_gamma_table_s video_gamma_table_g;
-struct tcon_gamma_table_s video_gamma_table_b;
-struct tcon_gamma_table_s video_gamma_table_r_adj;
-struct tcon_gamma_table_s video_gamma_table_g_adj;
-struct tcon_gamma_table_s video_gamma_table_b_adj;
-struct tcon_rgb_ogo_s     video_rgb_ogo;
+//struct ve_dnlp_s          video_ve_dnlp;
 
 #define FLAG_RSV31              (1 << 31)
 #define FLAG_RSV30              (1 << 30)
@@ -42,12 +35,12 @@ struct tcon_rgb_ogo_s     video_rgb_ogo;
 #define FLAG_VE_NEW_DNLP        (1 << 28)
 #define FLAG_RSV27              (1 << 27)
 #define FLAG_RSV26              (1 << 26)
-#define FLAG_RSV25              (1 << 25)
-#define FLAG_RSV24              (1 << 24)
-#define FLAG_RSV23              (1 << 23)
-#define FLAG_RSV22              (1 << 22)
-#define FLAG_RSV21              (1 << 21)
-#define FLAG_RSV20              (1 << 20)
+#define FLAG_3D_BLACK_DIS       (1 << 25)
+#define FLAG_3D_BLACK_EN        (1 << 24)
+#define FLAG_3D_SYNC_DIS        (1 << 23)
+#define FLAG_3D_SYNC_EN         (1 << 22)
+#define FLAG_VLOCK_DIS          (1 << 21)
+#define FLAG_VLOCK_EN          (1 << 20)
 #define FLAG_VE_DNLP_EN         (1 << 19)
 #define FLAG_VE_DNLP_DIS        (1 << 18)
 #define FLAG_RSV17              (1 << 17)
@@ -92,15 +85,15 @@ struct tcon_rgb_ogo_s     video_rgb_ogo;
 #define AMVECM_IOC_S_RGB_OGO      _IOW(AMVECM_IOC_MAGIC, 0x45, struct tcon_rgb_ogo_s)
 #define AMVECM_IOC_G_RGB_OGO      _IOR(AMVECM_IOC_MAGIC, 0x46, struct tcon_rgb_ogo_s)
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
-#undef WRITE_CBUS_REG
-#undef WRITE_CBUS_REG_BITS
-#undef READ_CBUS_REG
-#undef READ_CBUS_REG_BITS
-
-#define WRITE_CBUS_REG(x,val)				WRITE_VCBUS_REG(x,val)
-#define WRITE_CBUS_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
-#define READ_CBUS_REG(x)				READ_VCBUS_REG(x)
-#define READ_CBUS_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#define WRITE_VPP_REG(x,val)				WRITE_VCBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_VCBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#else
+#define WRITE_VPP_REG(x,val)				WRITE_CBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_CBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_CBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_CBUS_REG_BITS(x,start,length)
 #endif
 
 #endif /* AMVECM_H */

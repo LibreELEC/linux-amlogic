@@ -11,6 +11,19 @@ config AM_DVB
 	help
 		Select to enable AMLogic DVB driver.
 
+config AM_ATVDEMOD
+	tristate "Amlogic ATVDEMOD device driver"
+	default n
+	help
+	  ATVDEMOD device driver.
+
+config AM_DTVDEMOD
+	tristate "Amlogic DTVDEMOD device driver"
+	default n
+	depends on AM_DVB
+	help
+	  DTVDEMOD device driver.
+	  
 menu "AMLOGIC CI Driver"
 
 config AM_CI
@@ -187,16 +200,26 @@ config AMLOGIC_TS2_INVERT_S2P1_FEC_CLK
 
 endif
 
+
 if ARCH_MESON6TV || ARCH_MESON6TVD
-config AM_M6_DEMOD
-	tristate "M6 demod driver"
+config ATMB_DEMOD
+	tristate "ATMB demod driver"
 	default n
 	depends on AM_DVB
 	help
-		Select to enable M6 demod driver.
+		Select to enable ATMB demod driver.
+	
+
 endif
 
 isource "../hardware/dvb/altobeam/drivers/atbm887x/Kconfig"
+
+config AM_SI2157
+	tristate "SI2157 tuner"
+	default n
+	depends on AM_DVB
+	help
+		select the 2157 tuner.
 
 config AM_SI2177
 	tristate "SI2177 tuner"
@@ -225,4 +248,38 @@ config AM_MXL101
 	depends on AM_DVB
 	help
 		Select to enable MXL101 demod driver.
+config AM_AVL68xx
+	tristate "AVL68xx T2 demod driver"
+	default y
+	depends on AM_DVB
+	help
+		Select to enable AVL68xx demod driver.	
+		
+config AM_MXL241_FE
+	tristate "MXL241 DVB-C demod driver"
+	default y
+	depends on AM_DVB
+	help
+		Select to enable MXL241 demod driver.
+
+config AM_MXL683_FE
+	tristate "MXL683 ISDB-T demod driver"
+	default y
+	depends on AM_DVB
+	help
+		Select to enable MXL683 demod driver.
+
+config AM_R840
+	tristate "the R840 tuner driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable R840 tuner driver.
+
+config AM_SI2151
+	tristate "the SI2151 tuner driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable SI2151 tuner driver.
 endmenu

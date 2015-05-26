@@ -928,8 +928,10 @@ void root_func(){
         status = "okay";
     };
 
-
-
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 
 /// **************************************************************************************
 /// -   GPIO

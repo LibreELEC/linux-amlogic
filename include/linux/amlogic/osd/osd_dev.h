@@ -115,6 +115,8 @@ extern void osddev_set_osd_clone(u32 index, u32 clone);
 extern void osddev_set_osd_update_pan(u32 index);
 extern void osddev_get_osd_rotate_angle(u32 index, u32 *angle);
 extern void osddev_set_osd_rotate_angle(u32 index, u32 angle);
+extern void osddev_get_update_state(u32 index, u32 *up_free);
+extern void osddev_set_update_state(u32 index, u32 up_free);
 extern void osddev_get_prot_canvas(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);
 extern void osddev_set_prot_canvas(u32 index, s32 x_start, s32 y_start, s32 x_end, s32 y_end);
 extern void osddev_set(struct myfb_dev *fbdev);

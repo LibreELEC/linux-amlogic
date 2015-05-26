@@ -1,5 +1,6 @@
 
 #include <mach/am_regs.h>
+#include <mach/power_gate.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include "../../../../../../../../../hardware/tvin/tvin_frontend.h"
 #include "mhl_linuxdrv.h"
@@ -182,8 +183,6 @@ static struct tvin_decoder_ops_s sii5293_tvin_dec_ops = {
 
 static void sii5293_tvin_get_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_property_s *prop)
 {
-	sii5293_vdin *devp = container_of(fe,sii5293_vdin,tvin_frontend);
-
 	prop->color_format = TVIN_RGB444;
 	prop->dest_cfmt = TVIN_YUV422;
 	prop->decimation_ratio = 0;
@@ -318,6 +317,7 @@ void sii5293_stop_vdin(sii5293_vdin *info)
 
 	stop_tvin_service(0);
 	set_invert_top_bot(false);
+	CLK_GATE_OFF(MISC_DVIN);
 	info->vdin_started = 0;
 	printk("%s: stop vdin\n", __FUNCTION__);
 	return ;
@@ -338,10 +338,13 @@ void sii5293_start_vdin(sii5293_vdin *info, int width, int height, int frame_rat
 											(info->vdin_info.cur_frame_rate != frame_rate) )
 		{
 			stop_tvin_service(0);
+			CLK_GATE_OFF(MISC_DVIN);
 			info->vdin_started=0;
 			printk("%s: stop vdin\n", __func__);
 		}
 	}
+
+	CLK_GATE_ON(MISC_DVIN);
 
 	if( (info->vdin_started==0) && (width>0) && (height>0) && (frame_rate>0) )
 	{
@@ -462,7 +465,10 @@ void sii5293_start_vdin(sii5293_vdin *info, int width, int height, int frame_rat
 		}
 		else{
 			if(info->vdin_info.cur_width == 1920 &&  info->vdin_info.cur_height == 1080){
-				para.fmt = TVIN_SIG_FMT_HDMI_1920X1080P_60HZ;
+				if( info->vdin_info.cur_frame_rate == 60 )
+					para.fmt = TVIN_SIG_FMT_HDMI_1920X1080P_60HZ;
+				else if( info->vdin_info.cur_frame_rate == 30 )
+					para.fmt = TVIN_SIG_FMT_MAX;//TVIN_SIG_FMT_HDMI_1920X1080P_30HZ;
 			}
 			else if(info->vdin_info.cur_width == 1280 &&  info->vdin_info.cur_height == 720){
 				para.fmt = TVIN_SIG_FMT_HDMI_1280X720P_60HZ;

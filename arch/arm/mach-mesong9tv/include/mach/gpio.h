@@ -1,0 +1,197 @@
+/*
+ * arch/arm/mach-mesong9tv/include/mach/cpu.h
+ *
+ * Copyright (C) 2014 Amlogic, Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#ifndef __MACH_MESONG9TV_GPIO_H
+#define __MACH_MESONG9TV_GPIO_H
+
+typedef enum {
+	GPIOAO_0	=	0,
+	GPIOAO_1	=	1,
+	GPIOAO_2	=	2,
+	GPIOAO_3	=	3,
+	GPIOAO_4	=	4,
+	GPIOAO_5	=	5,
+	GPIOAO_6	=	6,
+	GPIOAO_7	=	7,
+	GPIOAO_8	=	8,
+	GPIOAO_9	=	9,
+	GPIOAO_10	=	10,
+	GPIOAO_11	=	11,
+	GPIOAO_12	=	12,
+	GPIOAO_13	=	13,
+
+	GPIOZ_0		=	14,
+	GPIOZ_1		=	15,
+	GPIOZ_2		=	16,
+	GPIOZ_3		=	17,
+	GPIOZ_4		=	18,
+	GPIOZ_5		=	19,
+	GPIOZ_6		=	20,
+	GPIOZ_7		=	21,
+	GPIOZ_8		=	22,
+	GPIOZ_9		=	23,
+	GPIOZ_10	=	24,
+	GPIOZ_11	=	25,
+	GPIOZ_12	=	26,
+	GPIOZ_13	=	27,
+	GPIOZ_14	=	28,
+	GPIOZ_15	=	29,
+	GPIOZ_16	=	30,
+	GPIOZ_17	=	31,
+	GPIOZ_18	=	32,
+	GPIOZ_19	=	33,
+	GPIOZ_20	=	34,
+
+	GPIOH_0		=	35,
+	GPIOH_1		=	36,
+	GPIOH_2		=	37,
+	GPIOH_3		=	38,
+	GPIOH_4		=	39,
+	GPIOH_5		=	40,
+	GPIOH_6		=	41,
+	GPIOH_7		=	42,
+	GPIOH_8		=	43,
+	GPIOH_9		=	44,
+	GPIOH_10	=	45,
+
+	BOOT_0		=	46,
+	BOOT_1		=	47,
+	BOOT_2		=	48,
+	BOOT_3		=	49,
+	BOOT_4		=	50,
+	BOOT_5		=	51,
+	BOOT_6		=	52,
+	BOOT_7		=	53,
+	BOOT_8		=	54,
+	BOOT_9		=	55,
+	BOOT_10		=	56,
+	BOOT_11		=	57,
+	BOOT_12		=	58,
+	BOOT_13		=	59,
+	BOOT_14		=	60,
+	BOOT_15		=	61,
+	BOOT_16		=	62,
+	BOOT_17		=	63,
+	BOOT_18		=	64,
+
+	CARD_0		=	65,
+	CARD_1		=	66,
+	CARD_2		=	67,
+	CARD_3		=	68,
+	CARD_4		=	69,
+	CARD_5		=	70,
+	CARD_6		=	71,
+	CARD_7		=	72,
+	CARD_8		=	73,
+
+	GPIOW_0		=	74,
+	GPIOW_1		=	75,
+	GPIOW_2		=	76,
+	GPIOW_3		=	77,
+	GPIOW_4		=	78,
+	GPIOW_5		=	79,
+	GPIOW_6		=	80,
+	GPIOW_7		=	81,
+	GPIOW_8		=	82,
+	GPIOW_9		=	83,
+	GPIOW_10	=	84,
+	GPIOW_11	=	85,
+	GPIOW_12	=	86,
+	GPIOW_13	=	87,
+	GPIOW_14	=	88,
+	GPIOW_15	=	89,
+	GPIOW_16	=	90,
+	GPIOW_17	=	91,
+	GPIOW_18	=	92,
+	GPIOW_19	=	93,
+	GPIOW_20	=	94,
+
+	GPIOY_0		=	95,
+	GPIOY_1		=	96,
+	GPIOY_2		=	97,
+	GPIOY_3		=	98,
+	GPIOY_4		=	99,
+	GPIOY_5		=	100,
+	GPIOY_6		=	101,
+	GPIOY_7		=	102,
+	GPIOY_8		=	103,
+	GPIOY_9		=	104,
+	GPIOY_10	=	105,
+	GPIOY_11	=	106,
+	GPIOY_12	=	107,
+	GPIOY_13	=	108,
+
+	GPIOX_0		=	109,
+	GPIOX_1		=	110,
+	GPIOX_2		=	111,
+	GPIOX_3		=	112,
+	GPIOX_4		=	113,
+	GPIOX_5		=	114,
+	GPIOX_6		=	115,
+	GPIOX_7		=	116,
+	GPIOX_8		=	117,
+	GPIOX_9		=	118,
+	GPIOX_10	=	119,
+	GPIOX_11	=	120,
+	GPIOX_12	=	121,
+	GPIOX_13	=	122,
+	GPIOX_14	=	123,
+	GPIOX_15	=	124,
+	GPIOX_16	=	125,
+	GPIOX_17	=	126,
+	GPIOX_18	=	127,
+	GPIOX_19	=	128,
+	GPIOX_20	=	129,
+	GPIOX_21	=	130,
+	GPIOX_22	=	131,
+	GPIOX_23	=	132,
+	GPIOX_24	=	133,
+	GPIOX_25	=	134,
+	GPIOX_26	=	135,
+	GPIOX_27	=	136,
+
+	GPIO_MAX	=	137,
+} gpio_t;
+
+enum {
+	GPIO_IRQ0=0,
+	GPIO_IRQ1,
+	GPIO_IRQ2,
+	GPIO_IRQ3,
+	GPIO_IRQ4,
+	GPIO_IRQ5,
+	GPIO_IRQ6,
+	GPIO_IRQ7,
+};
+
+enum {
+	GPIO_IRQ_HIGH=0,
+	GPIO_IRQ_LOW,
+	GPIO_IRQ_RISING,
+	GPIO_IRQ_FALLING,
+};
+
+enum {
+	FILTER_NUM0=0,
+	FILTER_NUM1,
+	FILTER_NUM2,
+	FILTER_NUM3,
+	FILTER_NUM4,
+	FILTER_NUM5,
+	FILTER_NUM6,
+	FILTER_NUM7,
+};
+
+#endif //__MACH_MESONG9TV_GPIO_H

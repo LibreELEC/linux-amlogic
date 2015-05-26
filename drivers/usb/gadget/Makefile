@@ -3,7 +3,9 @@
 #
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
-#obj-$(CONFIG_USB_GADGET)	+= udc-core.o
+ifeq ($(CONFIG_USB_DWC3),y)
+obj-$(CONFIG_USB_GADGET)	+= udc-core.o
+endif
 obj-$(CONFIG_USB_LIBCOMPOSITE)	+= libcomposite.o
 libcomposite-y			:= usbstring.o config.o epautoconf.o
 libcomposite-y			+= composite.o functions.o

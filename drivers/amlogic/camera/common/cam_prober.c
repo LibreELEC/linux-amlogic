@@ -425,6 +425,20 @@ int hm5065_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM1375
+int hm1375_v4l2_probe(struct i2c_adapter *adapter)
+{
+	int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte(adapter, 0x24, 0x0001);
+	reg[1] = aml_i2c_get_byte(adapter, 0x24, 0x0002);
+	printk("hm1375_v4l2_probe: device ID: 0x%x%x",reg[0], reg[1]);
+	if ((reg[0] == 0x13 || reg[0]==0x03)&& reg[1] == 0x75)
+		ret = 1;
+    ret = 1;
+	return ret;
+}
+#endif
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI2056
 int hi2056_v4l2_probe(struct i2c_adapter *adapter)
@@ -500,6 +514,30 @@ int bf3720_v4l2_probe(struct i2c_adapter *adapter)
 	reg[0] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfc);
 	reg[1] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfd);
 	if (reg[0] == 0x37 && reg[1] == 0x20)
+		ret = 1;
+    return ret;
+}
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3703
+int __init bf3703_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfc); //i2c addr:0x6f
+	reg[1] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfd);
+	if (reg[0] == 0x37 && reg[1] == 0x03)
+		ret = 1;
+    return ret;
+}
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3920
+int __init bf3920_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfc); //i2c addr:0x6f
+	reg[1] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfd);
+	if (reg[0] == 0x39 && reg[1] == 0x20)
 		ret = 1;
     return ret;
 }
@@ -711,6 +749,15 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = hm5065_v4l2_probe,
 	},
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM1375
+	{
+		.addr = 0x24,
+		.name = "hm1375",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1280X1024,
+		.probe_func = hm1375_v4l2_probe,
+	},
+#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI2056
 	{
 		.addr = 0x24,
@@ -756,7 +803,24 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = bf3720_v4l2_probe,
 	},
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3703
+	{
+		.addr = 0x6e,
+		.name = "bf3703",
+		.pwdn = 1,
+		.max_cap_size = SIZE_640X480,
+		.probe_func = bf3703_v4l2_probe,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3920
+	{
+		.addr = 0x6e,
+		.name = "bf3920",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1600X1200,
+		.probe_func = bf3920_v4l2_probe,
+	},
+#endif
 };
 
 static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)
@@ -793,6 +857,7 @@ struct res_item res_item_array[] = {
 	{SIZE_1152X864, "1152X864"},
 	{SIZE_1366X768, "1366X768"},
 	{SIZE_1280X960, "1280X960"},
+	{SIZE_1280X1024, "1280X1024"},
 	{SIZE_1400X1050, "1400X1050"},
 	{SIZE_1600X900, "1600X900"},
 	{SIZE_1600X1200, "1600X1200"},

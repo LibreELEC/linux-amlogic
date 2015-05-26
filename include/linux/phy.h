@@ -68,7 +68,8 @@ typedef enum {
 
 
 #define PHY_INIT_TIMEOUT	100000
-#define PHY_STATE_TIME		1
+//#define PHY_STATE_TIME		1
+#define PHY_STATE_TIME		0.5
 #define PHY_FORCE_TIMEOUT	10
 #define PHY_AN_TIMEOUT		10
 

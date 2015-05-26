@@ -24,7 +24,7 @@
 
 #include <linux/thermal.h>
 
-#include "thermal_core.h"
+#include <linux/thermal_core.h>
 
 /*
  * If the temperature is higher than a trip point,

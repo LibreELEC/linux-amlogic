@@ -390,11 +390,12 @@ KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 KERNELRELEASE = $(shell head -1 include/config/kernel.release 2> /dev/null)
 KERNELRELEASE_FULL = $(shell tail -1 include/config/kernel.release 2> /dev/null)
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+CUSTOMER_DIR_NAME ?= customer
 
 
 export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
-export CPP AR NM STRIP OBJCOPY OBJDUMP
+export CPP AR NM STRIP OBJCOPY OBJDUMP CUSTOMER_DIR_NAME
 export MAKE AWK GENKSYMS INSTALLKERNEL PERL UTS_MACHINE
 export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
 
@@ -1072,6 +1073,7 @@ distclean: mrproper
 		\( -name '*.orig' -o -name '*.rej' -o -name '*~' \
 		-o -name '*.bak' -o -name '#*#' -o -name '.*.orig' \
 		-o -name '.*.rej' \
+		-o -name 'ccImage' -o -name 'ccImage.*' \
 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
 		-type f -print | xargs rm -f
 
@@ -1192,7 +1194,7 @@ dtd:
 	$(srctree)/scripts/amlogic/aml_dtd.sh $(srctree)
 
 %.dtd:
-	$(srctree)/scripts/amlogic/aml2dts.sh $(wildcard $(srctree)/arch/arm/boot/dts/amlogic/$@)
+	$(srctree)/scripts/amlogic/aml2dts.sh $(firstword $(wildcard $(srctree)/arch/arm/boot/dts/amlogic/$@ $(srctree)/$(CUSTOMER_DIR_NAME)/meson/dt/$@))
 
 # Documentation targets
 # ---------------------------------------------------------------------------

@@ -151,29 +151,6 @@ extern void esparser_sub_reset(void);
 #define  TRACE()	printk("drm--[%s::%d]\n",__FUNCTION__,__LINE__)
 
 
-typedef enum {
-    DRM_LEVEL1     = 1,
-    DRM_LEVEL2     = 2,
-    DRM_LEVEL3     = 3,
-    DRM_NONE       = 4,
-} drm_level_t;
-
-
-#define TYPE_DRMINFO   0x80
-
-typedef struct drm_info {
-    drm_level_t drm_level;
-	int drm_flag;
-	int drm_hasesdata;
-	int drm_priv;
-    unsigned int drm_pktsize;
-	unsigned int drm_pktpts;
-	unsigned int drm_phy;
-	unsigned int drm_vir;
-	unsigned int drm_remap;
-	int data_offset;
-	int extpad[8];
-} drminfo_t;
 
 
 

@@ -9,4 +9,18 @@ config AM_SMARTCARD
 	default n
 	help
 		Select to enable Smartcard driver.
+
+if AM_SMARTCARD
+config AM_SMARTCARD_GPIO_FOR_DET
+	bool "Use GPIO for DETECT pin"
+	default n
+	help
+		Select to enable DETECT in GPIO mode.
+
+config AM_SMARTCARD_GPIO_FOR_RST
+	bool "Use GPIO for RESET pin"
+	default n
+	help
+		Select to enable RESET in GPIO mode.
+endif
 endmenu

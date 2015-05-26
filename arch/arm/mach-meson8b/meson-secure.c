@@ -188,3 +188,14 @@ int32_t meson_secure_mem_ge2d_access(uint32_t msec)
 
 	return ret;
 }
+
+int32_t meson_secure_sram_copy(struct sram_hal_api_arg *arg)
+{
+	int ret = -1;
+
+	set_cpus_allowed_ptr(current, cpumask_of(0));
+	ret = meson_smc_hal_api(TRUSTZONE_HAL_API_SRAM, __pa(arg));
+	set_cpus_allowed_ptr(current, cpu_all_mask);
+
+	return ret;
+}

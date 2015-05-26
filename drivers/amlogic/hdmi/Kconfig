@@ -1,26 +1,27 @@
 menu "HDMI TX Support"
 
+config AML_HDMI_TX_20
+        bool "HDMI 2.0 Output Enable"
+        default n
+        select SWITCH
+        select AM_DISPLAY_MODULE
+        help  
+                hdmi 2.0 output enable. It should be enalbe if board have hdmi 2.0 out interface
+
 config AML_HDMI_TX
-        bool "HDMI Output Enable"
+        bool "HDMI 1.4 Output Enable"
         default y
         select SWITCH
         select AM_DISPLAY_MODULE
         help
-                hdmi output enable,It should be enalbe if board have hdmi out interface
+                hdmi 1.4 output enable, It should be enalbe if board have hdmi 1.4 out interface
 
-if AML_HDMI_TX
+if AML_HDMI_TX || AML_HDMI_TX_20
 config AML_HDMI_TX_HDCP
         bool "HDMI HDCP Enable"
         default n
         help
                 hdmitx hdcp enable, it should be enalbe if board burned hdmitx hdcp keys
-
-config AML_HDMI_TX_CTS_DVI
-        bool "HDMI DVI mode Output Enable"
-        default n
-        help
-                HDMI DVI output enable. By default, Tx will output HDMI mode signal, not DVI.
-                If you want to pass HDMI official CTS or compliance DVI device, enable it.
 endif
 
 endmenu

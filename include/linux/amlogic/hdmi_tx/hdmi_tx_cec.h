@@ -18,7 +18,7 @@
 #ifndef _TV_CEC_H_
 #define _TV_CEC_H_
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8) && (MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV)
 #include <mach/hdmi_parameter.h>
 #endif
 
@@ -43,6 +43,9 @@
 #define hdmitx_cec_dbg_print(fmt, args...)
 #endif
 #define HDMI_CEC_DEBUG()  printk("HDMI CEC DEBUG: %s [%d]\n", __FUNCTION__, __LINE__)
+
+//#define G9_CEC  //for G9 CEC debug.
+#define AO_CEC  //for switch between aocec and hdmi cec2.0
 
 extern unsigned int cec_tx_irq_flag;
 extern unsigned int cec_tx_irq_syn_flag;
@@ -159,72 +162,92 @@ typedef enum  {
     CEC_UNABLE_TO_DETERMINE,
 } cec_feature_abort_e;
 
+//#ifdef AO_CEC
+#if 1
+
+typedef enum {
+    JTAG_TMS = 1,
+    HDMI_CEC_AO,
+    HDMITX_CEC,
+    HDMIRX_CEC,
+    HDMI_GPIOAO_9,
+} cec_pinmux_set_e;
+
+typedef enum {
+    CEC_READ = 1,
+    CEC_WRITE,
+} cec_rw_e;
+
+void cec_hw_init(void);
+void cec_logic_addr_set(enum _cec_log_dev_addr_e phyaddr);
+
+#endif
 /*
  * CEC OPCODES
  */
 #define    CEC_OC_ABORT_MESSAGE                     0xFF
 #define    CEC_OC_ACTIVE_SOURCE                     0x82
-#define    CEC_OC_CEC_VERSION                         0x9E
-#define    CEC_OC_CLEAR_ANALOGUE_TIMER             0x33
-#define    CEC_OC_CLEAR_DIGITAL_TIMER                 0x99
-#define    CEC_OC_CLEAR_EXTERNAL_TIMER             0xA1
-#define    CEC_OC_DECK_CONTROL                     0x42
-#define    CEC_OC_DECK_STATUS                         0x1B
-#define    CEC_OC_DEVICE_VENDOR_ID                 0x87
+#define    CEC_OC_CEC_VERSION                       0x9E
+#define    CEC_OC_CLEAR_ANALOGUE_TIMER              0x33
+#define    CEC_OC_CLEAR_DIGITAL_TIMER               0x99
+#define    CEC_OC_CLEAR_EXTERNAL_TIMER              0xA1
+#define    CEC_OC_DECK_CONTROL                      0x42
+#define    CEC_OC_DECK_STATUS                       0x1B
+#define    CEC_OC_DEVICE_VENDOR_ID                  0x87
 #define    CEC_OC_FEATURE_ABORT                     0x00
-#define    CEC_OC_GET_CEC_VERSION                     0x9F
+#define    CEC_OC_GET_CEC_VERSION                   0x9F
 #define    CEC_OC_GET_MENU_LANGUAGE                 0x91
 #define    CEC_OC_GIVE_AUDIO_STATUS                 0x71
-#define    CEC_OC_GIVE_DECK_STATUS                 0x1A
-#define    CEC_OC_GIVE_DEVICE_POWER_STATUS         0x8F
+#define    CEC_OC_GIVE_DECK_STATUS                  0x1A
+#define    CEC_OC_GIVE_DEVICE_POWER_STATUS          0x8F
 #define    CEC_OC_GIVE_DEVICE_VENDOR_ID             0x8C
 #define    CEC_OC_GIVE_OSD_NAME                     0x46
 #define    CEC_OC_GIVE_PHYSICAL_ADDRESS             0x83
 #define    CEC_OC_GIVE_SYSTEM_AUDIO_MODE_STATUS     0x7D
-#define    CEC_OC_GIVE_TUNER_DEVICE_STATUS         0x08
+#define    CEC_OC_GIVE_TUNER_DEVICE_STATUS          0x08
 #define    CEC_OC_IMAGE_VIEW_ON                     0x04
-#define    CEC_OC_INACTIVE_SOURCE                     0x9D
-#define    CEC_OC_MENU_REQUEST                     0x8D
-#define    CEC_OC_MENU_STATUS                         0x8E
-#define    CEC_OC_PLAY                             0x41
-#define    CEC_OC_POLLING_MESSAGE                     0xFC    /* Fake Code - <Poll Message> has no OP Code and requires only the header byte */
-#define    CEC_OC_RECORD_OFF                         0x0B
+#define    CEC_OC_INACTIVE_SOURCE                   0x9D
+#define    CEC_OC_MENU_REQUEST                      0x8D
+#define    CEC_OC_MENU_STATUS                       0x8E
+#define    CEC_OC_PLAY                              0x41
+#define    CEC_OC_POLLING_MESSAGE                   0xFC    /* Fake Code - <Poll Message> has no OP Code and requires only the header byte */
+#define    CEC_OC_RECORD_OFF                        0x0B
 #define    CEC_OC_RECORD_ON                         0x09
 #define    CEC_OC_RECORD_STATUS                     0x0A
-#define    CEC_OC_RECORD_TV_SCREEN                 0x0F
-#define    CEC_OC_REPORT_AUDIO_STATUS                 0x7A
-#define    CEC_OC_REPORT_PHYSICAL_ADDRESS             0x84
-#define    CEC_OC_REPORT_POWER_STATUS                 0x90
+#define    CEC_OC_RECORD_TV_SCREEN                  0x0F
+#define    CEC_OC_REPORT_AUDIO_STATUS               0x7A
+#define    CEC_OC_REPORT_PHYSICAL_ADDRESS           0x84
+#define    CEC_OC_REPORT_POWER_STATUS               0x90
 #define    CEC_OC_REQUEST_ACTIVE_SOURCE             0x85
-#define    CEC_OC_ROUTING_CHANGE                     0x80
-#define    CEC_OC_ROUTING_INFORMATION                 0x81
-#define    CEC_OC_SELECT_ANALOGUE_SERVICE             0x92
-#define    CEC_OC_SELECT_DIGITAL_SERVICE             0x93
-#define    CEC_OC_SET_ANALOGUE_TIMER                 0x34
-#define    CEC_OC_SET_AUDIO_RATE                     0x9A
+#define    CEC_OC_ROUTING_CHANGE                    0x80
+#define    CEC_OC_ROUTING_INFORMATION               0x81
+#define    CEC_OC_SELECT_ANALOGUE_SERVICE           0x92
+#define    CEC_OC_SELECT_DIGITAL_SERVICE            0x93
+#define    CEC_OC_SET_ANALOGUE_TIMER                0x34
+#define    CEC_OC_SET_AUDIO_RATE                    0x9A
 #define    CEC_OC_SET_DIGITAL_TIMER                 0x97
-#define    CEC_OC_SET_EXTERNAL_TIMER                 0xA2
+#define    CEC_OC_SET_EXTERNAL_TIMER                0xA2
 #define    CEC_OC_SET_MENU_LANGUAGE                 0x32
-#define    CEC_OC_SET_OSD_NAME                     0x47
-#define    CEC_OC_SET_OSD_STRING                     0x64
-#define    CEC_OC_SET_STREAM_PATH                     0x86
+#define    CEC_OC_SET_OSD_NAME                      0x47
+#define    CEC_OC_SET_OSD_STRING                    0x64
+#define    CEC_OC_SET_STREAM_PATH                   0x86
 #define    CEC_OC_SET_SYSTEM_AUDIO_MODE             0x72
-#define    CEC_OC_SET_TIMER_PROGRAM_TITLE             0x67
-#define    CEC_OC_STANDBY                             0x36
+#define    CEC_OC_SET_TIMER_PROGRAM_TITLE           0x67
+#define    CEC_OC_STANDBY                           0x36
 #define    CEC_OC_SYSTEM_AUDIO_MODE_REQUEST         0x70
-#define    CEC_OC_SYSTEM_AUDIO_MODE_STATUS         0x7E
-#define    CEC_OC_TEXT_VIEW_ON                     0x0D
-#define    CEC_OC_TIMER_CLEARED_STATUS             0x43
-#define    CEC_OC_TIMER_STATUS                     0x35
-#define    CEC_OC_TUNER_DEVICE_STATUS                 0x07
-#define    CEC_OC_TUNER_STEP_DECREMENT             0x06
-#define    CEC_OC_TUNER_STEP_INCREMENT             0x05
-#define    CEC_OC_USER_CONTROL_PRESSED             0x44
+#define    CEC_OC_SYSTEM_AUDIO_MODE_STATUS          0x7E
+#define    CEC_OC_TEXT_VIEW_ON                      0x0D
+#define    CEC_OC_TIMER_CLEARED_STATUS              0x43
+#define    CEC_OC_TIMER_STATUS                      0x35
+#define    CEC_OC_TUNER_DEVICE_STATUS               0x07
+#define    CEC_OC_TUNER_STEP_DECREMENT              0x06
+#define    CEC_OC_TUNER_STEP_INCREMENT              0x05
+#define    CEC_OC_USER_CONTROL_PRESSED              0x44
 #define    CEC_OC_USER_CONTROL_RELEASED             0x45
-#define    CEC_OC_VENDOR_COMMAND                     0x89
-#define    CEC_OC_VENDOR_COMMAND_WITH_ID             0xA0
+#define    CEC_OC_VENDOR_COMMAND                    0x89
+#define    CEC_OC_VENDOR_COMMAND_WITH_ID            0xA0
 #define    CEC_OC_VENDOR_REMOTE_BUTTON_DOWN         0x8A
-#define    CEC_OC_VENDOR_REMOTE_BUTTON_UP             0x8B
+#define    CEC_OC_VENDOR_REMOTE_BUTTON_UP           0x8B
 
 /* cec message structure */
 typedef struct {
@@ -250,7 +273,7 @@ typedef struct {
     unsigned char msg[MAX_MSG];
     unsigned char length;
     struct list_head list;
-} cec_tx_message_list_t;
+} cec_usr_message_list_t;
 
 /* cec global struct */
 
@@ -503,18 +526,25 @@ int cec_ll_tx_polling(const unsigned char *msg, unsigned char len);
 
 int cec_ll_tx(const unsigned char *msg, unsigned char len);
 int cec_ll_rx( unsigned char *msg, unsigned char *len);
+int cec_rx_irq_handle(unsigned char *msg, unsigned char *len);
+unsigned int cec_intr_stat(void);
 
 void cec_test_function(unsigned char* arg, unsigned char arg_cnt);
 void cec_node_init(hdmitx_dev_t* hdmitx_device);
 void cec_node_uninit(hdmitx_dev_t* hdmitx_device);
-
+void dumpaocecreg(void);
+void raocec(unsigned int addr);
+void waocec(unsigned int addr, unsigned int value);
+void cec_rx_buf_check(void);
 void cec_hw_reset(void);
 
+unsigned int dispatch_buffer_parse(const char *buf, const char *string,  char *param, size_t count);
 void register_cec_rx_msg(unsigned char *msg, unsigned char len );
 void cec_handle_message(cec_rx_message_t* pcec_message);
-void unregister_cec_tx_msg(cec_tx_message_list_t* cec_usr_message_list);
+void unregister_cec_tx_msg(cec_usr_message_list_t* cec_tx_message_list);
+void unregister_cec_rx_msg(cec_usr_message_list_t* cec_rx_message_list);
 void register_cec_tx_msg(unsigned char *msg, unsigned char len);
-void cec_usr_cmd_post_process(void);
+void cec_tx_cmd_post_process(void);
 void cec_set_pending(tv_cec_pending_e on_off);
 void cec_polling_online_dev(int log_addr, int *bool);
 unsigned short cec_log_addr_to_dev_type(unsigned char log_addr);
@@ -583,6 +613,8 @@ void cec_set_standby(void);
 void cec_isr_post_process(void);
 void cec_clear_buf(unsigned int flag);
 
+void cec_tx_irq_handle(void);
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 void cec_arbit_bit_time_set(unsigned bit_set, unsigned time_set, unsigned flag);
 void tx_irq_handle(void);
@@ -594,6 +626,7 @@ void ao_cec_init(void);
 #ifdef CONFIG_ARCH_MESON6
 void cec_gpi_init(void);
 #endif
+
 
 unsigned char check_cec_msg_valid(const cec_rx_message_t* pcec_message);
 void cec_send_event(cec_rx_message_t* pcec_message);

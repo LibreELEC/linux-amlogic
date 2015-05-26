@@ -6,5 +6,6 @@ dwc_otg_dir-$(CONFIG_ARCH_MESON6TV) := 310/
 dwc_otg_dir-$(CONFIG_ARCH_MESON6TVD) := 310/
 dwc_otg_dir-$(CONFIG_ARCH_MESON8) := 310/
 dwc_otg_dir-$(CONFIG_ARCH_MESON8B) := 310/
+dwc_otg_dir-$(CONFIG_ARCH_MESONG9BB) := 310/
 
 obj-$(CONFIG_USB_DWC_OTG_HCD)	+= $(dwc_otg_dir-y)

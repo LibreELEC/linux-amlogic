@@ -49,31 +49,23 @@ int lcd_extern_driver_check(void)
 	else {
 		printk("get lcd_extern_driver failed\n");
 	}
-
+	
 	return 0;
 }
 
-#define BL_EXT_NAME_LEN_MAX		50
 int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config_t *pdata)
 {
 	int err;
 	int val;
 	const char *str;
-
-	err = of_property_read_string(of_node, "dev_name", &str);
+	
+	err = of_property_read_string(of_node, "dev_name", (const char **)&pdata->name);
 	if (err) {
-		str = "aml_lcd_extern";
+		pdata->name = "aml_lcd_extern";
 		printk("warning: get dev_name failed\n");
 	}
-	pdata->name = (char *)kmalloc(sizeof(char)*BL_EXT_NAME_LEN_MAX, GFP_KERNEL);
-	if (pdata->name == NULL) {
-		printk("[get_lcd_extern_dt_data]: Not enough memory\n");
-	}
-	else {
-		memset(pdata->name, 0, BL_EXT_NAME_LEN_MAX);
-		strcpy(pdata->name, str);
-		printk("load bl_extern in dtb: %s\n", pdata->name);
-	}
+	printk("load lcd_extern in dtb: %s\n", pdata->name);
+
 	err = of_property_read_u32(of_node, "type", &pdata->type);
 	if (err) {
 		pdata->type = LCD_EXTERN_MAX;
@@ -88,7 +80,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 				pdata->i2c_addr = 0;
 			}
 			DBG_PRINT("%s: i2c_address=0x%02x\n", pdata->name, pdata->i2c_addr);
-
+		  
 			err = of_property_read_string(of_node, "i2c_bus", &str);
 			if (err) {
 				printk("%s warning: get i2c_bus failed, use default i2c bus\n", pdata->name);
@@ -106,7 +98,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 				else if (strncmp(str, "i2c_bus_ao", 10) == 0)
 					pdata->i2c_bus = AML_I2C_MASTER_AO;
 				else
-					pdata->i2c_bus = AML_I2C_MASTER_A;
+					pdata->i2c_bus = AML_I2C_MASTER_A; 
 			}
 			DBG_PRINT("%s: i2c_bus=%s[%d]\n", pdata->name, str, pdata->i2c_bus);
 			break;
@@ -117,7 +109,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 				pdata->spi_cs = -1;
 			}
 			else {
-			    val = amlogic_gpio_name_map_num(str);
+				val = amlogic_gpio_name_map_num(str);
 				if (val > 0) {
 					err = lcd_extern_gpio_request(val);
 					if (err) {
@@ -136,7 +128,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 				pdata->spi_clk = -1;
 			}
 			else {
-			    val = amlogic_gpio_name_map_num(str);
+				val = amlogic_gpio_name_map_num(str);
 				if (val > 0) {
 					err = lcd_extern_gpio_request(val);
 					if (err) {
@@ -155,7 +147,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 				pdata->spi_data = -1;
 			}
 			else {
-			    val = amlogic_gpio_name_map_num(str);
+				val = amlogic_gpio_name_map_num(str);
 				if (val > 0) {
 					err = lcd_extern_gpio_request(val);
 					if (err) {
@@ -174,14 +166,7 @@ int get_lcd_extern_dt_data(struct device_node* of_node, struct lcd_extern_config
 		default:
 			break;
 	}
-
+	
 	return 0;
 }
 
-int remove_lcd_extern(struct lcd_extern_config_t *pdata)
-{
-	if (pdata->name)
-		kfree(pdata->name);
-
-	return 0;
-}

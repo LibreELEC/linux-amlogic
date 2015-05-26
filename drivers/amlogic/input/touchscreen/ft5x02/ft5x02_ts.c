@@ -842,10 +842,10 @@ static ssize_t ft5x02_initparam_show(struct device *dev,
 	mutex_lock(&g_device_mutex);
 	if (ft5x02_Init_IC_Param(client) >= 0)
 		num_read_chars = sprintf(buf, "%s",
-			"ft5x02 init param successful\r\n");
+			"ft5x02 init param successful\n");
 	else
 		num_read_chars = sprintf(buf, "%s",
-			"ft5x02 init param failed!\r\n");
+			"ft5x02 init param failed!\n");
 	//ft5x02_get_ic_param(client);
 	mutex_unlock(&g_device_mutex);
 

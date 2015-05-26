@@ -7,7 +7,7 @@
 #define AML_MMC_MAJOR_VERSION   1
 #define AML_MMC_MINOR_VERSION   07
 #define AML_MMC_VERSION         ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
-#define AML_MMC_VER_MESSAGE     "2014-09-23: eMMC fix the SDIO data1 interrupt caused timeout error problem"
+#define AML_MMC_VER_MESSAGE     "2015-01-21: fix a bug in tuning which caused eMMC data CRC error"
 
 extern unsigned sdhc_debug;
 extern unsigned sdio_debug;

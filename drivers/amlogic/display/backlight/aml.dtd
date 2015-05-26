@@ -9,7 +9,7 @@
 //$$ L2 PROP_U32 2= "bl_level_max_min"
 //$$ L2 PROP_U32 = "bl_power_on_delay"
 //$$ L2 PROP_U32 = "bl_ctrl_method"
-//$$ L2 PROP_STR = "bl_gpio_port"
+//$$ L2 PROP_STR = "bl_gpio_port_on_off"
 //$$ L2 PROP_U32 2 = "bl_gpio_dim_max_min"
 //$$ L2 PROP_STR 2 = "bl_pwm_port_gpio_used"
 //$$ L2 PROP_U32 = "bl_pwm_freq"
@@ -35,7 +35,7 @@
 		bl_power_on_delay=<200>; /** delay time before backlight power on(unit: ms) */
 		bl_ctrl_method=<1>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive. 3=pwm_combo. 4=extern. decided by hardware design) */
 
-		bl_gpio_port="GPIODV_28";	/** backlight control gpio port */
+		bl_gpio_port_on_off="GPIODV_28","1","0";	/** backlight control gpio port, (on/off:1=output high, 0=output low, 2=input) */
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
 		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
 		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */

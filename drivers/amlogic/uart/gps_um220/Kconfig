@@ -1,0 +1,13 @@
+#
+# UM220 gps driver configuration
+#
+
+menu "Amlogic UM220 GPS Support"
+config GPS_UM220
+	bool "um220 gps support"
+	default n
+	---help---	  
+	    This module adds support for um220 gps control.
+endmenu
+
+

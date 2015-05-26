@@ -38,7 +38,7 @@ obj-$(CONFIG_MESON_SUSPEND) += power_suspend.o
 #ifneq ($(CONFIG_MESON_SUSPEND),y)
 #obj-$(CONFIG_SUSPEND) += sleep.o
 #endif
-obj-$(CONFIG_AMLOGIC_THERMAL) += thermal.o
+obj-$(CONFIG_AML_PLATFORM_THERMAL) += thermal.o
 
 obj-$(CONFIG_AML_HDMI_TX) +=  hdmi_tx_hw/
 

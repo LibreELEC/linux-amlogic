@@ -115,10 +115,27 @@ typedef struct {
 		      //bit[3]0:pic0 first,1:pic1 first
     bool vpp_3d_scale;
 
+    bool supsc0_enable;
+    bool supsc1_enable;
+    u32  supscl_path;
+    u32  supsc0_hori_ratio;
+    u32  supsc1_hori_ratio;
+    u32  supsc0_vert_ratio;
+    u32  supsc1_vert_ratio;
 } vpp_frame_par_t;
 
-#if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESON6TV)||(MESON_CPU_TYPE==MESON_CPU_TYPE_MESON6TVD)
+#if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESON6TV)||(MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV)||(MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9BB)
 #define TV_3D_FUNCTION_OPEN
+#define TV_REVERSE
+#endif
+#if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV)
+#define SUPER_SCALER_OPEN
+typedef enum{
+    sup0_sp1_pp_scpath,
+    sup0_pp_sp1_scpath
+} select_scaler_path_e;
+#define SUPER_CORE0_WIDTH_MAX  1024
+#define SUPER_CORE1_WIDTH_MAX  2048
 #endif
 
 #ifdef TV_3D_FUNCTION_OPEN
@@ -135,7 +152,21 @@ typedef struct {
 #define MODE_3D_TO_2D_L     0x00000200
 #define MODE_3D_TO_2D_R     0x00000400
 #define MODE_3D_MVC	    0x00000800
-#define MODE_3D_TO_2D_MASK  (MODE_3D_TO_2D_L|MODE_3D_TO_2D_R)
+#define MODE_3D_OUT_TB 	0x00010000
+#define MODE_3D_OUT_LR 	0x00020000
+
+/*when the output mode is field alterlative*/
+//LRLRLRLRL mode
+#define MODE_3D_OUT_FA_L_FIRST 	0x00001000
+#define MODE_3D_OUT_FA_R_FIRST	0x00002000
+//LBRBLBRB
+#define MODE_3D_OUT_FA_LB_FIRST 0x00004000
+#define MODE_3D_OUT_FA_RB_FIRST	0x00008000
+
+
+#define MODE_3D_OUT_FA_MASK 	(MODE_3D_OUT_FA_L_FIRST | MODE_3D_OUT_FA_R_FIRST|MODE_3D_OUT_FA_LB_FIRST|MODE_3D_OUT_FA_RB_FIRST)
+
+#define MODE_3D_TO_2D_MASK  (MODE_3D_TO_2D_L|MODE_3D_TO_2D_R|MODE_3D_OUT_FA_MASK)
 
 #define VPP_3D_MODE_NULL 0x0
 #define VPP_3D_MODE_LR   0x1

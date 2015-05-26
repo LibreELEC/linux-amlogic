@@ -11,6 +11,7 @@
 #include <mach/am_regs.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/aml_bl_extern.h>
+#include <linux/amlogic/vout/lcdoutc.h>
 
 //#define BL_EXT_DEBUG_INFO
 #ifdef BL_EXT_DEBUG_INFO
@@ -72,22 +73,47 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
     }
     pdata->gpio_used = 0;
     pdata->gpio = GPIO_MAX;
-    ret = of_property_read_string(of_node, "gpio_enable", &str);
+    ret = of_property_read_string_index(of_node, "gpio_enable_on_off", 0, &str);
     if (ret) {
         printk("%s warning: get gpio_enable failed\n", pdata->name);
     }
     else {
         if (strncmp(str, "G", 1) == 0) {//"GPIO_xx"
-                pdata->gpio_used = 1;
-                val = amlogic_gpio_name_map_num(str);
-                ret = bl_extern_gpio_request(val);
-                if (ret) {
-                    printk("%s warning: faild to alloc gpio (%s)\n", pdata->name, str);
-                }
-                pdata->gpio = val;
+            pdata->gpio_used = 1;
+            val = amlogic_gpio_name_map_num(str);
+            ret = bl_extern_gpio_request(val);
+            if (ret) {
+                printk("%s warning: faild to alloc gpio (%s)\n", pdata->name, str);
+            }
+            pdata->gpio = val;
         }
         DBG_PRINT("%s: gpio_enable %s\n", pdata->name, ((pdata->gpio_used) ? str:"none"));
     }
+    ret = of_property_read_string_index(of_node, "gpio_enable_on_off", 1, &str);
+    if (ret) {
+        printk("%s warning: get gpio_enable_on failed\n", pdata->name);
+    }
+    else {
+        if (strncmp(str, "2", 1) == 0)
+            pdata->gpio_on = LCD_POWER_GPIO_INPUT;
+        else if (strncmp(str, "0", 1) == 0)
+            pdata->gpio_on = LCD_POWER_GPIO_OUTPUT_LOW;
+        else
+            pdata->gpio_on = LCD_POWER_GPIO_OUTPUT_HIGH;
+    }
+    ret = of_property_read_string_index(of_node, "gpio_enable_on_off", 2, &str);
+    if (ret) {
+        printk("%s warning: get gpio_enable_off failed\n", pdata->name);
+    }
+    else {
+        if (strncmp(str, "2", 1) == 0)
+            pdata->gpio_off = LCD_POWER_GPIO_INPUT;
+        else if (strncmp(str, "1", 1) == 0)
+            pdata->gpio_off = LCD_POWER_GPIO_OUTPUT_HIGH;
+        else
+            pdata->gpio_off = LCD_POWER_GPIO_OUTPUT_LOW;
+    }
+    DBG_PRINT("%s: gpio_on = %d, gpio_off = %d \n", pdata->name, pdata->gpio_on, pdata->gpio_off);
     switch (pdata->type) {
         case BL_EXTERN_I2C:
             ret = of_property_read_u32(of_node,"i2c_address",&pdata->i2c_addr);

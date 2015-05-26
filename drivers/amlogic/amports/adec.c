@@ -70,6 +70,7 @@ static char *astream_format[] = {
     "amadec_ape",
     "amadec_eac3",
     "amadec_pcm_widi",
+    "amadec_wmavoi"
 
 };
 

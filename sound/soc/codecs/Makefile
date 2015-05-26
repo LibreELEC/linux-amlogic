@@ -122,9 +122,11 @@ snd-soc-wm-hubs-objs := wm_hubs.o
 snd-soc-dummy_codec-objs := dummy_codec.o
 snd-soc-aml-m8-codec-objs := aml_m8_codec.o
 snd-soc-pcm2bt-objs  := pcm2bt.o
+snd-soc-es8323-objs := es8323.o
 snd-soc-tas5711-objs := tas5711.o
 snd-soc-tas5707-objs := tas5707.o
 snd-soc-amlpmu3-objs := aml_pmu3.o
+snd-soc-amlpmu4-objs := aml_pmu4_codec.o
 # Amp
 snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
@@ -251,10 +253,12 @@ obj-$(CONFIG_SND_SOC_WM_ADSP)	+= snd-soc-wm-adsp.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_DUMMY_CODEC)   += snd-soc-dummy_codec.o
 obj-$(CONFIG_SND_SOC_AML_M8_CODEC)	+= snd-soc-aml-m8-codec.o
+obj-$(CONFIG_SND_SOC_ES8323)	+= snd-soc-es8323.o
 obj-$(CONFIG_SND_SOC_PCM2BT)    += snd-soc-pcm2bt.o
 obj-$(CONFIG_SND_SOC_TAS5711)   += snd-soc-tas5711.o
 obj-$(CONFIG_SND_SOC_TAS5707)   += snd-soc-tas5707.o
 obj-$(CONFIG_SND_SOC_AMLPMU3)	+= snd-soc-amlpmu3.o
+obj-$(CONFIG_SND_SOC_AMLPMU4)	+= snd-soc-amlpmu4.o
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o

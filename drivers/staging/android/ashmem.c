@@ -367,8 +367,10 @@ static int ashmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #if defined(CONFIG_SMP)
 	owner = ashmem_mutex.owner;
 #endif
-	if(!(owner && (owner == current)))
-		mutex_lock(&ashmem_mutex);
+	if (owner && (owner == current))
+		return -1;
+
+	mutex_lock(&ashmem_mutex);
 
 	list_for_each_entry_safe(range, next, &ashmem_lru_list, lru) {
 		loff_t start = range->pgstart * PAGE_SIZE;
@@ -386,7 +388,6 @@ static int ashmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		if (sc->nr_to_scan <= 0)
 			break;
 	}
-	if(!(owner && (owner == current)))
 		mutex_unlock(&ashmem_mutex);
 
 	return lru_count;

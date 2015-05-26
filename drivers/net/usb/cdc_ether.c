@@ -456,7 +456,7 @@ EXPORT_SYMBOL_GPL(usbnet_cdc_bind);
 
 static const struct driver_info	cdc_info = {
 	.description =	"CDC Ethernet Device",
-	.flags =	FLAG_ETHER | FLAG_POINTTOPOINT,
+	.flags =	FLAG_ETHER | FLAG_POINTTOPOINT|FLAG_LINK_INTR,
 	// .check_connect = cdc_check_connect,
 	.bind =		usbnet_cdc_bind,
 	.unbind =	usbnet_cdc_unbind,

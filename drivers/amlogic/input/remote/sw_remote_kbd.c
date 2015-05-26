@@ -81,7 +81,7 @@ static int get_pulse_width(unsigned long data)
 	        remote_data->step == REMOTE_STATUS_LEADER ? "leader" :
 	        remote_data->step == REMOTE_STATUS_DATA ? "data" :
 	        remote_data->step == REMOTE_STATUS_SYNC ? "sync" : NULL;
-	dbg_printk("%02d:pulse_wdith:%d==>%s\r\n",
+	dbg_printk("%02d:pulse_wdith:%d==>%s\n",
 	           remote_data->bit_count - remote_data->bit_num, pulse_width, state);
 	//sometimes we found remote  pulse width==0.        in order to sync machine state we modify it .
 	if (pulse_width == 0) {

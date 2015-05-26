@@ -6,9 +6,22 @@
  * (at your option) any later version.
  */
 
-#ifndef _GEODE_AES_H_
-#define _GEODE_AES_H_
+#ifndef _AML_CRYPTO_H_
+#define _AML_CRYPTO_H_
 
+#define AML_CRYPTO_DEBUG    0
+
+#define secure_apb_slot3_wr_reg(addr, data)  \
+	aml_write_reg32(SECBUS3_REG_ADDR(addr), data)
+#define secure_apb_slot3_rd_reg(addr)        \
+	aml_read_reg32(SECBUS3_REG_ADDR(addr))
+
+#define cbus_wr_reg(addr, data)  \
+	aml_write_reg32(CBUS_REG_ADDR(addr), data)
+#define cbus_rd_reg(addr)        \
+	aml_read_reg32(CBUS_REG_ADDR(addr))
+
+#define NDMA_TABLE_SIZE     (32)
 /* driver logic flags */
 #define TDES_KEY_LENGTH 32
 #define TDES_MIN_BLOCK_SIZE 8
@@ -27,7 +40,9 @@
 #define INLINE_TYPE_AES              4
 
 #define NDMA_CNTL_REG0                             0x2270
+    #define NDMA_AES_STATUS             12
     #define NDMA_ENABLE                 14
+    #define NDMA_STATUS                 26
 #define NDMA_TABLE_ADD_REG                         0x2272
 #define NDMA_TDES_KEY_LO                           0x2273
 #define NDMA_TDES_KEY_HI                           0x2274
@@ -63,26 +78,29 @@
 #define NDMA_AES_IV_3                              0x229b
 #define NDMA_AES_REG0                             0x229c
 
-struct aml_crypto_ctx {
-    unsigned long key[8];
-    unsigned long iv[4];
-    int key_len;
-    void *src;
-    void *dst;
-    unsigned long mode;
-    unsigned long dir;
-    int len;
-    int threadidx;
+#define TDES_THREAD_INDEX 2
+#define AES_THREAD_INDEX 3
+#define SEC_ALLOWED_MASK 0xc /* thread 0 and 1 are secure*/
 
-    unsigned int dma_src;
-    unsigned int dma_dest;
-};
+unsigned long swap_ulong32(unsigned long val);
+void ndma_set_table_position(unsigned long thread_num,
+		unsigned long table_start, unsigned long size);
+void ndma_set_table_position_secure(unsigned long thread_num,
+		unsigned long table_start, unsigned long size);
+void ndma_add_descriptor_1d(
+		unsigned long   table,
+		unsigned long   irq,
+		unsigned long   restart,
+		unsigned long   pre_endian,
+		unsigned long   post_endian,
+		unsigned long   type,
+		unsigned long   bytes_to_move,
+		unsigned long   inlinetype,
+		unsigned long   src_addr,
+		unsigned long   dest_addr);
 
-
-#define AES_MAXNR 14
-struct aes_key_st {
-    unsigned int rd_key[4 *(AES_MAXNR + 1)];
-    int rounds;
-};
-typedef struct aes_key_st AES_KEY;
+void ndma_set_table_count(unsigned long thread_num, unsigned int cnt);
+void ndma_start(unsigned long thread_num);
+void ndma_stop(unsigned long thread_num);
+void ndma_wait_for_completion(unsigned long thread_num);
 #endif

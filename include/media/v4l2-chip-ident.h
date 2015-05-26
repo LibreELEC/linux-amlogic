@@ -98,6 +98,8 @@ enum {
      /* BF3720  */
      V4L2_IDENT_BF3720 = 44,
 
+     /* HM1375  */
+     V4L2_IDENT_HM1375 = 45,
 	/* module tvaudio: reserved range 50-99 */
 	V4L2_IDENT_TVAUDIO = 50,	/* A tvaudio chip, unknown which it is exactly */
 

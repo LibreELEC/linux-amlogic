@@ -40,7 +40,7 @@
 
 #undef CHIP_DEBUG_PRINT
 /* Turn-on extra printk debug for MAC core, dma and descriptors */
-/* #define CHIP_DEBUG_PRINT */
+//#define CHIP_DEBUG_PRINT 
 
 #ifdef CHIP_DEBUG_PRINT
 #define CHIP_DBG(fmt, args...)  printk(fmt, ## args)
@@ -53,7 +53,7 @@
 #define	DWMAC_CORE_3_50	0x35
 
 #undef FRAME_FILTER_DEBUG
-/* #define FRAME_FILTER_DEBUG */
+ //#define FRAME_FILTER_DEBUG */
 
 struct stmmac_extra_stats {
 	/* Transmit errors */

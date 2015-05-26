@@ -316,7 +316,7 @@ static void remote_timer_sr(unsigned long data)
 static irqreturn_t remote_interrupt(int irq, void *dev_id)
 {
 	/* disable keyboard interrupt and schedule for handling */
-	//  input_dbg("===trigger one  remoteads interupt \r\n");
+	//  input_dbg("===trigger one  remoteads interupt\n");
 	tasklet_schedule(&tasklet);
 
 	return IRQ_HANDLED;
@@ -883,11 +883,11 @@ static int register_remote_dev(struct remote *remote)
 	strcpy(remote->config_name, "amremote");
 	ret = register_chrdev(0, remote->config_name, &remote_fops);
 	if (ret <= 0) {
-		printk("register char dev tv error\r\n");
+		printk("register char dev tv error\n");
 		return ret;
 	}
 	remote->config_major = ret;
-	printk("remote config major:%d\r\n", ret);
+	printk("remote config major:%d\n", ret);
 	remote->config_class = class_create(THIS_MODULE, remote->config_name);
 	remote->config_dev = device_create(remote->config_class, NULL, MKDEV(remote->config_major, 0), NULL, remote->config_name);
 	return ret;
@@ -961,7 +961,7 @@ static int remote_probe(struct platform_device *pdev)
 	remote->repeat_peroid = 33;
 
 	/* get the irq and init timer */
-	input_dbg("set drvdata completed\r\n");
+	input_dbg("set drvdata completed\n");
 	tasklet_enable(&tasklet);
 	tasklet.data = (unsigned long)remote;
 	setup_timer(&remote->timer, remote_timer_sr, 0);
@@ -976,7 +976,7 @@ static int remote_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	input_dbg("device_create_file completed \r\n");
+	input_dbg("device_create_file completed\n");
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REL);
 	input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) | BIT_MASK(BTN_RIGHT) | BIT_MASK(BTN_MIDDLE);
 	input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y) | BIT_MASK(REL_WHEEL);
@@ -1009,7 +1009,7 @@ static int remote_probe(struct platform_device *pdev)
 		printk(KERN_ERR "Unable to register keypad input device\n");
 		goto err2;
 	}
-	input_dbg("input_register_device completed \r\n");
+	input_dbg("input_register_device completed\n");
 	if (hardware_init(pdev)) {
 		goto err3;
 	}
@@ -1039,7 +1039,7 @@ static int remote_remove(struct platform_device *pdev)
 	struct remote *remote = platform_get_drvdata(pdev);
 
 	/* disable keypad interrupt handling */
-	input_dbg("remove remoteads \r\n");
+	input_dbg("remove remoteads\n");
 	tasklet_disable(&tasklet);
 	tasklet_kill(&tasklet);
 

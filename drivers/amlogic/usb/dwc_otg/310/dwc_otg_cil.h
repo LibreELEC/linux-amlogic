@@ -837,6 +837,9 @@ struct dwc_otg_core_if {
 	 * initialized.
 	 */
 	uint8_t phy_init_done;
+	
+	/*non-normal usb changer flag when boot */
+	uint16_t non_normal_usb_charger_detect_delay;
 
 	/*
 	 * SRP Success flag, set by srp success interrupt in FS I2C mode

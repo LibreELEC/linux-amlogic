@@ -5,6 +5,7 @@
 #include <linux/percpu.h>
 #include <linux/mm.h>
 #include <linux/mmzone.h>
+#include <linux/page-isolation.h>
 #include <linux/vm_event_item.h>
 #include <linux/atomic.h>
 
@@ -261,7 +262,7 @@ static inline void __mod_zone_freepage_state(struct zone *zone, int nr_pages,
 					     int migratetype)
 {
 	__mod_zone_page_state(zone, NR_FREE_PAGES, nr_pages);
-	if (is_migrate_cma(migratetype))
+	if (is_migrate_cma(migratetype) || is_migrate_isolate(migratetype))
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
 }
 

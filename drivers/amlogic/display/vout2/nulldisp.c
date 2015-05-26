@@ -74,12 +74,13 @@ static const vinfo_t *get_valid_vinfo(char  *mode)
 static vmode_t nulldisp_validate_vmode(char *mode)
 {
     const vinfo_t *info = get_valid_vinfo(mode);
+#ifndef CONFIG_AM_VIDEO2
     int viu1_select = aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
-
+#endif
 	DisableVideoLayer();
-
+#ifndef CONFIG_AM_VIDEO2
     aml_set_reg32_bits (P_VPU_VIU_VENC_MUX_CTRL, (viu1_select+1)&0x3, 2, 2); //viu2_select should be different from viu1_select (to fix viu1 video smooth problem)
-
+#endif
     if (info)
         return info->mode;
 

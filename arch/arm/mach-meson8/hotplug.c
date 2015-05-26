@@ -16,32 +16,46 @@
 #include <asm/mach-types.h>
 #include <asm/cp15.h>
 
+extern void meson_turn_off_smp(void);
 extern void meson_cleanup(void);
 
 int meson_cpu_kill(unsigned int cpu)
 {
-	unsigned int value;
+	unsigned int value=0;
 	unsigned int offset=(cpu<<3);
-	do{
-		udelay(10);
-		value=aml_read_reg32(MESON_CPU_POWER_CTRL_REG);
-	}while((value&(3<<offset)) != (3<<offset));
+	unsigned long timeout;
 
-	udelay(10);
+	timeout = jiffies + (50 * HZ);
+	while (time_before(jiffies, timeout)) {
+		msleep(10);
+		smp_rmb();
+		value=aml_read_reg32(MESON_CPU_POWER_CTRL_REG);
+		if ((value&(3<<offset)) == (3<<offset))
+			break;
+	}
+	//printk("cpu %d timeout, value=0x%x, compare=%d\n", cpu, value, ((value&(3<<offset)) == (3<<offset)));
+	msleep(30);
 	meson_set_cpu_power_ctrl(cpu, 0);
 	return 1;
 }
 
 
+
+
 void meson_cpu_die(unsigned int cpu)
 {
 	meson_set_cpu_ctrl_reg(cpu, 0);
+	//printk("[cpu hotplug]cpu:%d shutdown\n", cpu);
 	flush_cache_all();
 	dsb();
 	dmb();
 
-	meson_cleanup();
 	aml_set_reg32_bits(MESON_CPU_POWER_CTRL_REG,0x3,(cpu << 3),2);
+	dmb();
+	dsb();
+
+	meson_cleanup();
+	meson_turn_off_smp();
 	asm volatile(
 		"dsb\n"
 		"wfi\n"

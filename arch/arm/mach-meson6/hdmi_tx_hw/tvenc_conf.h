@@ -1,7 +1,3 @@
-typedef struct reg_s {
-    uint reg;
-    uint val;
-} reg_t;
 
 static  reg_t hdmi_tvenc_regs_480i[] = {
     /*1st col: recommmended, but eof/sof/vs_lines +/- 1 from spec; 2nd col: from simu */

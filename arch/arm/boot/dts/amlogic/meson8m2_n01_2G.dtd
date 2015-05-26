@@ -770,9 +770,14 @@
         status = "okay";
     };
 
-    crypto_device{
-        compatible = "amlogic,crypto-device";
-        dev_name = "crypto_device";
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
+    };
+
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
     };
 
     gpio:gpio{
@@ -796,35 +801,35 @@
             amlogic,pins = "GPIOX_12", "GPIOX_13", "GPIOX_14", "GPIOX_15";
         };
 
-        nand_input_state:nand_input{
-            amlogic,pins = "BOOT_0", "BOOT_1", "BOOT_2", "BOOT_3", "BOOT_4",
-            "BOOT_5", "BOOT_6", "BOOT_7", "BOOT_12", "BOOT_13",
-            "BOOT_8", "BOOT_9", "BOOT_10", "BOOT_11",
-            "BOOT_14", "BOOT_15", "BOOT_16", "BOOT_17";
-            amlogic,enable-output = <1>;
-        };
-
-        conf_nand_state:conf_nand{
-            amlogic,pins = "BOOT_0", "BOOT_1", "BOOT_2", "BOOT_3", "BOOT_4",
-            "BOOT_5", "BOOT_6", "BOOT_7", "BOOT_15";
-            amlogic,pullup = <0>;
-	    amlogic,pullupen=<1>;
-        };
-	conf_nand_state1: conf_nand1{
-		amlogic,pins = "BOOT_8", "BOOT_10";
-		amlogic,pullup=<1>;
-		amlogic,pullupen=<1>;
-	};
-        nand_base:nand{
-            amlogic,setmask = <2 0x7fe0000>;
-            amlogic,clrmask = <   5 0xe
-            6 0x3f000000
-            4 0x7c000000 >;
-            amlogic,pins = "BOOT_0", "BOOT_1", "BOOT_2", "BOOT_3", "BOOT_4",
-            "BOOT_5", "BOOT_6", "BOOT_7", "BOOT_8", "BOOT_9",
-            "BOOT_10", "BOOT_12", "BOOT_13",
-            "BOOT_14", "BOOT_15", "BOOT_16", "BOOT_17";
-        };
+        conf_nand_pulldown: conf_nand_pulldown{
+			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
+						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
+			amlogic,pullup=<0>;
+			amlogic,pullupen=<1>;
+		};
+		conf_nand_pullup: conf_nand_pullup{
+			amlogic,pins = "BOOT_8", "BOOT_10";
+			amlogic,pullup=<1>;
+			amlogic,pullupen=<1>;
+		};
+		all_nand_pins: all_nand_pins{
+			amlogic,setmask=<2 0x7fe0000>;
+			amlogic,clrmask=<	5 0xe
+							6 0x3f000000
+							4 0x7c000000>;
+			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
+						"BOOT_5","BOOT_6","BOOT_7","BOOT_8","BOOT_9",
+						"BOOT_10","BOOT_11","BOOT_12","BOOT_13",
+						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
+			amlogic,enable-output=<1>;
+		};
+		nand_cs_pins: nand_cs{
+			amlogic,setmask=<2 0x3000000>;
+			amlogic,clrmask=<7 0x80000
+							6 0x80000000>;
+			amlogic,pins = "BOOT_8","BOOT_9";
+		};
+		
 
         sdio_all_pins:sdio_all_pins{
             amlogic,setmask = <8 0x0000003f>;      /*sdio a*/
@@ -1043,5 +1048,15 @@
         };
 
     };
+
+/// ***************************************************************************************
+///	-	RNG
+//$$ MODULE="RNG"
+//$$ DEVICE="meson-rng"
+//$$ L2 PROP_STR = "status"
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
+	};
 
 }; /* end of / */

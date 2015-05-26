@@ -91,17 +91,17 @@ void hdmi_wr_reg(unsigned int addr, unsigned int data)
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #define waiting_aocec_free() \
-        do{\
+        do {\
             unsigned long cnt = 0;\
-            while(aml_read_reg32(P_AO_CEC_RW_REG) & (1<<23))\
+            while (aml_read_reg32(P_AO_CEC_RW_REG) & (1<<23))\
             {\
-                if(5000 == cnt++)\
+                if (3500 == cnt++)\
                 {\
                     hdmi_print(INF, CEC "waiting aocec free time out.\n");\
                     break;\
                 }\
             }\
-        }while(0)
+        } while (0)
 
 unsigned long aocec_rd_reg (unsigned long addr)
 {
@@ -133,7 +133,5 @@ void aocec_wr_reg (unsigned long addr, unsigned long data)
     data32 |= addr  << 0;   // [7:0]    cec_reg_addr
     aml_write_reg32(P_AO_CEC_RW_REG, data32);
     spin_unlock_irqrestore(&reg_lock2, flags);
-    waiting_aocec_free();
-    //waiting_aocec_free();
 } /* aocec_wr_only_reg */
 #endif

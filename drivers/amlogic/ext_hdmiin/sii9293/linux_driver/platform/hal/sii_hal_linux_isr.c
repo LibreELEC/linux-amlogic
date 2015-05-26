@@ -115,7 +115,7 @@ static void aml_config_gpio_irq(void)
 	gpio_irq = devinfo->config.gpio_intr;
 	ret = amlogic_gpio_request(gpio_irq, gMhlI2cIdTable[0].name);
 	ret |= amlogic_gpio_direction_input(gpio_irq, gMhlI2cIdTable[0].name);
-	ret |= amlogic_gpio_to_irq(gpio_irq, gMhlI2cIdTable[0].name, AML_GPIO_IRQ(gMhlDevice.pI2cClient->irq-INT_GPIO_0,FILTER_NUM7,GPIO_IRQ_LOW));
+	ret |= amlogic_gpio_to_irq(gpio_irq, gMhlI2cIdTable[0].name, AML_GPIO_IRQ((gMhlDevice.pI2cClient->irq-INT_GPIO_0),FILTER_NUM7,GPIO_IRQ_LOW));
 	printk("sii5293 config gpio_irq, irq = %d, ret = %d\n",gMhlDevice.pI2cClient->irq, ret);
 
 	return ;

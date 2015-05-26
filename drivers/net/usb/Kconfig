@@ -534,4 +534,28 @@ config USB_VL600
 	  http://ubuntuforums.org/showpost.php?p=10589647&postcount=17
 
 
+config USB_NET_QF9700
+	tristate "QF9700 Based USB 2.0 Ethernet Adapters"
+	depends on USB_USBNET
+	select CRC32
+	default y
+	help
+	  This option adds support for QF9700 based USB 2.0
+	  10/100 Ethernet adapters.
+
+	  This driver creates an interface named "usbnetX", where X depends on
+	  what other networking devices you have in use.
+
+config USB_NET_SR9600
+	tristate "SR9600 Based USB 1.1 Ethernet Adapters"
+	depends on USB_USBNET
+	select CRC32
+	default y
+	help
+	  This option adds support for SR9600 based USB 1.1
+	  10/100 Ethernet adapters.
+
+	  This driver creates an interface named "usbnetX", where X depends on
+	  what other networking devices you have in use.
+
 endmenu

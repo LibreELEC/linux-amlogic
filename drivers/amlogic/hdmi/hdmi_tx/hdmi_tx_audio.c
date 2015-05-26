@@ -14,6 +14,7 @@
 
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_compliance.h>
 
 #undef PCM_USE_INFOFRAME
 
@@ -227,5 +228,6 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
         hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
         ret = 0;
     }
+    hdmitx_special_handler_audio(hdmitx_device);
     return ret;
 }

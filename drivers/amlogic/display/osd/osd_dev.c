@@ -38,7 +38,7 @@
 
 void osddev_set(struct myfb_dev *fbdev)
 {
-
+	
     fbdev_lock(fbdev);
 
     //memset((char*) fbdev->fb_mem,0x0,fbdev->fb_len);
@@ -56,24 +56,24 @@ void osddev_set(struct myfb_dev *fbdev)
                fbdev->osd_ctl.disp_end_y,
                fbdev->fb_mem_paddr,
                fbdev->color,
-               fbdev->fb_info->node);
+               fbdev->fb_info->node);	
 
 
 
     fbdev_unlock(fbdev);
-
+    	
     return;
 }
 void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change)
 {
 	osddev_update_disp_axis_hw(	fbdev->osd_ctl.disp_start_x,
 								fbdev->osd_ctl.disp_end_x,
-							fbdev->osd_ctl.disp_start_y,
-							fbdev->osd_ctl.disp_end_y,
-							fbdev->fb_info->var.xoffset,
-							fbdev->fb_info->var.yoffset,
-							mode_change,
-							fbdev->fb_info->node);
+               						fbdev->osd_ctl.disp_start_y,
+               						fbdev->osd_ctl.disp_end_y,
+               						fbdev->fb_info->var.xoffset,
+               						fbdev->fb_info->var.yoffset,
+               						mode_change,
+               						fbdev->fb_info->node);
 }
 int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev)
@@ -96,7 +96,7 @@ int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 
 		if (regno >= 16)
 			return 1;
-
+	 
         r = red    >> (16 - info->var.red.length);
         g = green  >> (16 - info->var.green.length);
         b = blue   >> (16 - info->var.blue.length);
@@ -107,7 +107,7 @@ int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 		    (b << info->var.blue.offset)  |
 		    (a << info->var.transp.offset);
 
-		((u32*)(info->pseudo_palette))[regno] = v;
+  		((u32*)(info->pseudo_palette))[regno] = v;
 	}
 
     return 0;
@@ -128,7 +128,7 @@ void osddev_free_scale_enable(u32 index ,u32 enable)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.
 	osd_free_scale_enable_hw(index,enable);
-
+	
 }
 
 void osddev_get_free_scale_enable(u32 index, u32 *free_scale_enable)
@@ -156,7 +156,7 @@ void osddev_free_scale_width(u32 index ,u32 width)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.
 	osd_free_scale_width_hw(index,width);
-
+	
 }
 
 void osddev_get_free_scale_width(u32 index, u32 *free_scale_width)
@@ -168,7 +168,7 @@ void osddev_free_scale_height(u32 index ,u32 height)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.
 	osd_free_scale_height_hw(index,height);
-
+	
 }
 
 void osddev_get_free_scale_height(u32 index, u32 *free_scale_height)
@@ -266,6 +266,16 @@ void osddev_set_osd_antiflicker(u32 index, u32 vmode, u32 yres)
         osd_set_osd_antiflicker_hw(index, vmode, yres);
 }
 
+void osddev_get_update_state(u32 index, u32 *up_free)
+{
+        osd_get_osd_updatestate_hw(index, up_free);
+}
+
+void osddev_set_update_state(u32 index, u32 up_free)
+{
+        osd_set_osd_updatestate_hw(index, up_free);
+}
+
 void osddev_get_osd_angle(u32 index, u32 *angle)
 {
         osd_get_osd_angle_hw(index, angle);
@@ -349,15 +359,6 @@ void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart,
     fbdev_unlock(fbdev);
 }
 #endif
-
-int osddev_copy_data_tocursor(myfb_dev_t *g_fbi, aml_hwc_addr_t *cursor_mem)
-{
-	if (cursor_mem == NULL){
-		return 0;
-	}
-	osddev_copy_data_tocursor_hw((u32)g_fbi->fb_mem_vaddr, cursor_mem);
-	return 1;
-}
 
 void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey )
 {

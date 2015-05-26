@@ -66,7 +66,9 @@ static unsigned long __initdata init_clock = 0;
 #endif
 #endif
 
+#if 0
 static unsigned int gpu_to_min_cpu(unsigned int gpu);
+#endif
 static int _clk_set_rate_gpu(struct clk *clk, unsigned long gpu, unsigned long cpu);
 static unsigned long clk_get_rate_a9(struct clk * clkdev);
 
@@ -1547,6 +1549,7 @@ static unsigned int gpu_pll_cntl_lookup[] = {
 	0x0209,	// DPLL / 30 = 66
 };
 
+#if 0
 static unsigned int gpu_to_min_cpu(unsigned int gpu)
 {
 	if (gpu == 0)
@@ -1559,6 +1562,7 @@ static unsigned int gpu_to_min_cpu(unsigned int gpu)
 	if (gpu <= 333000) return 336000;
 	return 408000;
 }
+#endif
 
 /**
  *  Internal GPU clock rate setting function.

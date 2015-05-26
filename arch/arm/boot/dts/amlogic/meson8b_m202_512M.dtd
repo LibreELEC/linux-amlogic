@@ -131,12 +131,12 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reserve-memory = <0x00b00000 0x00100000>;
+		reserve-memory = <0x00800000 0x00100000>;
 		reserve-iomap = "true";
 	        vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
 		scale_mode = <1>; /*0:default 1:new*/
 		4k2k_fb = <0>;
-	        display_size_default = <1280 720 1280 2160 32>;  // osd0:8M, osd1:1m  1280*720*4*3 = 11,059,200
+	        display_size_default = <1280 720 1280 1440 32>;  // osd0:8M, osd1:1m  1280*720*4*3 = 11,059,200
 	};
 
 //$$ DEVICE="deinterlace"
@@ -159,7 +159,7 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reserve-memory = <0x00a00000>;//10M,you can use 8M if memory isn't enough
+		reserve-memory = <0x00800000>;//10M,you can use 8M if memory isn't enough
 		reserve-iomap = "true";
 	};
 
@@ -173,7 +173,7 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-                reserve-memory = <0x02000000>;//32M
+                reserve-memory = <0x04000000>;//64M
 		reserve-iomap = "true";
         };
 
@@ -1164,9 +1164,10 @@ void root_func(){
 		dev_name = "nand";
 		status = "ok";
 		reg = <0xd0048600 0x24>;
-		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-names = "nand_rb_mod","nand_norb_mod", "nand_cs_pins_only";
+		pinctrl-0 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-1 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-2 = <&nand_cs_pins>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -1413,10 +1414,15 @@ void root_func(){
         status = "okay";
     };
 
-//    crypto_device{
-//       compatible = "amlogic,crypto-device";
-//       dev_name = "crypto_device";
-//    };
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
+    };
+
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 
 /// **************************************************************************************
 /// -   GPIO
@@ -1460,48 +1466,43 @@ void root_func(){
 			amlogic,setmask=<4 0x03c0>;
 			amlogic,pins="GPIOX_16", "GPIOX_17", "GPIOX_18", "GPIOX_19";
 		};
-
-//$$ MATCH "Nand_pin_0_match" = "&nand_input_state"
-//$$ MATCH "Nand_pin_1_match" = "&nand_input_state"
-//$$ L2 PROP_STR 18 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
-		nand_input_state:nand_input{
-			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
-						"BOOT_5","BOOT_6","BOOT_7","BOOT_12","BOOT_13",
-						"BOOT_8","BOOT_9","BOOT_10","BOOT_11",
-						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
-			amlogic,enable-output=<1>;
-		};
-
-//$$ MATCH "Nand_pin_0_match" = "&conf_nand_state"
-//$$ MATCH "Nand_pin_1_match" = "&conf_nand_state"
+//$$ MATCH "Nand_pin_0_match" = "&conf_nand_pulldown"
+//$$ MATCH "Nand_pin_1_match" = "&conf_nand_pulldown"
 //$$ L2 PROP_STR 9 = "amlogic,pins"
 //$$ L2 PROP_U32 = "amlogic,pullup"
-		conf_nand_state: conf_nand{
+		conf_nand_pulldown: conf_nand_pulldown{
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
 			amlogic,pullupen=<1>;
 		};
-		conf_nand_state1: conf_nand1{
+		conf_nand_pullup: conf_nand_pullup{
 			amlogic,pins = "BOOT_8", "BOOT_10";
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
-//$$ MATCH "Nand_pin_0_match" = "&nand_base"
-//$$ MATCH "Nand_pin_1_match" = "&nand_base"
+//$$ MATCH "Nand_pin_0_match" = "&all_nand_pins"
+//$$ MATCH "Nand_pin_1_match" = "&all_nand_pins"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
 //$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 17 = "amlogic,pins"
-		nand_base: nand{
+		all_nand_pins: all_nand_pins{
 			amlogic,setmask=<2 0x7fe0000>;
 			amlogic,clrmask=<	5 0xe
 							6 0x3f000000
 							4 0x7c000000>;
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_8","BOOT_9",
-						"BOOT_10","BOOT_12","BOOT_13",
+						"BOOT_10","BOOT_11","BOOT_12","BOOT_13",
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
+			amlogic,enable-output=<1>;
+		};
+		
+		nand_cs_pins: nand_cs{
+			amlogic,setmask=<2 0x3000000>;
+			amlogic,clrmask=<7 0x80000
+							6 0x80000000>;
+			amlogic,pins = "BOOT_8","BOOT_9";
 		};
 
 //$$ MATCH "Card_pin_0_match" = "&sdhc_b_pins"
@@ -1847,4 +1848,15 @@ void root_func(){
 		};
 
 	};
+
+/// ***************************************************************************************
+///	-	RNG
+//$$ MODULE="RNG"
+//$$ DEVICE="meson-rng"
+//$$ L2 PROP_STR = "status"
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
+	};
+
 }; /* end of / */

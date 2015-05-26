@@ -187,6 +187,7 @@ static int  do_read_work(char argn ,char **argv)
 		printk("%s[0x%04x]=0x%08x\n", type, address, value);
 	return 0;
 }
+
 static int  do_dump_work(char argn ,char **argv)
 {
 	char base;
@@ -210,6 +211,36 @@ static int  do_dump_work(char argn ,char **argv)
 		else	{
 			value = aml_read_reg32(vstart);
 			printk("%s[0x%04x]=0x%08x\n", type, start, value);
+		}
+		start++;
+	} while (start <= end);
+	return 0;
+}
+
+static int  do_dumpn_work(char argn ,char **argv)
+{
+	char base;
+	char *type = NULL;
+	unsigned int start, end, vstart, value;
+
+	if (argn < 4){
+		printk("%s",syntax_error_str);
+		return -1;
+	}
+
+	base = argv[1][0];
+	type = base_addr_type(base);
+	start = simple_strtol(argv[2], NULL, 16);
+	end = simple_strtol(argv[3], NULL, 16);
+
+	do {
+		vstart = base_addr_convert(base, start);
+		if (vstart == -1)
+			printk("%s[0x%04x] Invalid Address\n", type, start);
+		else	{
+			value = aml_read_reg32(vstart);
+            if(value)
+                printk("%s[0x%04x]=0x%08x\n", type, start, value);
 		}
 		start++;
 	} while (start <= end);
@@ -376,7 +407,10 @@ static ssize_t dbg_do_command(struct class *class,
 	case 'd':
 	case 'D':
 		work_mode=WORK_MODE_DUMP;
-		do_dump_work(argn,argv);
+        if((argv[0][1] == 'n') || (argv[0][1] == 'N') || (argv[0][4] == 'n') || (argv[0][4] == 'N'))
+            do_dumpn_work(argn,argv);
+        else
+            do_dump_work(argn,argv);
 		break;
 	case 't':
 	case 'T':

@@ -172,6 +172,123 @@ void init_internal_phy_100B(struct phy_device *phydev)
 	closeTSTMODE(phydev);
 }
 
+/*
+
+0x00	1354		1354	0000	9354
+0x13	3600		3400	3410	3400
+0x14	5100		7900	7900	7900
+0x15	441c		3404	3404	3404
+0x16	8406		8646	0246	8446
+0x18	0003		0003	0003	0003
+0x1b	00a0		40a0	40a4	40a6
+0x1d	0a00		0200	0200	0200
+
+
+
+*/
+static void init_pmu4_phy(struct phy_device *phydev)
+{
+        initTSTMODE(phydev);
+        // write tstcntl addr val
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x1354);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR);//write addr 0
+        /* 
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x38);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A0CFG);//write addr 0x11
+  
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x0c00);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A1CFG);//write addr 0x12
+        */
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x3400);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A2CFG);//write addr 0x13
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x7900);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x2636);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
+        phy_write(phydev,SMI_ADDR_TSTWRITE,5);//write val
+        phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0108);
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A9CFG);//write addr 0x1b	
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x200);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A11CFG);//write addr 0x1d
+	closeTSTMODE(phydev);
+}
+
+
+void init_pmu4_phy_10B(struct phy_device *phydev)
+{
+
+	initTSTMODE(phydev);
+	// write tstcntl addr val
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0000);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR);//write addr 0
+	/*
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x38);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A0CFG);//write addr 0x11
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0c00);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A1CFG);//write addr 0x12
+	*/
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3410);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A2CFG);//write addr 0x13
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x7900);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x246);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
+	phy_write(phydev,SMI_ADDR_TSTWRITE,5);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x40a4);//write val by chandle (2)
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A9CFG);//write addr 0x1b
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x200);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A11CFG);//write addr 0x1d
+	closeTSTMODE(phydev);
+}
+/*
+
+0x00	1354		1354	0000	9354
+0x13	3600		3400	3410	3400
+0x14	5100		7900	7900	7900
+0x15	441c		3404	3404	3404
+0x16	8406		8646	0246	8446
+0x18	0003		0003	0003	0003
+0x1b	00a0		40a0	40a4	40a6
+0x1d	0a00		0200	0200	0200
+
+
+
+*/
+void init_pmu4_phy_100B(struct phy_device *phydev)
+{
+	initTSTMODE(phydev);
+	// write tstcntl addr val
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x9354);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|0x00);//write addr 0x00
+	/*
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x38);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A0CFG);//write addr 0x11
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0c00);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A1CFG);//write addr 0x12
+	*/
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3000);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A2CFG);//write addr 0x13
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0xb902);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x8446);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0005);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x40a6);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A9CFG);//write addr 0x1b
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x200);//write val
+	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A11CFG);//write addr 0x1d
+	closeTSTMODE(phydev);
+}
+
 static int amlogic_phy_config_intr(struct phy_device *phydev)
 {
 	int rc = phy_write (phydev, MII_INTERNAL_IM,
@@ -227,6 +344,46 @@ static int amlogic_phy_config_init(struct phy_device *phydev)
 
 	return amlogic_phy_ack_interrupt (phydev);
 }
+static int pmu4_phy_config_init(struct phy_device *phydev)
+{
+	int rc = phy_read(phydev, MII_INTERNAL_SPECIAL_MODES);
+	if (rc < 0)
+		return rc;
+	printk("----[ETHERNET]---------pmu4 phy init start-------------\n");
+	init_pmu4_phy(phydev);
+	/* If the AML PHY is in power down mode, then set it
+	 * in all capable mode before using it.
+	 */
+
+	if ((rc & MII_INTERNAL_MODE_MASK) == MII_INTERNAL_MODE_POWERDOWN) {
+		int timeout = 50000;
+
+		/* set "all capable" mode and reset the phy */
+		rc |= MII_INTERNAL_MODE_ALL;
+		phy_write(phydev, MII_INTERNAL_SPECIAL_MODES, rc);
+		phy_write(phydev, MII_BMCR, BMCR_RESET);
+
+		/* wait end of reset (max 500 ms) */
+		do {
+			udelay(10);
+			if (timeout-- == 0)
+				return -1;
+			rc = phy_read(phydev, MII_BMCR);
+		} while (rc & BMCR_RESET);
+	}
+
+	rc = phy_read(phydev, MII_INTERNAL_CTRL_STATUS);
+	if (rc < 0)
+		return rc;
+
+	// Enable energy detect mode for this AML Transceivers
+	rc = phy_write(phydev, MII_INTERNAL_CTRL_STATUS,
+		       rc & ~MII_INTERNAL_EDPWRDOWN);
+	if (rc < 0)
+		return rc;
+	// phy_write(phydev,0,0x8000);
+	return amlogic_phy_ack_interrupt (phydev);
+}
 
 /*
  * This workaround will manually toggle the PHY on/off upon calls to read_status
@@ -242,6 +399,43 @@ static int internal_read_status(struct phy_device *phydev)
 	}
 	if(phydev->speed == SPEED_100){
 		init_internal_phy_100B(phydev);
+	}
+	if (!(AUTONEG_ENABLE == phydev->autoneg)){
+		if (!phydev->link) {
+			/* Disable EDPD to wake up PHY */
+			int rc = phy_read(phydev, MII_INTERNAL_CTRL_STATUS);
+			if (rc < 0)
+				return rc;
+
+			rc = phy_write(phydev, MII_INTERNAL_CTRL_STATUS,
+					rc & ~MII_INTERNAL_EDPWRDOWN);
+			if (rc < 0)
+				return rc;
+
+			/* Sleep 64 ms to allow ~5 link test pulses to be sent */
+			msleep(64);
+
+			/* Re-enable EDPD */
+			rc = phy_read(phydev, MII_INTERNAL_CTRL_STATUS);
+			if (rc < 0)
+				return rc;
+
+			rc = phy_write(phydev, MII_INTERNAL_CTRL_STATUS,
+					rc | MII_INTERNAL_EDPWRDOWN);
+			if (rc < 0)
+				return rc;
+		}
+	}
+	return err;
+}
+static int pmu4_read_status(struct phy_device *phydev)
+{
+	int err = genphy_read_status(phydev);
+	if(phydev->speed == SPEED_10){
+		init_pmu4_phy_10B(phydev);
+	}
+	if(phydev->speed == SPEED_100){
+		init_pmu4_phy_100B(phydev);
 	}
 	if (!(AUTONEG_ENABLE == phydev->autoneg)){
 		if (!phydev->link) {
@@ -300,6 +494,29 @@ static struct phy_driver amlogic_phy_driver[] = {
 		.resume		= genphy_resume,
 
 		.driver		= { .owner = THIS_MODULE, }
+	},
+	{
+		.phy_id		= 0x20142014,
+		.phy_id_mask	= 0xffffffff,
+		.name		= "AMLOGIC pmu4 phy",
+
+		.features	= (PHY_BASIC_FEATURES | SUPPORTED_Pause
+				| SUPPORTED_Asym_Pause),
+		.flags		= PHY_HAS_INTERRUPT | PHY_HAS_MAGICANEG,
+
+		/* basic functions */
+		.config_aneg	= &amlogic_phy_config_aneg,
+		.read_status	= &pmu4_read_status,
+		.config_init	= &pmu4_phy_config_init,
+
+		/* IRQ related */
+		.ack_interrupt	= &amlogic_phy_ack_interrupt,
+		.config_intr	= &amlogic_phy_config_intr,
+
+		.suspend	= genphy_suspend,
+		.resume		= genphy_resume,
+
+		.driver		= { .owner = THIS_MODULE, }
 	} };
 
 static int __init amlogic_init(void)
@@ -323,6 +540,7 @@ module_exit(amlogic_exit);
 
 static struct mdio_device_id __maybe_unused amlogic_tbl[] = {
 	{ 0x79898963, 0xffffffff },
+	{ 0x20142014, 0xffffffff },
 	{ }
 };
 

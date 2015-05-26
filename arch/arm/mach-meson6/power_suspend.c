@@ -74,10 +74,8 @@ void reset_watchdog(void)
 #ifdef CONFIG_MESON_TRUSTZONE
 int meson_power_suspend(void)
 {
-	static int test_flag = 0;
 	unsigned addr;
 	unsigned p_addr;
-	void (*pwrtest_entry)(unsigned,unsigned,unsigned,unsigned);
 
 	addr = 0x9FF04400;//entry.s start
 	p_addr = (unsigned)__phys_to_virt(addr);

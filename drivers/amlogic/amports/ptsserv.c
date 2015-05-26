@@ -13,7 +13,7 @@
 #include "vdec_reg.h"
 
 #define VIDEO_REC_SIZE  (8192*2)
-#define AUDIO_REC_SIZE  8192
+#define AUDIO_REC_SIZE  8192*2
 #define VIDEO_LOOKUP_RESOLUTION 2500
 #define AUDIO_LOOKUP_RESOLUTION 1024
 
@@ -233,9 +233,21 @@ int calculation_stream_delayed_ms(u8 type, u32 *latestbitrate, u32 *avg_bitare)
         {
             diff2 = stbuf_level(get_buf_by_type(type));
         }
-
-	if(diff2 > stbuf_space(get_buf_by_type(type)))
-            diff = diff2;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	if (HAS_HEVC_VDEC) {
+	    if (pTable->hevc) {
+	         if(diff2 > stbuf_space(get_buf_by_type(PTS_TYPE_HEVC)))
+	 	   diff = diff2; 								
+	    }else{
+	        if(diff2 > stbuf_space(get_buf_by_type(type)))
+		   diff = diff2;				
+		}			
+	} else			
+#endif
+           {
+	    if(diff2 > stbuf_space(get_buf_by_type(type)))
+               diff = diff2;
+        	}
         delay_ms=diff*1000/(1+pTable->last_avg_bitrate/8);
 
         if (timestampe_delayed < 10 || (abs(timestampe_delayed - delay_ms)>3*1000 && delay_ms > 1000)) {
@@ -287,7 +299,7 @@ int calculation_acached_delayed(void){
 
 	pTable = &pts_table[PTS_TYPE_AUDIO];
 
-	delay = pTable->last_checkin_pts-pTable->last_checkout_pts;
+	delay = pTable->last_checkin_pts-timestamp_apts_get();
 	if (0<delay && delay<5*90000)
 		return delay;
 

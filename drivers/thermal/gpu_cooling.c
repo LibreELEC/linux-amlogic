@@ -109,10 +109,17 @@ static int gpufreq_get_cur_state(struct thermal_cooling_device *cdev,
 				 unsigned long *state)
 {
 	struct gpufreq_cooling_device *gpufreq_device = cdev->devdata;
+    unsigned long max_state = 0, temp = 0;
+
 	//*state = gpufreq_device->gpufreq_state;
-	if(gpufreq_device->get_gpu_current_max_level)
-		*state = gpufreq_device->get_gpu_current_max_level();
-	pr_debug( "current max state=%ld\n",*state);
+	gpufreq_get_max_state(cdev, &max_state);
+	if (gpufreq_device->get_gpu_current_max_level) {
+		temp = gpufreq_device->get_gpu_current_max_level();
+        *state = ((max_state -1) - temp);
+	    pr_debug( "current max state=%ld\n",*state);
+    } else {
+        return -EINVAL;    
+    }
 	return 0;
 }
 
@@ -227,3 +234,14 @@ void gpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
 	kfree(gpufreq_dev);
 }
 EXPORT_SYMBOL_GPL(gpufreq_cooling_unregister);
+
+unsigned int (*gpu_freq_callback)(void) = NULL;
+int register_gpu_freq_info(unsigned int (*fun)(void))
+{
+    if (fun) {
+        gpu_freq_callback = fun; 
+    }    
+    return 0;
+}
+EXPORT_SYMBOL(register_gpu_freq_info);
+EXPORT_SYMBOL(gpu_freq_callback);

@@ -594,6 +594,8 @@ module_exit(meson_cs_cleanup);
 #define PWM_B   1
 #define PWM_C   2
 #define PWM_D   3
+#define PWM_E   4
+#define PWM_F   5
 
 struct cs_voltage {
     int pwm_value;
@@ -607,7 +609,11 @@ static unsigned long pmw_base[] = {
     P_PWM_PWM_A,
     P_PWM_PWM_B,
     P_PWM_PWM_C,
-    P_PWM_PWM_D
+    P_PWM_PWM_D,
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    P_PWM_PWM_E,
+    P_PWM_PWM_F,
+#endif
 };
 
 static int dvfs_get_voltage_step(void)
@@ -770,6 +776,14 @@ static void dvfs_vcck_pwm_init(struct device * dev) {
     case PWM_D:
         aml_write_reg32(P_PWM_MISC_REG_CD, (aml_read_reg32(P_PWM_MISC_REG_CD) & ~(0x7f << 16)) | ((1 << 23) | (1 << 1)));
         break;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    case PWM_E:
+        aml_write_reg32(P_PWM_MISC_REG_EF, (aml_read_reg32(P_PWM_MISC_REG_EF) & ~(0x7f <<  8)) | ((1 << 15) | (1 << 0)));
+        break;
+    case PWM_F:
+        aml_write_reg32(P_PWM_MISC_REG_EF, (aml_read_reg32(P_PWM_MISC_REG_EF) & ~(0x7f << 16)) | ((1 << 23) | (1 << 1)));
+        break;
+#endif
     }
     aml_write_reg32(pmw_base[pwm_ctrl], g_table[g_table_cnt - 1].pwm_value);
 
@@ -799,7 +813,7 @@ static int meson_cs_dvfs_probe(struct platform_device *pdev)
         if (out_str) {
             if (!strncmp(out_str, "PWM_", 4)) {
                 i = out_str[4] - 'A';
-                if (i > PWM_D || i < 0) {
+                if (i > PWM_F || i < 0) {
                     printk("%s, bad pwm controller value:%s\n", __func__, out_str);
                 } else {
                     pwm_ctrl = i;

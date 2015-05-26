@@ -130,6 +130,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS5707 if I2C
 	select SND_SOC_DUMMY_CODEC
 	select SND_SOC_AML_M8_CODEC
+	select SND_SOC_ES8323 if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -516,7 +517,10 @@ config SND_SOC_WM9713
 
 config SND_SOC_AML_M8_CODEC
 	tristate
-
+	
+config SND_SOC_ES8323
+	tristate
+	
 config SND_SOC_TAS5711
         tristate
 
@@ -525,7 +529,10 @@ config SND_SOC_TAS5707
 
 config SND_SOC_AMLPMU3
         tristate
-
+ 
+config SND_SOC_AMLPMU4
+	tristate
+	       
 # Amp
 config SND_SOC_LM4857
 	tristate

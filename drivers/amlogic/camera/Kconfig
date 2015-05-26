@@ -325,6 +325,19 @@ config VIDEO_AMLOGIC_CAPTURE_HM5065
 	  Amlogic capture driver.
 	  Say Y here if you want this driver.
 
+config VIDEO_AMLOGIC_CAPTURE_HM1375
+	tristate "Amlogic Platform Capture Driver for HM1375"
+	depends on VIDEO_AMLOGIC_CAPTURE
+	select VIDEOBUF_VMALLOC
+	select AMLOGIC_VIDEOIN_MANAGER
+	select TVIN
+	select TVIN_BT656
+	select TVIN_VDIN
+	default n
+	---help---
+	  Amlogic capture driver.
+	  Say Y here if you want this driver.
+
 config VIDEO_AMLOGIC_CAPTURE_OV3660
 	tristate "Amlogic Platform Capture Driver for OV3660"
 	depends on VIDEO_AMLOGIC_CAPTURE

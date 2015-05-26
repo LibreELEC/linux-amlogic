@@ -221,6 +221,8 @@ extern void osd_set_osd_rotate_on_hw(u32 index, u32 on_off);
 extern void osd_get_osd_rotate_on_hw(u32 index, u32 *on_off);
 extern void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres);
 extern void osd_get_osd_antiflicker_hw(u32 index, u32 *on_off);
+extern void osd_set_osd_updatestate_hw(u32 index, u32 up_free);
+extern void osd_get_osd_updatestate_hw(u32 index,u32 *up_free);
 extern void osd_get_osd_angle_hw(u32 index, u32 *angle);
 extern void osd_set_osd_angle_hw(u32 index, u32 angle, u32  virtual_osd1_yres, u32 virtual_osd2_yres);
 extern void osd_get_osd_clone_hw(u32 index, u32 *clone);

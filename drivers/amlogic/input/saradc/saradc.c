@@ -11,6 +11,12 @@
 #endif
 
 #define ENABLE_CALIBRATION
+//#define ENABLE_DYNAMIC_POWER
+
+#define SARADC_STATE_IDLE 0
+#define SARADC_STATE_BUSY 1
+#define SARADC_STATE_SUSPEND 2
+
 #ifndef CONFIG_OF
 #define CONFIG_OF
 #endif
@@ -21,7 +27,7 @@ struct saradc {
 	int ref_nominal;
 	int coef;
 #endif
-
+	int state;
 };
 
 static struct saradc *gp_saradc;
@@ -35,18 +41,39 @@ static struct saradc *gp_saradc;
 
 static u8 chan_mux[SARADC_CHAN_NUM] = {0,1,2,3,4,5,6,7};
 
+static inline void saradc_power_control(int on)
+{
+	if (on) {
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+		enable_bandgap();
+		udelay(10);
+#endif
+		enable_adc();
+		udelay(5);
+		enable_clock();
+		enable_sample_engine();
+	}
+	else {
+		disable_sample_engine();
+		disable_clock();
+		disable_adc();
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+		disable_bandgap();
+#endif 			
+	}
+}
 
 static void saradc_reset(void)
 {
 	int i;
 
+#if defined(CONFIG_ARCH_MESONG9TV) || defined(CONFIG_ARCH_MESONG9BB)
+	set_sar_adc_clk();
+#endif
+
 	//set adc clock as 1.28Mhz
 	set_clock_divider(20);
-	enable_clock();
-	enable_adc();
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	enable_bandgap();
-#endif
+	saradc_power_control(1);
 	set_sample_mode(DIFF_MODE);
 	set_tempsen(0);
 	disable_fifo_irq();
@@ -79,13 +106,13 @@ static void saradc_reset(void)
 //	set_sc_phase();
 	enable_sample_engine();
 
-//	printk("ADCREG reg0 =%x\n", get_reg(SAR_ADC_REG0));
-//	printk("ADCREG ch list =%x\n", get_reg(SAR_ADC_CHAN_LIST));
-//	printk("ADCREG avg =%x\n", get_reg(SAR_ADC_AVG_CNTL));
-//	printk("ADCREG reg3=%x\n", get_reg(SAR_ADC_REG3));
-//	printk("ADCREG ch72 sw=%x\n", get_reg(SAR_ADC_AUX_SW));
-//	printk("ADCREG ch10 sw=%x\n", get_reg(SAR_ADC_CHAN_10_SW));
-//	printk("ADCREG detect&idle=%x\n", get_reg(SAR_ADC_DETECT_IDLE_SW));
+//	printk("ADCREG reg0 =%x\n", get_reg(PP_SAR_ADC_REG0));
+//	printk("ADCREG ch list =%x\n", get_reg(PP_SAR_ADC_CHAN_LIST));
+//	printk("ADCREG avg =%x\n", get_reg(PP_SAR_ADC_AVG_CNTL));
+//	printk("ADCREG reg3=%x\n", get_reg(PP_SAR_ADC_REG3));
+//	printk("ADCREG ch72 sw=%x\n", get_reg(PP_SAR_ADC_AUX_SW));
+//	printk("ADCREG ch10 sw=%x\n", get_reg(PP_SAR_ADC_CHAN_10_SW));
+//	printk("ADCREG detect&idle=%x\n", get_reg(PP_SAR_ADC_DETECT_IDLE_SW));
 }
 
 #ifdef ENABLE_CALIBRATION
@@ -136,8 +163,7 @@ static int saradc_get_cal_value(struct saradc *saradc, int val)
 }
 #endif
 
-static u8 print_flag = 0; //(1<<CHAN_4)
-#ifdef CONFIG_AMLOGIC_THERMAL
+#ifdef CONFIG_AML_PLATFORM_THERMAL
 void temp_sensor_adc_init(int triming)
 {
 	select_temp();
@@ -148,62 +174,63 @@ void temp_sensor_adc_init(int triming)
 	enable_temp__();
 }
 #endif
+
 int get_adc_sample(int chan)
 {
-	int count;
-	int value=-1;
-	int sum;
+	int value, count;
 	unsigned long flags;
+	
 	if (!gp_saradc)
 		return -1;
-
 	spin_lock_irqsave(&gp_saradc->lock,flags);
-
+	if (gp_saradc->state == SARADC_STATE_SUSPEND) {
+		spin_unlock_irqrestore(&gp_saradc->lock,flags);
+		return -1;
+	}
+	gp_saradc->state = SARADC_STATE_BUSY;
+#ifdef ENABLE_DYNAMIC_POWER
+	saradc_power_control(1);
+#endif
 	set_chan_list(chan, 1);
 	set_avg_mode(chan, NO_AVG_MODE, SAMPLE_NUM_8);
 	set_sample_mux(chan, chan_mux[chan]);
 	set_detect_mux(chan_mux[chan]);
 	set_idle_mux(chan_mux[chan]); // for revb
-	enable_sample_engine();
 	start_sample();
 
 	// Read any CBUS register to delay one clock cycle after starting the sampling engine
 	// The bus is really fast and we may miss that it started
-	{ count = get_reg(ISA_TIMERE); }
-
+	value = get_reg(P_ISA_TIMERE);
 	count = 0;
 	while (delta_busy() || sample_busy() || avg_busy()) {
 		if (++count > 10000) {
-			printk(KERN_ERR "ADC busy error=%x.\n", READ_CBUS_REG(SAR_ADC_REG0));
+			printk(KERN_ERR "ADC busy error=%x.\n", get_reg(PP_SAR_ADC_REG0));
+			value = -1;
 			goto end;
 		}
 	}
-    stop_sample();
-
-    sum = 0;
-    count = 0;
-    value = get_fifo_sample();
-	while (get_fifo_cnt()) {
-        value = get_fifo_sample() & 0x3ff;
-        //if ((value != 0x1fe) && (value != 0x1ff)) {
-			sum += value & 0x3ff;
-            count++;
-        //}
+	
+	stop_sample();	
+	value = get_fifo_sample();
+	value = count = 0;
+	while (get_fifo_cnt() && (count < 64)) {
+		value += get_fifo_sample() & 0x3ff;
+		count++;
 	}
-	value = (count) ? (sum / count) : (-1);
+	if (!count) {
+		value = -1;
+		goto end;
+	}
+	value /= count;
+#ifdef ENABLE_CALIBRATION
+	value = saradc_get_cal_value(gp_saradc, value);
+#endif
 
 end:
-	if ((print_flag>>chan)&1) {
-		printk("before cal: ch%d = %d\n", chan, value);
-	}
-#ifdef ENABLE_CALIBRATION
-  value = saradc_get_cal_value(gp_saradc, value);
-  if ((print_flag>>chan)&1) {
-			printk("after cal: ch%d = %d\n\n", chan, value);
-	}
+#ifdef ENABLE_DYNAMIC_POWER
+	saradc_power_control(0);
 #endif
-	disable_sample_engine();
-//	set_sc_phase();
+	gp_saradc->state = SARADC_STATE_IDLE;
 	spin_unlock_irqrestore(&gp_saradc->lock,flags);
 	return value;
 }
@@ -297,12 +324,7 @@ static ssize_t saradc_ch7_show(struct class *cla, struct class_attribute *attr, 
 {
     return sprintf(buf, "%d\n", get_adc_sample(7));
 }
-static ssize_t saradc_print_flag_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count)
-{
-		sscanf(buf, "%x", (int*)&print_flag);
-    printk("print_flag=%d\n", print_flag);
-    return count;
-}
+
 #ifndef CONFIG_MESON_CPU_TEMP_SENSOR
 static ssize_t saradc_temperature_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count)
 {
@@ -354,7 +376,7 @@ static int get_celius(void)
      *
      */
     ///@todo fix it later
-    if(aml_read_reg32(P_SAR_ADC_REG3)&(1<<29))
+    if(aml_read_reg32(PP_SAR_ADC_REG3)&(1<<29))
     {
         x=23077;
         y=-88;
@@ -381,7 +403,7 @@ static ssize_t temperature_show(struct class *cla, struct class_attribute *attr,
 }
 static ssize_t temperature_mode_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", aml_read_reg32(P_SAR_ADC_REG3)&(1<<29)?1:0);
+    return sprintf(buf, "%d\n", aml_read_reg32(PP_SAR_ADC_REG3)&(1<<29)?1:0);
 }
 static ssize_t temperature_mode_store(struct class *cla, struct class_attribute *attr, const char *buf, ssize_t count)
 {
@@ -414,7 +436,6 @@ static struct class_attribute saradc_class_attrs[] = {
     __ATTR(temperature_mode, S_IRUGO | S_IWUSR, temperature_mode_show, temperature_mode_store),
 #endif
     __ATTR_RO(saradc_ch7),
-    __ATTR(saradc_print_flag, S_IRUGO | S_IWUSR,NULL, saradc_print_flag_store),
     __ATTR_NULL
 };
 static struct class saradc_class = {
@@ -435,12 +456,13 @@ static int saradc_probe(struct platform_device *pdev)
 	}
 	saradc_reset();
 	gp_saradc = saradc;
+	spin_lock_init(&saradc->lock);	
+	saradc->state = SARADC_STATE_IDLE;
 #ifdef ENABLE_CALIBRATION
 	saradc->coef = 0;
   saradc_internal_cal(saradc);
 #endif
 	set_cal_voltage(7);
-	spin_lock_init(&saradc->lock);
 #ifdef	CONFIG_MESON_CPU_TEMP_SENSOR
 	temp_sens_sel(1);
 	get_cpu_temperature_celius=get_celius;
@@ -453,35 +475,33 @@ err_free_mem:
 	return err;
 }
 
-static int saradc_suspend(struct platform_device *pdev,pm_message_t state)
+static int saradc_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	unsigned long flags;
 	printk("%s: disable SARADC\n", __func__);
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	disable_bandgap();
-#endif
-	disable_adc();
-	disable_clock();
+	spin_lock_irqsave(&gp_saradc->lock,flags);
+	saradc_power_control(0);
+	gp_saradc->state = SARADC_STATE_SUSPEND;
+	spin_unlock_irqrestore(&gp_saradc->lock,flags);
 	return 0;
 }
 
 static int saradc_resume(struct platform_device *pdev)
 {
+	unsigned long flags;
 	printk("%s: enable SARADC\n", __func__);
-	enable_clock();
-	enable_adc();
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	enable_bandgap();
-#endif
+	spin_lock_irqsave(&gp_saradc->lock,flags);
+	saradc_power_control(1);
+	gp_saradc->state = SARADC_STATE_IDLE;
+	spin_unlock_irqrestore(&gp_saradc->lock,flags);
 	return 0;
 }
 
 static int __exit saradc_remove(struct platform_device *pdev)
 {
-	struct saradc *saradc = platform_get_drvdata(pdev);
-	disable_adc();
-	disable_sample_engine();
+	saradc_power_control(0);
+	kfree(gp_saradc);
 	gp_saradc = 0;
-	kfree(saradc);
 	return 0;
 }
 #ifdef CONFIG_OF

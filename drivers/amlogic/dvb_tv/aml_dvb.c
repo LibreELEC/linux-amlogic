@@ -265,7 +265,7 @@ static int dvb_dsc_open(struct inode *inode, struct file *file)
 
 	dsc = &dvb->dsc[id];
 	dsc->id   = id;
-	dsc->pid  = -1;
+	dsc->pid  = 0x1fff;
 	dsc->set  = 0;
 	dsc->dvb  = dvb;
 
@@ -328,7 +328,10 @@ static int dvb_dsc_release(struct inode *inode, struct file *file)
 	spin_lock_irqsave(&dvb->slock, flags);
 
 	dsc->used = 0;
-	dsc_release(dsc);
+	dsc_set_pid(dsc, 0x1fff);
+
+	dsc->pid  = 0x1fff;
+	dsc->set = 0;
 	dvb->dsc_dev->users--;
 
 	spin_unlock_irqrestore(&dvb->slock, flags);
@@ -621,17 +624,17 @@ static ssize_t demux##i##_store_source(struct class *class,  struct class_attrib
 static ssize_t demux##i##_show_free_filters(struct class *class,  struct class_attribute *attr,char *buf)\
 {\
 	struct aml_dvb *dvb = &aml_dvb_device;\
-	struct aml_dmx *dmx = &dvb->dmx[i];\
+	struct dvb_demux *dmx = &dvb->dmx[i].demux;\
 	int fid, count;\
 	ssize_t ret = 0;\
-	unsigned long flags;\
-	spin_lock_irqsave(&dvb->slock, flags);\
+	if (mutex_lock_interruptible(&dmx->mutex)) \
+		return -ERESTARTSYS; \
 	count = 0;\
-	for(fid = 0; fid < FILTER_COUNT; fid++){\
-		if(!dmx->filter[fid].used)\
+	for (fid = 0; fid < dmx->filternum; fid++) {\
+		if (!dmx->filter[fid].state != DMX_STATE_FREE)\
 			count++;\
 	}\
-	spin_unlock_irqrestore(&dvb->slock, flags);\
+	mutex_unlock(&dmx->mutex);\
 	ret = sprintf(buf, "%d\n", count);\
 	return ret;\
 }
@@ -1260,6 +1263,13 @@ static int aml_dvb_probe(struct platform_device *pdev)
 		if ((ret=aml_dvb_dmx_init(advb, &advb->dmx[i], i))<0) {
 			goto error;
 		}
+	}
+
+	for (i=0; i<DSC_COUNT; i++) {
+		advb->dsc[i].id = i;
+		advb->dsc[i].used = 0;
+		advb->dsc[i].set = 0;
+		advb->dsc[i].pid = 0x1fff;
 	}
 
 	/*Register descrambler device*/

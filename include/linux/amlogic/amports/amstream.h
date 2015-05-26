@@ -23,7 +23,6 @@
 #define AMSTREAM_H
 
 //#include <linux/interrupt.h>
-#include "ve.h"
 
 #ifdef __KERNEL__
 #define PORT_FLAG_IN_USE    0x0001
@@ -104,24 +103,6 @@
 #define AMSTREAM_IOC_SET_VIDEO_CROP   _IOW(AMSTREAM_IOC_MAGIC, 0x4e, unsigned long)
 #define AMSTREAM_IOC_PCRID        _IOW(AMSTREAM_IOC_MAGIC, 0x4f, int)
 
-// VPP.VE IOCTL command list
-#define AMSTREAM_IOC_VE_BEXT   _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )
-#define AMSTREAM_IOC_VE_DNLP   _IOW(AMSTREAM_IOC_MAGIC, 0x21, struct ve_dnlp_s  )
-#define AMSTREAM_IOC_VE_HSVS   _IOW(AMSTREAM_IOC_MAGIC, 0x22, struct ve_hsvs_s  )
-#define AMSTREAM_IOC_VE_CCOR   _IOW(AMSTREAM_IOC_MAGIC, 0x23, struct ve_ccor_s  )
-#define AMSTREAM_IOC_VE_BENH   _IOW(AMSTREAM_IOC_MAGIC, 0x24, struct ve_benh_s  )
-#define AMSTREAM_IOC_VE_DEMO   _IOW(AMSTREAM_IOC_MAGIC, 0x25, struct ve_demo_s  )
-#define AMSTREAM_IOC_VE_VDO_MEAS _IOW(AMSTREAM_IOC_MAGIC, 0x27, struct vdo_meas_s )
-#define AMSTREAM_IOC_VE_DEBUG    _IOWR(AMSTREAM_IOC_MAGIC, 0x28, unsigned long long)
-#define AMSTREAM_IOC_VE_REGMAP   _IOW(AMSTREAM_IOC_MAGIC, 0x29, struct ve_regmap_s)
-
-// VPP.CM IOCTL command list
-#define AMSTREAM_IOC_CM_REGION _IOW(AMSTREAM_IOC_MAGIC, 0x30, struct cm_region_s)
-#define AMSTREAM_IOC_CM_TOP    _IOW(AMSTREAM_IOC_MAGIC, 0x31, struct cm_top_s   )
-#define AMSTREAM_IOC_CM_DEMO   _IOW(AMSTREAM_IOC_MAGIC, 0x32, struct cm_demo_s  )
-#define AMSTREAM_IOC_CM_DEBUG  _IOWR(AMSTREAM_IOC_MAGIC, 0x33, unsigned long long)
-#define AMSTREAM_IOC_CM_REGMAP  _IOW(AMSTREAM_IOC_MAGIC, 0x34, struct cm_regmap_s)
-
 //VPP.3D IOCTL command list^M
 #define  AMSTREAM_IOC_SET_3D_TYPE  _IOW(AMSTREAM_IOC_MAGIC, 0x3c, unsigned int)
 #define  AMSTREAM_IOC_GET_3D_TYPE  _IOW(AMSTREAM_IOC_MAGIC, 0x3d, unsigned int)
@@ -130,6 +111,8 @@
 #define AMSTREAM_IOC_SUB_INFO	_IOR(AMSTREAM_IOC_MAGIC, 0x51, unsigned long)
 #define AMSTREAM_IOC_GET_BLACKOUT_POLICY   _IOR(AMSTREAM_IOC_MAGIC, 0x52, unsigned long)
 #define AMSTREAM_IOC_SET_BLACKOUT_POLICY   _IOW(AMSTREAM_IOC_MAGIC, 0x53, unsigned long)
+#define AMSTREAM_IOC_UD_LENGTH _IOR(AMSTREAM_IOC_MAGIC, 0x54, unsigned long)
+#define AMSTREAM_IOC_UD_POC _IOR(AMSTREAM_IOC_MAGIC, 0x55, unsigned long)
 #define AMSTREAM_IOC_GET_SCREEN_MODE _IOR(AMSTREAM_IOC_MAGIC, 0x58, int)
 #define AMSTREAM_IOC_SET_SCREEN_MODE _IOW(AMSTREAM_IOC_MAGIC, 0x59, int)
 #define AMSTREAM_IOC_GET_VIDEO_DISCONTINUE_REPORT _IOR(AMSTREAM_IOC_MAGIC, 0x5a, int)
@@ -170,6 +153,11 @@
 #define AMSTREAM_IOC_GET_SUBTITLE_INFO       _IOR(AMSTREAM_IOC_MAGIC, 0xad, unsigned long)
 #define AMSTREAM_IOC_SET_SUBTITLE_INFO       _IOW(AMSTREAM_IOC_MAGIC, 0xae, unsigned long)
 #define AMSTREAM_IOC_SET_OMX_VPTS            _IOW(AMSTREAM_IOC_MAGIC, 0xaf, unsigned long)
+#define AMSTREAM_IOC_GET_OMX_VPTS            _IOW(AMSTREAM_IOC_MAGIC, 0xb0, unsigned long)
+
+#define AMSTREAM_IOC_GET_TRICK_VPTS          _IOR(AMSTREAM_IOC_MAGIC, 0xf0, unsigned long)
+#define AMSTREAM_IOC_DISABLE_SLOW_SYNC       _IOR(AMSTREAM_IOC_MAGIC, 0xf1, unsigned long)
+
 #define TRICKMODE_NONE       0x00
 #define TRICKMODE_I          0x01
 #define TRICKMODE_FFFB       0x02
@@ -295,6 +283,12 @@ struct codec_profile_t
 	char *profile;	// Attributes,seperated by commas
 };
 
+struct userdata_poc_info_t
+{
+    unsigned int poc_info;
+    unsigned int poc_number;
+};
+
 #define SUPPORT_VDEC_NUM	(8)
 
 int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
@@ -324,7 +318,9 @@ void set_vdec_func(int (*vdec_func)(struct vdec_status *));
 void set_adec_func(int (*adec_func)(struct adec_status *));
 void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));
 void wakeup_sub_poll(void);
-int wakeup_userdata_poll(int wp, int start_phyaddr, int buf_size);
+void set_userdata_poc(struct userdata_poc_info_t poc);
+void init_userdata_fifo(void);
+int wakeup_userdata_poll(int wp, int start_phyaddr, int buf_size, int data_length);
 int get_sub_type(void);
 #endif
 

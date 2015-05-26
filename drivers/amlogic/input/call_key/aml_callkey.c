@@ -306,7 +306,7 @@ static int __devinit callkey_probe(struct platform_device *pdev)
     register_early_suspend(&callkey_early_suspend);
     #endif
 
-    printk("CallKey register  completed.\r\n");
+    printk("CallKey register  completed.\n");
     return 0;
 }
 

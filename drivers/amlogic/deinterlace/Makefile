@@ -5,7 +5,8 @@
 di-objs = deinterlace.o \
     deinterlace_hw.o \
     deinterlace_pd.o \
-    detect3d.o
+    detect3d.o \
+    dnr.o
 
 
 

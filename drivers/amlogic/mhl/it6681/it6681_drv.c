@@ -4084,7 +4084,7 @@ void DumpHDMITXReg8051(void)
     int ij;
     unsigned char ucData = 0;
     IT6681_DEBUG_PRINTF(("########################################################################\n"));
-    IT6681_DEBUG_PRINTF(("#Dump IT6681\r\n"));
+    IT6681_DEBUG_PRINTF(("#Dump IT6681\n"));
     IT6681_DEBUG_PRINTF(("########################################################################\n" "       "));
 
     IT6681_DEBUG_PRINTF((""));

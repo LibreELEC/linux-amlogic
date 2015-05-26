@@ -76,7 +76,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 			if(pitem)
 				pitem->config.update_flag=UPDATE_ALL;
 			else {
-				amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_HIGH,"can't get pitem\r\n");
+				amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_HIGH,"can't get pitem\n");	
 				ret=-1;
 				goto  exit;
 			}
@@ -214,16 +214,16 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
 
 	ge2d_queue_item_t  *pitem ;
 
-	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work @@%s:%d\r\n",__func__,__LINE__)	;
+     	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work @@%s:%d\n",__func__,__LINE__)	; 
 	if(work_queue_no_space(wq))
 	{
-		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"work queue no space\r\n");
+ 		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"work queue no space\n");
 		//we should wait for queue empty at this point.
 		while(work_queue_no_space(wq))
 		{
 			interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 3);
 		}
-		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"got free space\r\n");
+		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"got free space\n");
 	}
 
       pitem=list_entry(wq->free_queue.next,ge2d_queue_item_t,list);
@@ -238,7 +238,7 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
 	spin_lock(&wq->lock);
 	list_move_tail(&pitem->list,&wq->work_queue);
 	spin_unlock(&wq->lock);
-	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work ok\r\n");
+	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work ok\n"); 
 	if(ge2d_manager.event.cmd_in_sem.count == 0 )//only read not need lock
 	up(&ge2d_manager.event.cmd_in_sem) ;//new cmd come in
 	//add block mode   if()
@@ -280,7 +280,7 @@ static int ge2d_monitor_thread(void *data)
 	ge2d_manager_t*  manager = (  ge2d_manager_t*)data ;
         int ret;
 
-	amlog_level(LOG_LEVEL_HIGH,"ge2d workqueue monitor start\r\n");
+ 	amlog_level(LOG_LEVEL_HIGH,"ge2d workqueue monitor start\n");
 	//setup current_wq here.
 	while(ge2d_manager.process_queue_state!=GE2D_PROCESS_QUEUE_STOP)
 	{
@@ -295,14 +295,14 @@ static int ge2d_monitor_thread(void *data)
 		switch_mod_gate_by_name("ge2d", 0);
 		//CLK_GATE_OFF(GE2D);
 	}
-	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\r\n");
+	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\n");
 	return 0;
 }
 static  int ge2d_start_monitor(void )
 {
 	int ret =0;
 
-	amlog_level(LOG_LEVEL_HIGH,"ge2d start monitor\r\n");
+	amlog_level(LOG_LEVEL_HIGH,"ge2d start monitor\n");
 	ge2d_manager.process_queue_state=GE2D_PROCESS_QUEUE_START;
 	ge2d_manager.ge2d_thread=kthread_run(ge2d_monitor_thread,&ge2d_manager,"ge2d_monitor");
 	if (IS_ERR(ge2d_manager.ge2d_thread)) {
@@ -504,7 +504,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	src_dst_para_t  src,dst,tmp;
 	int type=ge2d_config->src_dst_type;
 
-	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW," ge2d init\r\n");
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW," ge2d init\n");
 	//setup src and dst
 	switch (type)
 	{
@@ -535,7 +535,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 		default:
 		break;
 	}
-	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"OSD ge2d type %d\r\n",type);
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"OSD ge2d type %d\n",type);
 	switch (type)
 	{
 		case  OSD0_OSD0:
@@ -564,11 +564,11 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	}
 	if(src.bpp < 16 || dst.bpp < 16 )
 	{
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"src dst bpp type, src=%d,dst=%d \r\n",src.bpp,dst.bpp);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"src dst bpp type, src=%d,dst=%d\n",src.bpp,dst.bpp);
 	}
 
 	//next will config regs
-	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d xres %d yres %d : dst xres %d yres %d\n,src_format:0x%x,dst_format:0x%x\r\n",src.xres,src.yres,
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d xres %d yres %d : dst xres %d yres %d\n,src_format:0x%x,dst_format:0x%x\n",src.xres,src.yres,
 	dst.xres,dst.yres,src.ge2d_color_index, dst.ge2d_color_index);
 
 	ge2dgen_src(context,src.canvas_index, src.ge2d_color_index);
@@ -639,23 +639,23 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
 		ge2d_config->src_para.canvas_index = tmp.canvas_index;
 		ge2d_config->src_para.format = tmp.ge2d_color_index;
 
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1-->type: osd%d, format: 0x%x !!\r\n",ge2d_config->src_para.mem_type - CANVAS_OSD0, ge2d_config->src_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1-->type: osd%d, format: 0x%x !!\n",ge2d_config->src_para.mem_type - CANVAS_OSD0, ge2d_config->src_para.format);
 
 		if((ge2d_config->src_para.left+ge2d_config->src_para.width>tmp.xres)||(ge2d_config->src_para.top+ge2d_config->src_para.height>tmp.yres)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src1-->type: osd%d,  out of range \r\n",ge2d_config->src_para.mem_type - CANVAS_OSD0);
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src1-->type: osd%d,  out of range\n",ge2d_config->src_para.mem_type - CANVAS_OSD0);
 			return -1;
 		}
 		break;
 	case  CANVAS_ALLOC:
 		if((ge2d_config->src_para.left+ge2d_config->src_para.width>ge2d_config->src_planes[0].w)
 		    ||(ge2d_config->src_para.top+ge2d_config->src_para.height>ge2d_config->src_planes[0].h)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src1-->type: alloc,  out of range \r\n");
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src1-->type: alloc,  out of range\n");
 			return -1;
 		}
 		if(build_ge2d_config_ex(&ge2d_config->src_planes[0], ge2d_config->src_para.format, &index,ALLOC_CANVAS_INDEX+alloc_canvas_offset,&alloc_canvas_offset)<0)
 			return -1;
 		ge2d_config->src_para.canvas_index = index;
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1--> type: alloc, canvas index : 0x%x,format :0x%x \r\n", index,ge2d_config->src_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1--> type: alloc, canvas index : 0x%x,format :0x%x\n", index,ge2d_config->src_para.format);
 	default:
 		break;
 	}
@@ -668,17 +668,17 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
 		ge2d_config->src2_para.canvas_index = tmp.canvas_index;
 		ge2d_config->src2_para.format = tmp.ge2d_color_index;
 
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2-->type: osd%d, format: 0x%x !!\r\n",ge2d_config->src2_para.mem_type - CANVAS_OSD0, ge2d_config->src2_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2-->type: osd%d, format: 0x%x !!\n",ge2d_config->src2_para.mem_type - CANVAS_OSD0, ge2d_config->src2_para.format);
 
 		if((ge2d_config->src2_para.left+ge2d_config->src2_para.width>tmp.xres)||(ge2d_config->src2_para.top+ge2d_config->src2_para.height>tmp.yres)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src2-->type: osd%d,  out of range \r\n",ge2d_config->src2_para.mem_type - CANVAS_OSD0);
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src2-->type: osd%d,  out of range\n",ge2d_config->src2_para.mem_type - CANVAS_OSD0);
 			return -1;
 		}
 		break;
 	case  CANVAS_ALLOC:
 		if((ge2d_config->src2_para.left+ge2d_config->src2_para.width>ge2d_config->src2_planes[0].w)
 		    ||(ge2d_config->src2_para.top+ge2d_config->src2_para.height>ge2d_config->src2_planes[0].h)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src2-->type: alloc,  out of range \r\n");
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: src2-->type: alloc,  out of range\n");
 			return -1;
 		}
 		if(ge2d_config->src2_planes[0].addr == ge2d_config->src_planes[0].addr){
@@ -687,7 +687,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
 			return -1;
 		}
 		ge2d_config->src2_para.canvas_index = index;
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2--> type: alloc, canvas index : 0x%x ,format :0x%x \r\n", index,ge2d_config->src2_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2--> type: alloc, canvas index : 0x%x ,format :0x%x\n", index,ge2d_config->src2_para.format);
 	default:
 		break;
 	}
@@ -700,17 +700,17 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
 		ge2d_config->dst_para.canvas_index = tmp.canvas_index;
 		ge2d_config->dst_para.format = tmp.ge2d_color_index;
 
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst-->type: osd%d, format: 0x%x !!\r\n",ge2d_config->dst_para.mem_type - CANVAS_OSD0, ge2d_config->dst_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst-->type: osd%d, format: 0x%x !!\n",ge2d_config->dst_para.mem_type - CANVAS_OSD0, ge2d_config->dst_para.format);
 
 		if((ge2d_config->dst_para.left+ge2d_config->dst_para.width>tmp.xres)||(ge2d_config->dst_para.top+ge2d_config->dst_para.height>tmp.yres)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: dst-->type: osd%d,  out of range \r\n",ge2d_config->dst_para.mem_type - CANVAS_OSD0);
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: dst-->type: osd%d,  out of range\n",ge2d_config->dst_para.mem_type - CANVAS_OSD0);
 			return -1;
 		}
 		break;
 	case  CANVAS_ALLOC:
 		if((ge2d_config->dst_para.left+ge2d_config->dst_para.width>ge2d_config->dst_planes[0].w)
 		    ||(ge2d_config->dst_para.top+ge2d_config->dst_para.height>ge2d_config->dst_planes[0].h)){
-			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: dst-->type: alloc,  out of range \r\n");
+			amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"ge2d error: dst-->type: alloc,  out of range\n");
 			return -1;
 		}
 		if(ge2d_config->dst_planes[0].addr == ge2d_config->src_planes[0].addr)
@@ -720,7 +720,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
 		else if(build_ge2d_config_ex(&ge2d_config->dst_planes[0], ge2d_config->dst_para.format, &index,ALLOC_CANVAS_INDEX+alloc_canvas_offset,&alloc_canvas_offset)<0)
 			return -1;
 		ge2d_config->dst_para.canvas_index = index;
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst--> type: alloc, canvas index : 0x%x  ,format :0x%x \r\n",index,ge2d_config->dst_para.format);
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst--> type: alloc, canvas index : 0x%x  ,format :0x%x\n",index,ge2d_config->dst_para.format);
 	default:
 		break;
 	}
@@ -816,7 +816,7 @@ ge2d_context_t* create_ge2d_work_queue(void)
 	ge2d_work_queue->config.v_scale_coef_type=FILTER_TYPE_BILINEAR;
 	if(IS_ERR(ge2d_work_queue))
 	{
-		amlog_level(LOG_LEVEL_HIGH,"can't create work queue\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"can't create work queue\n");
 		return NULL;
 	}
 	INIT_LIST_HEAD(&ge2d_work_queue->work_queue);
@@ -828,7 +828,7 @@ ge2d_context_t* create_ge2d_work_queue(void)
 		p_item=(ge2d_queue_item_t*)kcalloc(1,sizeof(ge2d_queue_item_t),GFP_KERNEL);
 		if(IS_ERR(p_item))
 		{
-			amlog_level(LOG_LEVEL_HIGH,"can't request queue item memory\r\n");
+			amlog_level(LOG_LEVEL_HIGH,"can't request queue item memory\n");
 			return NULL;
 		}
 		list_add_tail(&p_item->list, &ge2d_work_queue->free_queue) ;
@@ -902,11 +902,11 @@ int ge2d_wq_init(void)
 	ge2d_gen_t           ge2d_gen_cfg;
 
 
-	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"enter %s line %d\r\n",__func__,__LINE__)	;
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"enter %s line %d\n",__func__,__LINE__)	;    
 
 	if ((ge2d_manager.irq_num=request_irq(INT_GE2D, ge2d_wq_handle , IRQF_SHARED,"ge2d irq", (void *)&ge2d_manager))<0)
 	{
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d request irq error\r\n")	;
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d request irq error\n")	;
 		return -1;
 	}
 	//prepare bottom half
@@ -928,7 +928,7 @@ int ge2d_wq_init(void)
 	ge2d_set_gen(&ge2d_gen_cfg);
 	if(ge2d_start_monitor())
 	{
-		amlog_level(LOG_LEVEL_HIGH,"ge2d create thread error\r\n");
+ 		amlog_level(LOG_LEVEL_HIGH,"ge2d create thread error\n");	
 		return -1;
 	}
 	return 0;
@@ -938,7 +938,7 @@ int   ge2d_setup(void)
 	// do init work for ge2d.
 	if (ge2d_wq_init())
 	{
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d work queue init error \r\n");
+      		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d work queue init error\n");	
 		return -1;
 	}
 	return  0;
@@ -947,7 +947,7 @@ EXPORT_SYMBOL(ge2d_setup);
 int   ge2d_deinit( void )
 {
 	ge2d_stop_monitor();
-	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"deinit ge2d device \r\n") ;
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"deinit ge2d device\n") ;
 	if (ge2d_manager.irq_num >= 0) {
 		free_irq(INT_GE2D,&ge2d_manager);
 	 ge2d_manager.irq_num= -1;

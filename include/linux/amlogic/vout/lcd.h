@@ -87,6 +87,7 @@ typedef enum
     LCD_DIGITAL_TTL,
     LCD_DIGITAL_LVDS,
     LCD_DIGITAL_MINILVDS,
+    LCD_DIGITAL_VBYONE,
     LCD_TYPE_MAX,
 } Lcd_Type_t;
 

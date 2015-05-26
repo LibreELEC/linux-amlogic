@@ -570,6 +570,9 @@ struct usb_device {
 	struct usb3_lpm_parameters u1_params;
 	struct usb3_lpm_parameters u2_params;
 	unsigned lpm_disable_count;
+#ifdef  CONFIG_AMLOGIC_USB_3
+	unsigned aml_flag;
+#endif
 };
 #define	to_usb_device(d) container_of(d, struct usb_device, dev)
 

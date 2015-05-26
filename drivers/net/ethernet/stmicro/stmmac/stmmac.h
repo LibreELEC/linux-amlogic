@@ -65,7 +65,7 @@ struct stmmac_priv {
 	dma_addr_t dma_rx_phy;
 
 	struct napi_struct napi ____cacheline_aligned_in_smp;
-
+	unsigned long base_addr;
 	void __iomem *ioaddr;
 	struct net_device *dev;
 	struct device *device;
@@ -131,6 +131,9 @@ void stmmac_disable_eee_mode(struct stmmac_priv *priv);
 bool stmmac_eee_init(struct stmmac_priv *priv);
 
 #ifdef CONFIG_STMMAC_PLATFORM
+#ifdef CONFIG_DWMAC_MESON
+extern const struct stmmac_of_data meson6_dwmac_data;
+#endif
 extern struct platform_driver stmmac_pltfr_driver;
 static inline int stmmac_register_platform(void)
 {

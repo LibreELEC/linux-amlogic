@@ -1,0 +1,11 @@
+
+menu "Amlogic Sys led Support"
+
+config AMLOGIC_SYS_LED
+	bool "Amlogic Sys led support"
+	select SETIO_CLASS_DEVICE
+	default y
+	help
+	  Say Y here if you want to use the amlogic system led management.
+
+endmenu

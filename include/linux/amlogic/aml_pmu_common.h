@@ -96,6 +96,8 @@ extern struct aml_pmu_api *aml_pmu_get_api(void);
 extern void   aml_pmu_clear_driver(void);
 extern void   aml_pmu_do_callbacks(struct aml_charger *charger);
 extern struct aml_pmu_driver* aml_pmu_get_driver(void);
+extern void   set_board_battery_status(int);
+extern int    board_has_battery(void);
 
 extern struct aml_pmu_api *aml_pmu_get_api(void);
 #endif /* __AML_PMU_COMMON_H__ */

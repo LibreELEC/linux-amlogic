@@ -211,11 +211,9 @@ static int _switch_gate(mod_type_t type, int flag)
 	case MOD_VDEC:
 		PRINT_INFO("turn %s vdec module\n", flag?"on":"off");
 		if (flag) {
-			//__CLK_GATE_ON(DOS);
-			//aml_set_reg32_mask(P_HHI_VDEC_CLK_CNTL, 1 << 8);
+			__CLK_GATE_ON(DOS);
 		} else {
-			//__CLK_GATE_OFF(DOS);
-			//aml_clr_reg32_mask(P_HHI_VDEC_CLK_CNTL, 1 << 8);
+			__CLK_GATE_OFF(DOS);
 		}
 		break;
 	case MOD_AUDIO:
@@ -233,6 +231,7 @@ static int _switch_gate(mod_type_t type, int flag)
 			//__CLK_GATE_ON(AIU_PCLK);
 			__CLK_GATE_ON(AIU_AOCLK);
 			__CLK_GATE_ON(AIU_ICE958_AMCLK);
+			__CLK_GATE_ON(AUD_IN);
 		} else {
 			__CLK_GATE_OFF(AIU_AI_TOP_GLUE);
 			__CLK_GATE_OFF(AIU_IEC958);
@@ -246,6 +245,7 @@ static int _switch_gate(mod_type_t type, int flag)
 			//__CLK_GATE_OFF(AIU_PCLK);
 			__CLK_GATE_OFF(AIU_AOCLK);
 			__CLK_GATE_OFF(AIU_ICE958_AMCLK);
+			__CLK_GATE_OFF(AUD_IN);
 
 		}
 		break;
@@ -381,8 +381,10 @@ static int _switch_gate(mod_type_t type, int flag)
 		PRINT_INFO("turn %s random_num_gen module\n", flag?"on":"off");
 		if (flag) {
 			__CLK_GATE_ON(RANDOM_NUM_GEN);
+			__CLK_GATE_ON(RANDOM_NUM_GEN1);
 		} else {
 			__CLK_GATE_OFF(RANDOM_NUM_GEN);
+			__CLK_GATE_OFF(RANDOM_NUM_GEN1);
 		}
 		break;
 	case MOD_ETHERNET:

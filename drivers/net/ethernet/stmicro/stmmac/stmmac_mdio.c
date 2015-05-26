@@ -34,6 +34,60 @@
 #define MII_BUSY 0x00000001
 #define MII_WRITE 0x00000002
 
+#ifndef CONFIG_DWMAC_MESON
+#define ETH_MAC_4_GMII_Addr         (0x0010)
+#define ETH_MAC_5_GMII_Data         (0x0014)
+#define ETH_MAC_4_GMII_Addr_CR_P                2
+#define ETH_MAC_4_GMII_Addr_CR_100_150          (1<<ETH_MAC_4_GMII_Addr_CR_P)
+static unsigned int MDCCLK = ETH_MAC_4_GMII_Addr_CR_100_150;
+
+static int mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
+{
+	struct net_device *ndev = bus->priv;
+	struct stmmac_priv *priv = netdev_priv(ndev);
+	unsigned int mii_address = priv->hw->mii.addr;
+	unsigned int mii_data = priv->hw->mii.data;
+        int data;
+        u16 regValue = (((phyaddr << 11) & (0x0000F800)) |
+                        ((phyreg << 6) & (0x000007C0)));
+        regValue |= MII_BUSY | MDCCLK;
+
+        do {}
+		while (((int)readl(priv->ioaddr + mii_address) & MII_BUSY) == 1);
+        writel(regValue, (priv->ioaddr + mii_address));
+        do {} 
+		while (((int)readl(priv->ioaddr + mii_address)& MII_BUSY) == 1);
+
+        /* Read the data from the MII data register */
+        data = (int)readl(priv->ioaddr + mii_data);
+
+        return data;
+}
+
+static int mdio_write(struct mii_bus *bus, int phyaddr, int phyreg, u16 phydata)
+{
+        struct net_device *ndev = bus->priv;
+	struct stmmac_priv *priv = netdev_priv(ndev);
+	unsigned int mii_address = priv->hw->mii.addr;
+	unsigned int mii_data = priv->hw->mii.data;
+        u16 value = (((phyaddr << 11) & (0x0000F800)) | ((phyreg << 6) & (0x000007C0))) | MII_WRITE;
+        value |= MII_BUSY | MDCCLK;
+
+        do {} while (((int)readl(priv->ioaddr + mii_address)& MII_BUSY) == 1);
+        writel(phydata, priv->ioaddr + mii_data);
+
+        writel(value, priv->ioaddr + mii_address);
+
+        do {} while (((int)readl(priv->ioaddr + mii_address) & MII_BUSY) == 1);
+	
+	return 0;
+}
+
+static int mdio_reset(struct mii_bus *bus)
+{
+       return 0;
+}
+#else
 static int stmmac_mdio_busy_wait(void __iomem *ioaddr, unsigned int mii_addr)
 {
 	unsigned long curr;
@@ -66,20 +120,16 @@ static int stmmac_mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	unsigned int mii_address = priv->hw->mii.addr;
 	unsigned int mii_data = priv->hw->mii.data;
-
 	int data;
+	
 	u16 regValue = (((phyaddr << 11) & (0x0000F800)) |
 			((phyreg << 6) & (0x000007C0)));
 	regValue |= MII_BUSY | ((priv->clk_csr & 0xF) << 2);
-
 	if (stmmac_mdio_busy_wait(priv->ioaddr, mii_address))
 		return -EBUSY;
-
 	writel(regValue, priv->ioaddr + mii_address);
-
 	if (stmmac_mdio_busy_wait(priv->ioaddr, mii_address))
 		return -EBUSY;
-
 	/* Read the data from the MII data register */
 	data = (int)readl(priv->ioaddr + mii_data);
 
@@ -128,6 +178,7 @@ static int stmmac_mdio_write(struct mii_bus *bus, int phyaddr, int phyreg,
 static int stmmac_mdio_reset(struct mii_bus *bus)
 {
 #if defined(CONFIG_STMMAC_PLATFORM)
+
 	struct net_device *ndev = bus->priv;
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	unsigned int mii_address = priv->hw->mii.addr;
@@ -145,7 +196,7 @@ static int stmmac_mdio_reset(struct mii_bus *bus)
 #endif
 	return 0;
 }
-
+#endif
 /**
  * stmmac_mdio_register
  * @ndev: net device structure
@@ -171,16 +222,22 @@ int stmmac_mdio_register(struct net_device *ndev)
 		irqlist = mdio_bus_data->irqs;
 	else
 		irqlist = priv->mii_irq;
-
 	new_bus->name = "stmmac";
+#ifndef CONFIG_DWMAC_MESON
+	new_bus->read = &mdio_read;
+	new_bus->write = &mdio_write;
+	new_bus->reset = &mdio_reset;
+#else
 	new_bus->read = &stmmac_mdio_read;
 	new_bus->write = &stmmac_mdio_write;
 	new_bus->reset = &stmmac_mdio_reset;
+#endif
 	snprintf(new_bus->id, MII_BUS_ID_SIZE, "%s-%x",
 		 new_bus->name, priv->plat->bus_id);
 	new_bus->priv = ndev;
 	new_bus->irq = irqlist;
 	new_bus->phy_mask = mdio_bus_data->phy_mask;
+	new_bus->phy_mask = 0;
 	new_bus->parent = priv->device;
 	err = mdiobus_register(new_bus);
 	if (err != 0) {
@@ -205,7 +262,10 @@ int stmmac_mdio_register(struct net_device *ndev)
 				irqlist[addr] = mdio_bus_data->probed_phy_irq;
 				phydev->irq = mdio_bus_data->probed_phy_irq;
 			}
-
+#ifdef CONFIG_DWMAC_MESON
+			irqlist[addr] = PHY_POLL;
+			phydev->irq = PHY_POLL;
+#endif
 			/*
 			 * If we're  going to bind the MAC to this PHY bus,
 			 * and no PHY number was provided to the MAC,

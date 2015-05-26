@@ -261,6 +261,10 @@ int ppmgr2_canvas_config(struct ppmgr2_device *ppd, int dst_width, int dst_heigh
         ppmgr2_printk(1, "NULL physical address!\n");
         return -1;
     }
+    if (index >= PPMGR2_MAX_CANVAS) {
+        ppmgr2_printk(0, "canvas index too large! %d>=%d\n", index, PPMGR2_MAX_CANVAS);
+        return -1;
+    }
     ppd->ge2d_fmt = v4l_to_ge2d_format(dst_fmt);
     ppd->dst_width = dst_width;
     ppd->dst_height = dst_height;

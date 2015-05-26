@@ -28,4 +28,6 @@ struct wifi_power_platform_data {
 	void (*usb_set_power)(int val);
 };
 
+int wifi_power_control(int power_up);
+
 #endif /*__PLAT_MESON_WIFI_POWER_H*/

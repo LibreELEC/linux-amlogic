@@ -11,4 +11,12 @@ config AML_TV_LCD
 	  Enable this to choose the drivers for controlling the
 	  the LCD panel on TV.
 
+config AML_TV_LCD_V2
+	bool "Amlogic TV LCD Driver V2"
+	default n
+	help
+	  Enable this to choose the drivers for controlling the
+	  the LCD panel on TV.
+
+
 endmenu

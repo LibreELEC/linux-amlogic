@@ -837,6 +837,10 @@ int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pda
         rn5t618_otg_job.value = value;
         return 0;
     }
+    if (!rn5t618_battery) {
+        RICOH_INFO("no battery, exit\n");    
+        return 0;
+    }
     rn5t618_otg_value = value;
     RICOH_INFO("%s, value:%d, is_short:%d\n", __func__, rn5t618_otg_value, g_rn5t618_init->vbus_dcin_short_connect);
     if (rn5t618_otg_value) {

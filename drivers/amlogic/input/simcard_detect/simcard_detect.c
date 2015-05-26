@@ -152,11 +152,11 @@ static int register_simdetect_dev(struct sim_detect  *p_sd, int dev_id)
     ret=register_chrdev(0, p_sd->config_name, &simdetect_fops);
     if(ret<=0)
     {
-        printk("register char device error\r\n");
+        printk("register char device error\n");
         return  ret ;
     }
     p_sd->config_major=ret;
-    printk("simdetect major:%d\r\n",ret);
+    printk("simdetect major:%d\n",ret);
     p_sd->config_class=class_create(THIS_MODULE,p_sd->config_name);
     p_sd->config_dev=device_create(p_sd->config_class,	NULL,
 		MKDEV(p_sd->config_major,0),NULL,p_sd->config_name);

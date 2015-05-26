@@ -127,11 +127,11 @@ static int wifi_dev_probe(struct platform_device *pdev)
 
 		ret = of_property_read_string(pdev->dev.of_node, "clock_32k_pin", &value);
 		//CHECK_PROP(ret, "clock_32k_pin", value);
-        if(ret)
-            plat->clock_32k_pin = 0;
-        else {
-            plat->clock_32k_pin = amlogic_gpio_name_map_num(value);
-        }
+		if(ret)
+				plat->clock_32k_pin = 0;
+		else {
+				plat->clock_32k_pin = amlogic_gpio_name_map_num(value);
+		}
 
 		plat->plat_info_valid = 1;
 
@@ -287,10 +287,10 @@ void wifi_request_32k_clk(int is_on, const char *requestor)
 //		printk("wifi_request_32k_clk : invalid device tree setting\n");
 //		return;
 //	}
-    if(!wifi_info.clock_32k_pin) {
-        printk("wifi_request_32k_clk : no 32k pin");
-        return;
-    }
+	if(!wifi_info.clock_32k_pin) {
+			printk("wifi_request_32k_clk : no 32k pin");
+			return;
+	}
 	printk("wifi_request_32k_clk : %s-->%s for %s\n",
 		clk_32k_on > 0 ? "ON" : "OFF", is_on ? "ON" : "OFF", requestor);
 

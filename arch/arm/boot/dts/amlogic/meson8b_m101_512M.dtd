@@ -281,9 +281,8 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
-        share-memory-name = "ppmgr0";
-        share-memory-offset = <0>;
-        share-memory-size = <0x01000000>;//ion_dev use same buffer with ppmgr0
+	reserve-memory = <0x01000000>;
+	reserve-iomap = "true";
     };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
@@ -988,6 +987,7 @@ void root_func(){
 			gpio-vbus-power = "PMU";
 			gpio-work-mask	= <1>; /**0: work on pulldown,1:work on pullup*/
             charger_detect = <1>;
+			non_normal_usb_charger_detect_delay = <20000>;
 			status = "okay";
 		};
 	};
@@ -1004,7 +1004,7 @@ void root_func(){
 //$$ L2 PROP_U32 2= "bl_level_max_min"
 //$$ L2 PROP_U32 = "bl_power_on_delay"
 //$$ L2 PROP_U32 = "bl_ctrl_method"
-//$$ L2 PROP_STR = "bl_gpio_port"
+//$$ L2 PROP_STR = "bl_gpio_port_on_off"
 //$$ L2 PROP_U32 2 = "bl_gpio_dim_max_min"
 //$$ L2 PROP_STR 2 = "bl_pwm_port_gpio_used"
 //$$ L2 PROP_U32 = "bl_pwm_freq"
@@ -1030,7 +1030,7 @@ void root_func(){
 		bl_power_on_delay=<200>; /** delay time before backlight power on(unit: ms) */
 		bl_ctrl_method=<4>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive, 3=pwm_combo. 4=extern. decided by hardware design) */
 
-		bl_gpio_port="GPIODV_28";	/** backlight control gpio port */
+		bl_gpio_port_on_off="GPIODV_28","1","0"; /** backlight control gpio port (on/off:1=output high, 0=output low, 2=input)*/
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
 		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
 		bl_pwm_freq=<300000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
@@ -1050,7 +1050,7 @@ void root_func(){
 //******************************************************************************
 //$$ DEVICE = "bl_extern_pmu_aml1218"
 //$$ L2 PROP_STR = "status"
-//$$ L2 PROP_STR 2 = "gpio_enable"
+//$$ L2 PROP_STR 2 = "gpio_enable_on_off"
 //$$ L2 PROP_U32 = "type"
 //$$ L2 PROP_U32 2 = "dim_max_min"
 	bl_extern_pmu_aml1218{
@@ -1058,7 +1058,7 @@ void root_func(){
 		dev_name ="bl_pmu_aml1218";
 		status = "okay"; /** "disabled" or "okay" */
 
-		gpio_enable = "GPIODV_28"; /** "n" for none */
+		gpio_enable_on_off = "GPIODV_28","1","0"; /** gpio("n"for none), on/off(1=output high, 0=output low, 2=input)*/
 		type = <2>;	/** bl_extern_driver type: 0=i2c, 1=spi, 2=other */
 		dim_max_min = <0x1 0x1b>;
 	};
@@ -1146,8 +1146,8 @@ void root_func(){
 		period=<1344 635>;		/** horizontal period(htotal), vertical period(vtotal) */
 
 		clock_hz_pol=<42700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
-		hsync_width_backporch=<10 170>;	/** hsync_width, hsync_backporch(include hsync_width) */
-		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		hsync_width_backporch=<10 160>;	/** hsync_width, hsync_backporch(without hsync_width) */
+		vsync_width_backporch=<5 18>;	/** vsync_width, vsync_backporch(without vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
@@ -1524,9 +1524,10 @@ void root_func(){
 		dev_name = "nand";
 		status = "ok";
 		reg = <0xd0048600 0x24>;
-		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-names = "nand_rb_mod","nand_norb_mod", "nand_cs_pins_only";
+		pinctrl-0 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-1 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-2 = <&nand_cs_pins>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -1737,10 +1738,16 @@ void root_func(){
 		firmware_timeout=<6>;
 		suspend_timeout=<6>;
 	};
-//    crypto_device{
-//       compatible = "amlogic,crypto-device";
-//       dev_name = "crypto_device";
-//    };
+
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
+    };
+
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 
 /// **************************************************************************************
 /// -   GPIO
@@ -1769,47 +1776,44 @@ void root_func(){
 			amlogic,pins="GPIOAO_0", "GPIOAO_1";
 		};
 
-//$$ MATCH "Nand_pin_0_match" = "&nand_input_state"
-//$$ MATCH "Nand_pin_1_match" = "&nand_input_state"
-//$$ L2 PROP_STR 18 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
-		nand_input_state:nand_input{
-			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
-						"BOOT_5","BOOT_6","BOOT_7","BOOT_12","BOOT_13",
-						"BOOT_8","BOOT_9","BOOT_10","BOOT_11",
-						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
-			amlogic,enable-output=<1>;
-		};
 
-//$$ MATCH "Nand_pin_0_match" = "&conf_nand_state"
-//$$ MATCH "Nand_pin_1_match" = "&conf_nand_state"
+//$$ MATCH "Nand_pin_0_match" = "&conf_nand_pulldown"
+//$$ MATCH "Nand_pin_1_match" = "&conf_nand_pulldown"
 //$$ L2 PROP_STR 9 = "amlogic,pins"
 //$$ L2 PROP_U32 = "amlogic,pullup"
-		conf_nand_state: conf_nand{
+		conf_nand_pulldown: conf_nand_pulldown{
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
 			amlogic,pullupen=<1>;
 		};
-		conf_nand_state1: conf_nand1{
+		conf_nand_pullup: conf_nand_pullup{
 			amlogic,pins = "BOOT_8", "BOOT_10";
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
-//$$ MATCH "Nand_pin_0_match" = "&nand_base"
-//$$ MATCH "Nand_pin_1_match" = "&nand_base"
+//$$ MATCH "Nand_pin_0_match" = "&all_nand_pins"
+//$$ MATCH "Nand_pin_1_match" = "&all_nand_pins"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
 //$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 17 = "amlogic,pins"
-		nand_base: nand{
+		all_nand_pins: all_nand_pins{
 			amlogic,setmask=<2 0x7fe0000>;
 			amlogic,clrmask=<	5 0xe
 							6 0x3f000000
 							4 0x7c000000>;
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_8","BOOT_9",
-						"BOOT_10","BOOT_12","BOOT_13",
+						"BOOT_10","BOOT_11","BOOT_12","BOOT_13",
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
+			amlogic,enable-output=<1>;
+		};
+		
+		nand_cs_pins: nand_cs{
+			amlogic,setmask=<2 0x3000000>;
+			amlogic,clrmask=<7 0x80000
+							6 0x80000000>;
+			amlogic,pins = "BOOT_8","BOOT_9";
 		};
 
 //$$ MATCH "Card_pin_0_match" = "&sdhc_b_pins"
@@ -2199,6 +2203,16 @@ sdhc_sd_clk_cmd_pins:sdhc_sd_clk_cmd_pins{
 						"HDMI_TTL_2_N","HDMI_TTL_2_P","HDMI_TTL_1_N","HDMI_TTL_1_P","HDMI_TTL_0_N","HDMI_TTL_0_P";	//B2~B7
 			amlogic,enable-output=<1>;
 		};
+	};
+
+/// ***************************************************************************************
+///	-	RNG
+//$$ MODULE="RNG"
+//$$ DEVICE="meson-rng"
+//$$ L2 PROP_STR = "status"
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
 	};
 
 }; /* end of / */

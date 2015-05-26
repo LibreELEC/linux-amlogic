@@ -26,7 +26,7 @@
 #define TVREGS_H
 
 #include "am_regs.h"
-#define MREG_END_MARKER 0xffff
+#include <linux/amlogic/vout/vinfo.h>
 
 #define CONFIG_CVBS_PERFORMANCE_COMPATIBLITY_SUPPORT	1
 
@@ -35,17 +35,6 @@
 	#define VIDEO_CLOCK_HD_24	0x00140863
 	#define VIDEO_CLOCK_SD_24	0x0050042d
 
-
-typedef struct reg_s {
-    uint reg;
-    uint val;
-} reg_t;
-
-typedef struct tvinfo_s {
-    uint xres;
-    uint yres;
-    const char *id;
-} tvinfo_t;
 /*
 24M
 25M
@@ -62,12 +51,12 @@ static const  reg_t tvreg_vclk_hd[]={
 
 #ifdef CONFIG_CVBS_PERFORMANCE_COMPATIBLITY_SUPPORT
 
-static const reg_t tvregs_576cvbs_china_sarft[] =
+static const reg_t tvregs_576cvbs_china_sarft_m8[] =
 {
 	{MREG_END_MARKER,            	0      }
 };
 
-static const reg_t tvregs_576cvbs_china_telecom[] =
+static const reg_t tvregs_576cvbs_china_telecom_m8[] =
 {
 	{P_ENCI_SYNC_ADJ,				0x8060	},
     {P_ENCI_VIDEO_SAT,              0xfe	},
@@ -75,7 +64,7 @@ static const reg_t tvregs_576cvbs_china_telecom[] =
 	{MREG_END_MARKER,            	0		}
 };
 
-static const reg_t tvregs_576cvbs_china_mobile[] =
+static const reg_t tvregs_576cvbs_china_mobile_m8[] =
 {
 	{P_ENCI_SYNC_ADJ,				0x8060	},
     {P_ENCI_VIDEO_SAT,              0xfe	},
@@ -83,11 +72,42 @@ static const reg_t tvregs_576cvbs_china_mobile[] =
 	{MREG_END_MARKER,            	0       }
 };
 
-static const reg_t *tvregs_576cvbs_performance[] =
+static const reg_t *tvregs_576cvbs_performance_m8[] =
 {
-	tvregs_576cvbs_china_sarft,
-	tvregs_576cvbs_china_telecom,
-	tvregs_576cvbs_china_mobile
+	tvregs_576cvbs_china_sarft_m8,
+	tvregs_576cvbs_china_telecom_m8,
+	tvregs_576cvbs_china_mobile_m8
+};
+
+static const reg_t tvregs_576cvbs_china_sarft_m8m2[] =
+{
+	{P_ENCI_YC_DELAY,				0x343  },
+	{MREG_END_MARKER,            	0      }
+};
+
+static const reg_t tvregs_576cvbs_china_telecom_m8m2[] =
+{
+	{P_ENCI_YC_DELAY,				0x343   },
+	{P_ENCI_SYNC_ADJ,				0x8080	},
+    {P_ENCI_VIDEO_SAT,              0xfd	},
+    {P_VENC_VDAC_DAC0_FILT_CTRL1,   0xf850	},
+	{MREG_END_MARKER,            	0		}
+};
+
+static const reg_t tvregs_576cvbs_china_mobile_m8m2[] =
+{
+	{P_ENCI_YC_DELAY,				0x343   },
+	{P_ENCI_SYNC_ADJ,				0x8080	},
+    {P_ENCI_VIDEO_SAT,              0xfd	},
+    {P_VENC_VDAC_DAC0_FILT_CTRL1,   0xf850	},
+	{MREG_END_MARKER,            	0       }
+};
+
+static const reg_t *tvregs_576cvbs_performance_m8m2[] =
+{
+	tvregs_576cvbs_china_sarft_m8m2,
+	tvregs_576cvbs_china_telecom_m8m2,
+	tvregs_576cvbs_china_mobile_m8m2
 };
 
 #endif
@@ -1464,102 +1484,77 @@ static const reg_t tvregs_xga_1024x768[] = {
 	///////////////////////////////////
 
 };
-
-/* The sequence of register tables items must match the enum define in tvmode.h */
-static const reg_t *tvregsTab[] = {
-    tvregs_480i,
-    tvregs_480i,        // For REPEAT MODE use, ENC setting is same
-    tvregs_480cvbs,
-    tvregs_480p,
+// Using tvmode as index
+static struct tvregs_set_t tvregsTab[] = {
+    {TVMODE_480I, tvregs_480i},
+    {TVMODE_480I_RPT, tvregs_480i},
+    {TVMODE_480CVBS, tvregs_480cvbs},
+    {TVMODE_480P, tvregs_480p},
+    {TVMODE_480P_RPT, tvregs_480p},
+    {TVMODE_576I, tvregs_576i},
+    {TVMODE_576I_RPT, tvregs_576i},
+    {TVMODE_576CVBS, tvregs_576cvbs},
+    {TVMODE_576P, tvregs_576p},
+    {TVMODE_576P_RPT, tvregs_576p},
+    {TVMODE_720P, tvregs_720p},
+    {TVMODE_1080I, tvregs_1080i},
+    {TVMODE_1080P, tvregs_1080p},
+    {TVMODE_720P_50HZ, tvregs_720p_50hz},
+    {TVMODE_1080I_50HZ, tvregs_1080i_50hz},
+    {TVMODE_1080P_50HZ, tvregs_1080p_50hz},
+    {TVMODE_1080P_24HZ, tvregs_1080p_24hz},
+    {TVMODE_4K2K_30HZ, tvregs_4k2k_30hz},
+    {TVMODE_4K2K_25HZ, tvregs_4k2k_25hz},
+    {TVMODE_4K2K_24HZ, tvregs_4k2k_24hz},
+    {TVMODE_4K2K_SMPTE, tvregs_4k2k_smpte},
+    {TVMODE_VGA, tvregs_vga_640x480,},
+    {TVMODE_SVGA, tvregs_svga_800x600,},
+    {TVMODE_XGA, tvregs_xga_1024x768,},
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-    tvregs_480p,
+	{TVMODE_480P_59HZ, tvregs_480p,},
+	{TVMODE_720P_59HZ , tvregs_720p,},
+	{TVMODE_1080I_59HZ, tvregs_1080i,},
+	{TVMODE_1080P_59HZ, tvregs_1080p,},
+	{TVMODE_1080P_23HZ, tvregs_1080p_24hz,},
+	{TVMODE_4K2K_29HZ, tvregs_4k2k_30hz,},
+	{TVMODE_4K2K_23HZ, tvregs_4k2k_24hz,},
 #endif
-    tvregs_480p,        // For REPEAT MODE use, ENC setting is same
-    tvregs_576i,
-    tvregs_576i,        // For REPEAT MODE use, ENC setting is same
-    tvregs_576cvbs,
-    tvregs_576p,
-    tvregs_576p,        // For REPEAT MODE use, ENC setting is same
-    tvregs_720p,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_720p,
-#endif
-    tvregs_1080i,       //Adjust tvregs_* sequences and match the enum define in tvmode.h
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_1080i,
-#endif
-    tvregs_1080p,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_1080p,
-#endif
-    tvregs_720p_50hz,
-    tvregs_1080i_50hz,
-    tvregs_1080p_50hz,
-    tvregs_1080p_24hz,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_1080p_24hz,
-#endif
-    tvregs_4k2k_30hz,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_4k2k_30hz,
-#endif
-    tvregs_4k2k_25hz,
-    tvregs_4k2k_24hz,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	tvregs_4k2k_24hz,
-#endif
-    tvregs_4k2k_smpte,
-    tvregs_vga_640x480,
-    tvregs_svga_800x600,
-    tvregs_xga_1024x768
 };
 
 static const tvinfo_t tvinfoTab[] = {
-    {.xres =  720, .yres =  480, .id = "480i"},
-    {.xres =  720, .yres =  480, .id = "480i_rpt"},
-    {.xres =  720, .yres =  480, .id = "480cvbs"},
-    {.xres =  720, .yres =  480, .id = "480p"},
+    {.tvmode = TVMODE_480I, .xres =  720, .yres =  480, .id = "480i"},
+    {.tvmode = TVMODE_480I_RPT, .xres =  720, .yres =  480, .id = "480i_rpt"},
+    {.tvmode = TVMODE_480CVBS, .xres =  720, .yres =  480, .id = "480cvbs"},
+    {.tvmode = TVMODE_480P, .xres =  720, .yres =  480, .id = "480p"},
+    {.tvmode = TVMODE_480P_RPT, .xres =  720, .yres =  480, .id = "480p_rpt"},
+    {.tvmode = TVMODE_576I, .xres =  720, .yres =  576, .id = "576i"},
+    {.tvmode = TVMODE_576I_RPT, .xres =  720, .yres =  576, .id = "576i_rpt"},
+    {.tvmode = TVMODE_576CVBS, .xres =  720, .yres =  576, .id = "576cvbs"},
+    {.tvmode = TVMODE_576P, .xres =  720, .yres =  576, .id = "576p"},
+    {.tvmode = TVMODE_576P_RPT, .xres =  720, .yres =  576, .id = "576p_prt"},
+    {.tvmode = TVMODE_720P, .xres = 1280, .yres =  720, .id = "720p"},
+    {.tvmode = TVMODE_1080I, .xres = 1920, .yres = 1080, .id = "1080i"},
+    {.tvmode = TVMODE_1080P, .xres = 1920, .yres = 1080, .id = "1080p"},
+    {.tvmode = TVMODE_720P_50HZ, .xres = 1280, .yres =  720, .id = "720p50hz"},
+    {.tvmode = TVMODE_1080I_50HZ, .xres = 1920, .yres = 1080, .id = "1080i50hz"},
+    {.tvmode = TVMODE_1080P_50HZ, .xres = 1920, .yres = 1080, .id = "1080p50hz"},
+    {.tvmode = TVMODE_1080P_24HZ, .xres = 1920, .yres = 1080, .id = "1080p24hz"},
+    {.tvmode = TVMODE_4K2K_30HZ, .xres = 3840, .yres = 2160, .id = "4k2k30hz"},
+    {.tvmode = TVMODE_4K2K_25HZ, .xres = 3840, .yres = 2160, .id = "4k2k25hz"},
+    {.tvmode = TVMODE_4K2K_24HZ, .xres = 3840, .yres = 2160, .id = "4k2k24hz"},
+    {.tvmode = TVMODE_4K2K_SMPTE, .xres = 4096, .yres = 2160, .id = "4k2ksmpte"},
+    {.tvmode = TVMODE_VGA, .xres = 640, .yres = 480, .id = "vga"},
+    {.tvmode = TVMODE_SVGA, .xres = 800, .yres = 600, .id = "svga"},
+    {.tvmode = TVMODE_XGA, .xres = 1024, .yres = 768, .id = "xga"},
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres =  720, .yres =  480, .id = "480p59hz"},
+    {.tvmode = TVMODE_480P_59HZ, .xres =  720, .yres =	480, .id = "480p59hz"},
+    {.tvmode = TVMODE_720P_59HZ, .xres = 1280, .yres =    720, .id = "720p59hz"},
+    {.tvmode = TVMODE_1080I_59HZ, .xres = 1920, .yres = 1080, .id = "1080i59hz"},
+    {.tvmode = TVMODE_1080P_59HZ, .xres = 1920, .yres = 1080, .id = "1080p59hz"},
+    {.tvmode = TVMODE_1080P_23HZ, .xres = 1920, .yres = 1080, .id = "1080p23hz"},
+    {.tvmode = TVMODE_4K2K_29HZ, .xres = 3840, .yres = 2160, .id = "4k2k29hz"},
+    {.tvmode = TVMODE_4K2K_23HZ, .xres = 3840, .yres = 2160, .id = "4k2k23hz"},
 #endif
-    {.xres =  720, .yres =  480, .id = "480p_rpt"},
-    {.xres =  720, .yres =  576, .id = "576i"},
-    {.xres =  720, .yres =  576, .id = "576i_rpt"},
-    {.xres =  720, .yres =  576, .id = "576cvbs"},
-    {.xres =  720, .yres =  576, .id = "576p"},
-    {.xres =  720, .yres =  576, .id = "576p_prt"},
-    {.xres = 1280, .yres =  720, .id = "720p"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 1280, .yres =  720, .id = "720p59hz"},
-#endif
-    {.xres = 1920, .yres = 1080, .id = "1080i"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 1920, .yres = 1080, .id = "1080i59hz"},
-#endif
-    {.xres = 1920, .yres = 1080, .id = "1080p"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 1920, .yres = 1080, .id = "1080p59hz"},
-#endif
-    {.xres = 1280, .yres =  720, .id = "720p50hz"},
-    {.xres = 1920, .yres = 1080, .id = "1080i50hz"},
-    {.xres = 1920, .yres = 1080, .id = "1080p50hz"},
-    {.xres = 1920, .yres = 1080, .id = "1080p24hz"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 1920, .yres = 1080, .id = "1080p23hz"},
-#endif
-    {.xres = 3840, .yres = 2160, .id = "4k2k30hz"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 3840, .yres = 2160, .id = "4k2k29hz"},
-#endif
-    {.xres = 3840, .yres = 2160, .id = "4k2k25hz"},
-    {.xres = 3840, .yres = 2160, .id = "4k2k24hz"},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-	{.xres = 3840, .yres = 2160, .id = "4k2k23hz"},
-#endif
-    {.xres = 4096, .yres = 2160, .id = "4k2ksmpte"},
-    {.xres = 640, .yres = 480, .id = "vga"},
-    {.xres = 800, .yres = 600, .id = "svga"},
-    {.xres = 1024, .yres = 768, .id = "xga"},
 };
 
 static inline void setreg(const reg_t *r)

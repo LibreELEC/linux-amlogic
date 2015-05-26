@@ -1332,15 +1332,29 @@ static int32_t handle_hc_nak_intr(dwc_otg_hcd_t * hcd,
 	 */
 	if (hc->do_split) {
 		if (hc->complete_split) {
-			qtd->error_count = 0;
+			if((hc->ep_num==0)&&(hc->ep_is_in==1)&&(hc->ep_type ==DWC_OTG_EP_TYPE_CONTROL))
+			{
+				//this case maybe hub can not read data from device.we look at it as error.
+				qtd->error_count++;
+			}
+			else
+			{
+				qtd->error_count = 0;
+			}
 		}
 
 		if((hcd->ssplit_lock == dwc_otg_hcd_get_dev_addr(&qtd->urb->pipe_info)) &&
 			(dwc_otg_hcd_get_pipe_type(&qtd->urb->pipe_info) == UE_INTERRUPT))
 			hcd->ssplit_lock = 0;
 
-		qtd->complete_split = 0;
-		halt_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NAK);
+		qtd->complete_split = 0;	
+		if(qtd->error_count>50)
+		{
+			DWC_ERROR("Can not read device info from hub.We take it error\n");
+			halt_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_XACT_ERR);
+		}
+		else
+			halt_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NAK);
 		goto handle_nak_done;
 	}
 

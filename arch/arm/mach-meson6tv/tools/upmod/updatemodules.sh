@@ -108,6 +108,26 @@ cd ../../../../../
 echo ""
 
 
+
+
+if [ ! -d "hardware/dvb/silabs/drivers/si2168" ]; then
+	mkdir -p hardware/dvb/silabs/drivers/
+	cd hardware/dvb/silabs/drivers/
+	git clone ssh://android@10.8.9.5/linux/dvb/silabs/drivers/si2168.git
+	cd si2168
+	git checkout -t origin/amlogic-3.10 -b amlogic-3.10
+else
+	cd hardware/dvb/silabs/drivers/si2168
+	echo "updating hardware/dvb/silabs/drivers/si2168"
+	git pull
+fi
+
+
+# cd <work-directory>
+cd ../../../../../
+echo ""
+
+
 if [ ! -d "hardware/dvb/availink/drivers/avl6211" ]; then
 	mkdir -p hardware/dvb/availink/drivers/
 	cd hardware/dvb/availink/drivers/
@@ -125,6 +145,23 @@ fi
 cd ../../../../../
 echo ""
 
+
+if [ ! -d "hardware/dvb/maxlinear/drivers/mxl101" ]; then
+	mkdir -p hardware/dvb/maxlinear/drivers/
+	cd hardware/dvb/maxlinear/drivers/
+	git clone ssh://android@10.8.9.5/linux/dvb/maxlinear/drivers/mxl101.git
+	cd mxl101/
+	git checkout -t origin/amlogic-3.10 -b amlogic-3.10
+else
+	cd hardware/dvb/maxlinear/drivers/mxl101
+	echo "updating hardware/dvb/maxlinear/drivers/mxl101"
+	git pull
+fi
+
+
+# cd <work-directory>
+cd ../../../../../
+echo ""
 
 
 ################################################################################
@@ -359,6 +396,24 @@ if [ ! -d "hardware/wifi/realtek/drivers/8811au" ]; then
 else
 	cd hardware/wifi/realtek/drivers/8811au
 	echo "updating hardware/wifi/realtek/drivers/8811au"
+	git pull
+fi
+
+
+# cd <work-directory>
+cd ../../../../../
+echo ""
+
+
+if [ ! -d "hardware/wifi/realtek/drivers/8723bu" ]; then
+	mkdir -p hardware/wifi/realtek/drivers
+	cd hardware/wifi/realtek/drivers
+	git clone git://git-sc.amlogic.com/platform/hardware/wifi/realtek/drivers/8723bu.git
+	cd 8723bu
+	git checkout -t origin/8723bu -b 8723bu
+else
+	cd hardware/wifi/realtek/drivers/8723bu
+	echo "updating hardware/wifi/realtek/drivers/8723bu"
 	git pull
 fi
 

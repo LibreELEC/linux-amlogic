@@ -39,9 +39,11 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/clk.h>
+#include <linux/kthread.h>
 #include <linux/amlogic/logo/logo.h>
 
-#define CONFIG_RDMA_IN_RDMAIRQ
+//#define CONFIG_RDMA_IN_RDMAIRQ
+#define CONFIG_RDMA_IN_TASK
 
 #ifndef MESON_CPU_TYPE_MESON8
 #define MESON_CPU_TYPE_MESON8 (MESON_CPU_TYPE_MESON6TV+1)
@@ -57,19 +59,45 @@
 #define Wr_reg_bits(adr, val, start, len)  WRITE_MPEG_REG_BITS(adr, val, start, len)
 #endif
 
+
+#if (defined CONFIG_RDMA_IN_RDMAIRQ)||(defined CONFIG_RDMA_IN_TASK)
+#if MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV
+#define RDMA_CHECK_REG   VPU_D2D3_MMC_CTRL
+#define RDMA_CHECK_BIT      6
+#endif
+#endif
+
+#if 0
+#if MESON_CPU_TYPE==MESON_CPU_TYPE_MESON8
+#define RDMA_CHECK_REG   VPU_VD3_MMC_CTRL
+#define RDMA_CHECK_BIT      6
+#endif
+#endif
+
+
 //#define RDMA_CHECK_PRE
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
+#undef READ_BACK_SUPPORT
+#else
 #define READ_BACK_SUPPORT
+#endif
 
 #ifdef READ_BACK_SUPPORT
 static ulong* rmda_rd_table = NULL;
 static ulong rmda_rd_table_phy_addr = 0, * rmda_rd_table_addr_remap = NULL;
 static int rmda_rd_item_count = 0;
 static int rmda_rd_item_count_pre = 0;
+#else
+static ulong* rmda2_table = NULL;
+static ulong rmda2_table_phy_addr = 0, * rmda2_table_addr_remap = NULL;
+static int rmda2_item_count = 0;
+//static int rmda2_item_count_pre = 0;
 #endif
 
 
 
 #define RDMA_TABLE_SIZE                    2*(PAGE_SIZE)
+#define RDMA2_TABLE_SIZE                   (PAGE_SIZE>>3)
 
 static ulong* rmda_table = NULL;
 
@@ -104,6 +132,29 @@ static int ctrl_ahb_wr_burst_size = 3;
 
 static int rdma_isr_cfg_count=0;
 static int vsync_cfg_count=0;
+#ifdef CONFIG_RDMA_IN_TASK
+static int rdma_config(unsigned char type);
+
+static struct semaphore  rdma_sema;
+struct task_struct *rdma_task = NULL;
+static unsigned rdma_config_flag = 0;
+static int rdma_task_handle(void *data)
+{
+		int ret = 0;
+    while (1)
+    {
+        ret = down_interruptible(&rdma_sema);
+        if(rdma_config_flag==1){
+            rdma_config_flag = 0;
+            rdma_config(1); //triggered by next vsync
+        }
+    }
+
+    return 0;
+
+}
+
+#endif
 
 static void set_output_mode_rdma(void)
 {
@@ -171,8 +222,60 @@ void rdma_table_prepare_read(unsigned long reg_adr)
         printk("%s fail: %d, %lx\n",__func__, rmda_rd_item_count, reg_adr);
     }
 }
+#else
+void rdma2_table_prepare_write(unsigned long reg_adr, unsigned long val)
+{
+    if(((rmda2_item_count<<1)+1)<(RDMA2_TABLE_SIZE/4)){
+        rmda2_table[rmda2_item_count<<1] = reg_adr; //CBUS_REG_ADDR(reg_adr);
+        rmda2_table[(rmda2_item_count<<1)+1] = val;
+        rmda2_item_count++;
+    }
+    else{
+        printk("%s fail: %d, %lx %lx\n",__func__, rmda2_item_count, reg_adr, val);
+    }
+}
 #endif
 
+int rdma2_config(unsigned int trigger_signal)
+{
+#ifndef READ_BACK_SUPPORT
+    unsigned long data32;
+    //if(rmda_item_count <= 0)
+    //    return 0;
+    //printk("%s %x %x %x\n", __func__, rmda_table_phy_addr, rmda_table_addr_remap, rmda_table);
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
+    Wr(GCLK_REG_MISC_RDMA, Rd(GCLK_REG_MISC_RDMA)|GCLK_MASK_MISC_RDMA);
+#endif
+    if(rmda2_item_count>0){
+        memcpy(rmda2_table_addr_remap, rmda2_table, rmda2_item_count*8);
+    }
+    data32  = 0;
+    data32 |= 0                         << 6;   // [31: 6] Rsrv.
+    data32 |= ctrl_ahb_wr_burst_size    << 4;   // [ 5: 4] ctrl_ahb_wr_burst_size. 0=16; 1=24; 2=32; 3=48.
+    data32 |= ctrl_ahb_rd_burst_size    << 2;   // [ 3: 2] ctrl_ahb_rd_burst_size. 0=16; 1=24; 2=32; 3=48.
+    data32 |= 0                         << 1;   // [    1] ctrl_sw_reset.
+    data32 |= 0                         << 0;   // [    0] ctrl_free_clk_enable.
+    Wr(RDMA_CTRL, data32);
+
+    Wr(RDMA_AHB_START_ADDR_2, rmda2_table_phy_addr);
+    Wr(RDMA_AHB_END_ADDR_2,   rmda2_table_phy_addr + rmda2_item_count*8 - 1);
+
+	data32 = Rd(RDMA_ACCESS_AUTO);
+	if(rmda2_item_count > 0){
+		data32 |= 1                         << (16+trigger_signal);   // [23: 16] interrupt inputs enable mask for auto-start 1: vsync int bit 0
+		data32 |= 1                         << 6;   // [    6] ctrl_cbus_write_1. 1=Register write; 0=Register read.
+		data32 |= 0                         << 2;   // [    3] ctrl_cbus_addr_incr_1. 1=Incremental register access; 0=Non-incremental.
+		Wr(RDMA_ACCESS_AUTO, data32);
+	}
+	else{
+		data32 &= 0xfffdffbf;
+		Wr(RDMA_ACCESS_AUTO, data32);
+	}
+    rmda2_item_count = 0;
+#endif
+    return 0;
+}
+EXPORT_SYMBOL(rdma2_config);
 EXPORT_SYMBOL(rdma_table_prepare_write);
 static int rdma_config(unsigned char type)
 {
@@ -184,10 +287,17 @@ static int rdma_config(unsigned char type)
     Wr(GCLK_REG_MISC_RDMA, Rd(GCLK_REG_MISC_RDMA)|GCLK_MASK_MISC_RDMA);
 #endif
     if(rmda_item_count>0){
-    memcpy(rmda_table_addr_remap, rmda_table, rmda_item_count*8);
+#if (defined RDMA_CHECK_REG)&&(defined RDMA_CHECK_BIT)
+        unsigned long check_val = Rd(RDMA_CHECK_REG);
+        rdma_table_prepare_write(RDMA_CHECK_REG, check_val|(1<<RDMA_CHECK_BIT));
+#endif
+        memcpy(rmda_table_addr_remap, rmda_table, rmda_item_count*8);
 #ifdef RDMA_CHECK_PRE
         memcpy(rmda_table_pre, rmda_table, rmda_item_count*8);
 #endif
+    }
+    else {
+        rdma_config_flag = 2;
     }
 #ifdef RDMA_CHECK_PRE
     rmda_item_count_pre = rmda_item_count;
@@ -296,7 +406,13 @@ void vsync_rdma_config(void)
     }
 
     if(enable_ == 1){
-#ifdef CONFIG_RDMA_IN_RDMAIRQ
+#ifdef CONFIG_RDMA_IN_TASK
+        if((rdma_config_flag==2)||(pre_enable_!=enable)){
+            rdma_config_flag = 1;
+            up(&rdma_sema);
+        }
+
+#elif (defined CONFIG_RDMA_IN_RDMAIRQ)
         if(pre_enable_!=enable_){
             rdma_config(1); //triggered by next vsync
         }
@@ -348,7 +464,24 @@ EXPORT_SYMBOL(vsync_rdma_config_pre);
 
 static irqreturn_t rdma_isr(int irq, void *dev_id)
 {
-#ifdef CONFIG_RDMA_IN_RDMAIRQ
+#if (defined RDMA_CHECK_REG)&&(defined RDMA_CHECK_BIT)
+        unsigned long check_val = Rd(RDMA_CHECK_REG);
+        if (((check_val>>RDMA_CHECK_BIT)&0x1) == 0) {
+            return IRQ_HANDLED;
+        }
+        Wr(RDMA_CHECK_REG, Rd(RDMA_CHECK_REG)&(~(1<<RDMA_CHECK_BIT)));
+#endif
+
+#ifdef CONFIG_RDMA_IN_TASK
+      if(rmda_item_count > 0){
+        rdma_config_flag = 1;
+        up(&rdma_sema);
+      }
+      else{
+        rdma_config_flag = 2;
+      }
+
+#elif (defined CONFIG_RDMA_IN_RDMAIRQ)
      int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
      if(enable_ == 1){
         rdma_config(1); //triggered by next vsync
@@ -434,9 +567,25 @@ static int __init rmda_early_init(void)
     }
 
     rmda_rd_table = kmalloc(RDMA_TABLE_SIZE, GFP_KERNEL);
+#else
+    rmda_table_addr = __get_free_pages(GFP_KERNEL, get_order(RDMA2_TABLE_SIZE));
+    if (!rmda_table_addr) {
+        printk("%s: failed to alloc rmda_rd_table_addr\n", __func__);
+        return -1;
+    }
+
+    rmda2_table_phy_addr = virt_to_phys((u8 *)rmda_table_addr);
+
+    rmda2_table_addr_remap = ioremap_nocache(rmda2_table_phy_addr, RDMA2_TABLE_SIZE);
+    if (!rmda2_table_addr_remap) {
+            printk("%s: failed to remap rmda_rd_table_addr\n", __func__);
+            return -1;
+    }
+
+    rmda2_table = kmalloc(RDMA2_TABLE_SIZE, GFP_KERNEL);
 #endif
 
-#ifdef CONFIG_RDMA_IN_RDMAIRQ
+#if (defined CONFIG_RDMA_IN_RDMAIRQ)||(defined CONFIG_RDMA_IN_TASK)
     if(request_irq(INT_RDMA, &rdma_isr,
                     IRQF_SHARED, "rdma",
                     (void *)"rdma"))
@@ -568,6 +717,41 @@ int VSYNC_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long s
     return 0;
 }
 EXPORT_SYMBOL(VSYNC_WR_MPEG_REG_BITS);
+int RDMA2_WR_MPEG_REG(unsigned long adr, unsigned long val)
+{
+#ifdef READ_BACK_SUPPORT
+    Wr(adr,val);
+#else
+    rdma2_table_prepare_write(adr, val);
+#endif
+    return 0;
+}
+EXPORT_SYMBOL(RDMA2_WR_MPEG_REG);
+
+int RDMA2_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long start, unsigned long len)
+{
+#ifndef READ_BACK_SUPPORT
+    int i;
+#endif
+    unsigned long read_val = Rd(adr);
+    unsigned long write_val;
+#ifdef READ_BACK_SUPPORT
+    write_val = (read_val & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start));
+    Wr(adr, write_val);
+#else
+    for(i=(rmda2_item_count-1); i>=0; i--){
+        if(rmda2_table[i<<1]==adr){
+            read_val = rmda2_table[(i<<1)+1];
+            break;
+        }
+    }
+    write_val = (read_val & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start));
+
+    rdma2_table_prepare_write(adr, write_val);
+#endif
+    return 0;
+}
+EXPORT_SYMBOL(RDMA2_WR_MPEG_REG_BITS);
 
 unsigned long RDMA_READ_REG(unsigned long adr)
 {
@@ -646,6 +830,14 @@ static int  __init rdma_init(void)
     //set_output_mode_rdma();
     enable = 1;
     vout_register_client(&display_mode_notifier_nb_v);
+#endif
+#if (defined RDMA_CHECK_REG)&&(defined RDMA_CHECK_BIT)
+    Wr(RDMA_CHECK_REG, Rd(RDMA_CHECK_REG)&(~(1<<RDMA_CHECK_BIT)));
+#endif
+
+#ifdef CONFIG_RDMA_IN_TASK
+     sema_init(&rdma_sema,1);
+     kthread_run(rdma_task_handle, NULL, "kthread_h265");
 #endif
     return 0;
 }

@@ -35,7 +35,7 @@ ge2d_open(struct inode *inode, struct file *file)
          //       switch_mod_gate_by_name("ge2d", 1);
 	 if(NULL==(context=create_ge2d_work_queue()))
 	 {
-		amlog_level(LOG_LEVEL_HIGH,"can't create work queue \r\n");
+	 	amlog_level(LOG_LEVEL_HIGH,"can't create work queue\n");
 		return -1;
 	 }
 	 //amlog_level(LOG_LEVEL_LOW,"open one ge2d device\n");
@@ -90,7 +90,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		ge2dgen_src_key(context , ge2d_config.src_key.key_enable,ge2d_config.src_key.key_color, ge2d_config.src_key.key_mask,ge2d_config.src_key.key_mode);  //RGBA MODE
 		break;
 		case GE2D_FILLRECTANGLE:
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x\r\n",
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.color);
@@ -101,7 +101,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
                      para.color) ;
 		break;
 		case GE2D_FILLRECTANGLE_NOBLOCK:
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x,noblk\r\n",
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x,noblk\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.color);
@@ -113,7 +113,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_STRETCHBLIT:
 		//stretch blit
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d\r\n",
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.w, para.dst_rect.h);
@@ -124,7 +124,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_STRETCHBLIT_NOBLOCK:
 		//stretch blit
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\r\n",
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.w, para.dst_rect.h);
@@ -135,7 +135,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_BLIT:
 		//bitblt
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit...\r\n");
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit...\n");
 
 		bitblt(context ,
                    para.src1_rect.x, para.src1_rect.y,
@@ -144,7 +144,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_BLIT_NOBLOCK:
 		//bitblt
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit...,noblk\r\n");
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit...,noblk\n");
 
 		bitblt_noblk(context ,
                    para.src1_rect.x, para.src1_rect.y,
@@ -152,7 +152,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
                    para.dst_rect.x, para.dst_rect.y);
 		break;
 		case GE2D_BLEND:
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blend ...\r\n");
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blend ...\n");
 		blend(context,
 			para.src1_rect.x, para.src1_rect.y,
 			para.src1_rect.w, para.src1_rect.h,
@@ -163,7 +163,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 			para.op) ;
 		break;
 		case GE2D_BLEND_NOBLOCK:
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blend ...,noblk\r\n");
+		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blend ...,noblk\n");
 		blend_noblk(context,
 			para.src1_rect.x, para.src1_rect.y,
 			para.src1_rect.w, para.src1_rect.h,
@@ -175,7 +175,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_BLIT_NOALPHA:
 		//bitblt_noalpha
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_noalpha...\r\n");
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_noalpha...\n");
 		bitblt_noalpha(context ,
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
@@ -183,7 +183,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_BLIT_NOALPHA_NOBLOCK:
 		//bitblt_noalpha
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_noalpha...,noblk\r\n");
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"blit_noalpha...,noblk\n");
 		bitblt_noalpha_noblk(context ,
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
@@ -191,7 +191,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_STRETCHBLIT_NOALPHA:
 		//stretch blit
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d\r\n",
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.w, para.dst_rect.h);
@@ -202,7 +202,7 @@ ge2d_ioctl(struct file *filp,unsigned int cmd, unsigned long args)
 		break;
 		case GE2D_STRETCHBLIT_NOALPHA_NOBLOCK:
 		//stretch blit
-		amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\r\n",
+            	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\n",
                    para.src1_rect.x, para.src1_rect.y,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.w, para.dst_rect.h);
@@ -245,16 +245,16 @@ init_ge2d_device(void)
 	ret=register_chrdev(0,ge2d_device.name,&ge2d_fops);
 	if(ret <=0)
 	{
-		amlog_level(LOG_LEVEL_HIGH,"register ge2d device error\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"register ge2d device error\n");
 		return  ret ;
 	}
 	ge2d_device.major=ret;
 	ge2d_device.dbg_enable=0;
-	amlog_level(LOG_LEVEL_LOW,"ge2d_dev major:%d\r\n",ret);
+	amlog_level(LOG_LEVEL_LOW,"ge2d_dev major:%d\n",ret);
 	ret = class_register(&ge2d_class);
 	if(ret<0 )
 	{
-		amlog_level(LOG_LEVEL_HIGH,"error create ge2d class\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"error create ge2d class\n");
 		return ret;
 	}
 	ge2d_device.cla=&ge2d_class ;

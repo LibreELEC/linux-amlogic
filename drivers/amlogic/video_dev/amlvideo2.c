@@ -59,7 +59,7 @@
 #define AVMLVIDEO2_MODULE_NAME "amlvideo2"
 
 //#define USE_SEMA_QBUF
-#define USE_VDIN_PTS
+//#define USE_VDIN_PTS
 
 //#define MUTLI_NODE
 #ifdef MUTLI_NODE
@@ -546,6 +546,27 @@ static int get_input_format(vframe_t* vf)
 	return format;
 }
 
+static int get_input_format_no_interlace(vframe_t* vf)
+{
+	int format= GE2D_FORMAT_M24_NV21;
+	if(vf->type&VIDTYPE_VIU_422){
+		format =  GE2D_FORMAT_S16_YUV422;
+	}else if(vf->type&VIDTYPE_VIU_NV21){
+		format =  GE2D_FORMAT_M24_NV21;
+	} else{
+		format =  GE2D_FORMAT_M24_YUV420;
+	}
+	if(print_ifmt == 1){
+		printk("vf->type=%x, format=%x, w*h=%dx%d, canvas0=%x, canvas1=%x\n",
+			vf->type, format, vf->width, vf->height, vf->canvas0Addr, vf->canvas1Addr);
+
+		printk("vf->type=%x, VIDTYPE_INTERLACE_BOTTOM=%x, VIDTYPE_INTERLACE_TOP=%x\n",
+			vf->type, VIDTYPE_INTERLACE_BOTTOM, VIDTYPE_INTERLACE_TOP);
+		print_ifmt = 0;
+	}
+	return format;
+}
+
 static int get_interlace_input_format(vframe_t* vf, struct amlvideo2_output* output)
 {
 	int format= GE2D_FORMAT_M24_NV21;
@@ -697,7 +718,8 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	src_top = 0;
 	src_left = 0;
 	src_width = vf->width;
-	src_height = vf->height/2;
+	//src_height = vf->height/2;
+	src_height = vf->height;
 
 	dst_top = 0;
 	dst_left = 0;
@@ -815,7 +837,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->src_para.top = 0;
 	ge2d_config->src_para.left = 0;
 	ge2d_config->src_para.width = vf->width;
-	ge2d_config->src_para.height = vf->height;
+	ge2d_config->src_para.height = vf->height/2;
 	/* printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height); */
 	ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
 	ge2d_config->dst_para.canvas_index = output_canvas&0xff;
@@ -825,7 +847,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_para.canvas_index = output_canvas;
 
 	ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
-	ge2d_config->dst_para.format = get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN;
+	ge2d_config->dst_para.format = (get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420T & (3<<3));     
 	ge2d_config->dst_para.fill_color_en = 0;
 	ge2d_config->dst_para.fill_mode = 0;
 	ge2d_config->dst_para.x_rev = 0;
@@ -834,7 +856,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->dst_para.top = 0;
 	ge2d_config->dst_para.left = 0;
 	ge2d_config->dst_para.width = output->width;
-	ge2d_config->dst_para.height = output->height;
+	ge2d_config->dst_para.height = output->height/2;
 
 	if(current_mirror==1){
 		ge2d_config->dst_para.x_rev = 1;
@@ -862,7 +884,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		printk("++ge2d configing error.\n");
 		return -1;
 	}
-	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,output->frame->x,output->frame->y,output->frame->w,output->frame->h);
+	stretchblt_noalpha(context,src_left ,src_top/2 ,src_width, src_height/2,output->frame->x,output->frame->y/2,output->frame->w,output->frame->h/2);
 
 	/* for cr of  yuv420p or yuv420sp. */
 	if((output->v4l2_format==V4L2_PIX_FMT_YUV420)
@@ -873,9 +895,9 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_canvas>>8)&0xff;
-		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.format=(GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420T & (3<<3));
 		ge2d_config->dst_para.width = output->width/2;
-		ge2d_config->dst_para.height = output->height/2;
+		ge2d_config->dst_para.height = output->height/4;
 		ge2d_config->dst_xy_swap = 0;
 
 		if(current_mirror==1){
@@ -904,8 +926,8 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
+			output->frame->x/2,output->frame->y/4,output->frame->w/2,output->frame->h/4);
 	}
 	/* for cb of yuv420p or yuv420sp. */
 	if(output->v4l2_format==V4L2_PIX_FMT_YUV420||
@@ -915,9 +937,9 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_canvas>>16)&0xff;
-		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.format=(GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420T & (3<<3));
 		ge2d_config->dst_para.width = output->width/2;
-		ge2d_config->dst_para.height = output->height/2;
+		ge2d_config->dst_para.height = output->height/4;
 		ge2d_config->dst_xy_swap = 0;
 
 		if(current_mirror==1){
@@ -946,8 +968,8 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
+			output->frame->x/2,output->frame->y/4,output->frame->w/2,output->frame->h/4);
 	}
 
      //============================
@@ -957,7 +979,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	src_top = 0;
 	src_left = 0;
 	src_width = vf->width;
-	src_height = vf->height/2;
+	src_height = vf->height;
 
 	dst_top = 0;
 	dst_left = 0;
@@ -1075,7 +1097,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->src_para.top = 0;
 	ge2d_config->src_para.left = 0;
 	ge2d_config->src_para.width = vf->width;
-	ge2d_config->src_para.height = vf->height;
+	ge2d_config->src_para.height = vf->height/2;
 	/* printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height); */
 	ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
 	ge2d_config->dst_para.canvas_index = output_canvas&0xff;
@@ -1085,7 +1107,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_para.canvas_index = output_canvas;
 
 	ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
-	ge2d_config->dst_para.format = get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN;
+	ge2d_config->dst_para.format = (get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420B & (3<<3));;     
 	ge2d_config->dst_para.fill_color_en = 0;
 	ge2d_config->dst_para.fill_mode = 0;
 	ge2d_config->dst_para.x_rev = 0;
@@ -1094,7 +1116,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->dst_para.top = 0;
 	ge2d_config->dst_para.left = 0;
 	ge2d_config->dst_para.width = output->width;
-	ge2d_config->dst_para.height = output->height;
+	ge2d_config->dst_para.height = output->height/2;
 
 	if(current_mirror==1){
 		ge2d_config->dst_para.x_rev = 1;
@@ -1122,7 +1144,7 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		printk("++ge2d configing error.\n");
 		return -1;
 	}
-	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,output->frame->x,output->frame->y,output->frame->w,output->frame->h);
+	stretchblt_noalpha(context,src_left ,src_top/2 ,src_width, src_height/2,output->frame->x,output->frame->y/2,output->frame->w,output->frame->h/2);
 
 	/* for cr of  yuv420p or yuv420sp. */
 	if((output->v4l2_format==V4L2_PIX_FMT_YUV420)
@@ -1133,9 +1155,9 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_canvas>>8)&0xff;
-		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.format=(GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420B & (3<<3));
 		ge2d_config->dst_para.width = output->width/2;
-		ge2d_config->dst_para.height = output->height/2;
+		ge2d_config->dst_para.height = output->height/4;
 		ge2d_config->dst_xy_swap = 0;
 
 		if(current_mirror==1){
@@ -1164,8 +1186,8 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
+			output->frame->x/2,output->frame->y/4,output->frame->w/2,output->frame->h/4);
 	}
 	/* for cb of yuv420p or yuv420sp. */
 	if(output->v4l2_format==V4L2_PIX_FMT_YUV420||
@@ -1175,9 +1197,9 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_canvas>>16)&0xff;
-		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.format=(GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN)|(GE2D_FORMAT_M24_YUV420B & (3<<3));
 		ge2d_config->dst_para.width = output->width/2;
-		ge2d_config->dst_para.height = output->height/2;
+		ge2d_config->dst_para.height = output->height/4;
 		ge2d_config->dst_xy_swap = 0;
 
 		if(current_mirror==1){
@@ -1206,8 +1228,8 @@ int amlvideo2_ge2d_interlace_two_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
+			output->frame->x/2,output->frame->y/4,output->frame->w/2,output->frame->h/4);
 	}
 
 
@@ -1495,7 +1517,8 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	src_top = 0;
 	src_left = 0;
 	src_width = vf->width;
-	src_height = vf->height/2;
+	//src_height = vf->height/2;
+	src_height = vf->height;
 
 	dst_top = 0;
 	dst_left = 0;
@@ -1604,7 +1627,7 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->src_key.key_mode = 0;
 	ge2d_config->src_para.canvas_index=vf->canvas0Addr;
 	ge2d_config->src_para.mem_type = CANVAS_TYPE_INVALID;
-	ge2d_config->src_para.format = get_input_format(vf);
+	ge2d_config->src_para.format = get_input_format_no_interlace(vf);
 	ge2d_config->src_para.fill_color_en = 0;
 	ge2d_config->src_para.fill_mode = 0;
 	ge2d_config->src_para.x_rev = 0;
@@ -1613,7 +1636,7 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 	ge2d_config->src_para.top = 0;
 	ge2d_config->src_para.left = 0;
 	ge2d_config->src_para.width = vf->width;
-	ge2d_config->src_para.height = vf->height;
+	ge2d_config->src_para.height = vf->height/2;
 	/* printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height); */
 	ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
 	ge2d_config->dst_para.canvas_index = output_canvas&0xff;
@@ -1660,7 +1683,7 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 		printk("++ge2d configing error.\n");
 		return -1;
 	}
-	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,output->frame->x,output->frame->y,output->frame->w,output->frame->h);
+	stretchblt_noalpha(context,src_left ,src_top/2,src_width, src_height/2,output->frame->x,output->frame->y,output->frame->w,output->frame->h);
 
 	/* for cr of  yuv420p or yuv420sp. */
 	if((output->v4l2_format==V4L2_PIX_FMT_YUV420)
@@ -1702,7 +1725,7 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
 			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
 	}
 	/* for cb of yuv420p or yuv420sp. */
@@ -1744,7 +1767,7 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			printk("++ge2d configing error.\n");
 			return -1;
 		}
-		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
+		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
 			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
 	}
 	return output_canvas;
@@ -2188,12 +2211,23 @@ static int  amlvideo2_thread_tick(struct amlvideo2_fh *fh)
 			vf_inqueue(vf,node->recv.name);
 			vf = vf_get(node->recv.name);
 		}
+		if((node->p_type == AML_PROVIDE_HDMIIN_VDIN0)||(node->p_type == AML_PROVIDE_HDMIIN_VDIN1)){
+			if(((vf->type &VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM)&&(vf->canvas0Addr == vf->canvas1Addr)){
+				vf_inqueue(vf, node->recv.name);
+				no_frame = true;
+				vf = NULL;
+			}
+		}
 	}
 
-#if 0//def USE_VDIN_PTS
+#ifdef USE_VDIN_PTS
 	if(no_frame)
 		goto unlock;
 	if(frame_inittime == 1){
+		if(tmp_vf){
+			vf_inqueue(tmp_vf,node->recv.name);
+			tmp_vf = NULL;
+		}
 		frameInv_adjust = 0;
 		frameInv = 0;
 		thread_ts1.tv_sec = vf->pts_us64& 0xFFFFFFFF;
@@ -2209,18 +2243,20 @@ static int  amlvideo2_thread_tick(struct amlvideo2_fh *fh)
 	}
 #else
 	if(frame_inittime == 1){
+		if(tmp_vf){
+			vf_inqueue(tmp_vf,node->recv.name);
+			tmp_vf = NULL;
+		}
 		if(no_frame)
 			goto unlock;
 		frameInv_adjust = 0;
 		frameInv = 0;
-		//do_gettimeofday( &thread_ts1);
-		thread_ts1.tv_sec = vf->pts_us64& 0xFFFFFFFF;
-		thread_ts1.tv_usec = vf->pts;
+		do_gettimeofday(&thread_ts1);
 		frame_inittime = 0;
 	}else{
-		//do_gettimeofday( &thread_ts2);
-		thread_ts2.tv_sec = vf->pts_us64& 0xFFFFFFFF;
-		thread_ts2.tv_usec = vf->pts;
+		do_gettimeofday( &thread_ts2);
+		//thread_ts2.tv_sec = vf->pts_us64& 0xFFFFFFFF;
+		//thread_ts2.tv_usec = vf->pts;
 		diff = thread_ts2.tv_sec - thread_ts1.tv_sec;
 		diff = diff*1000000 + thread_ts2.tv_usec - thread_ts1.tv_usec;
 		frameInv += diff;
@@ -2271,7 +2307,8 @@ static int  amlvideo2_thread_tick(struct amlvideo2_fh *fh)
 		int timeNow64, timePts;
 		do_gettimeofday(&test_time);
 		timeNow64 = ((test_time.tv_sec & 0xFFFFFFFF)*1000*1000) + (test_time.tv_usec);
-		timePts =  ((vf->pts_us64 & 0xFFFFFFFF)*1000*1000) + (vf->pts);
+		//timePts =  ((vf->pts_us64 & 0xFFFFFFFF)*1000*1000) + (vf->pts);
+		timePts =  ((thread_ts2.tv_sec & 0xFFFFFFFF)*1000*1000) + (thread_ts2.tv_usec);
 		//printk("amlvideo2 in  num:%d delay:%d\n", timePts, (timeNow64 - timePts)/1000);
 		if(cur_time == test_time.tv_sec){
 			total_latency += (int)((timeNow64 - timePts)/1000);
@@ -2293,6 +2330,9 @@ static int  amlvideo2_thread_tick(struct amlvideo2_fh *fh)
 	buf->vb.ts.tv_usec = vf->pts;
 	thread_ts1.tv_sec = vf->pts_us64& 0xFFFFFFFF;
 	thread_ts1.tv_usec = vf->pts;
+#else
+	buf->vb.ts.tv_sec = thread_ts2.tv_sec & 0xFFFFFFFF;
+	buf->vb.ts.tv_usec = thread_ts2.tv_usec;
 #endif
 	vf_inqueue(vf,node->recv.name);
 
@@ -2391,6 +2431,7 @@ static int amlvideo2_thread(void *data)
 	while(!kthread_should_stop()){
 		msleep(10);
 	}
+	tmp_vf = NULL;
 	dprintk(node->vid_dev, 1, "thread: exit\n");
 	return ret;
 }
@@ -2404,6 +2445,8 @@ static int amlvideo2_start_thread(struct amlvideo2_fh *fh)
 #endif
 	dprintk(node->vid_dev, 1, "%s\n", __func__);
 
+    dma_q->task_running = 1;
+
 #ifdef MUTLI_NODE
 	dma_q->kthread = kthread_run(amlvideo2_thread, fh, (node->vid==0)?"amlvideo2-0":"amlvideo2-1");
 #else
@@ -2416,7 +2459,7 @@ static int amlvideo2_start_thread(struct amlvideo2_fh *fh)
 	}
 	/* Wakes thread */
 	//wake_up_interruptible(&dma_q->wq);
-	dma_q->task_running = 1;
+
 	dprintk(node->vid_dev, 1, "returning from %s\n", __func__);
 	return 0;
 }
@@ -2903,6 +2946,9 @@ static tvin_scan_mode_t vmode2scan_mode(vmode_t	mode)
 		case VMODE_576CVBS:
 		case VMODE_1080I:
 		case VMODE_1080I_50HZ:
+		#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    		case VMODE_1080I_59HZ:
+		#endif
 			scan_mode = TVIN_SCAN_MODE_INTERLACED;
 			break;
 		case VMODE_480P:
@@ -2924,6 +2970,16 @@ static tvin_scan_mode_t vmode2scan_mode(vmode_t	mode)
 		case VMODE_LVDS_1080P:
 		case VMODE_LVDS_1080P_50HZ:
 		case VMODE_LVDS_768P:
+	#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    case VMODE_480P_59HZ:
+		case VMODE_720P_59HZ:
+		case VMODE_1080P_59HZ:
+		case VMODE_1080P_23HZ:
+		case VMODE_4K2K_29HZ:
+		case VMODE_4K2K_23HZ:
+	#endif
+	#endif
 			scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
 			break;
 		default:
@@ -3002,17 +3058,17 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		para.dest_vactive = para.dest_vactive/2;
 	}
 	printk("amlvideo2--vidioc_streamon: para.h_active: %d, para.v_active: %d"
-		"para.dest_hactive: %d, para.dest_vactive: %d, fh->width: %d, fh->height: %d \n",
-		para.h_active,para.v_active, para.dest_hactive, para.dest_vactive,fh->width,fh->height);
+		"para.dest_hactive: %d, para.dest_vactive: %d, fh->width: %d, fh->height: %d, vinfo->mode: %d,para.scan_mode: %d\n",
+		para.h_active,para.v_active, para.dest_hactive, para.dest_vactive,fh->width,fh->height,vinfo->mode,para.scan_mode);
 
 	vops->start_tvin_service(node->vdin_device_num,&para);
 
 start:
-	fh->is_streamed_on = 1;
-	frameInv_adjust = 0;
-	frameInv = 0;
-	tmp_vf = NULL;
 	frame_inittime = 1;
+	fh->is_streamed_on = 1;
+	//frameInv_adjust = 0;
+	//frameInv = 0;
+	//tmp_vf = NULL;
 	do_gettimeofday( &thread_ts1);
 #ifdef TEST_LATENCY
 	cur_time  = cur_time_out = thread_ts1.tv_sec;

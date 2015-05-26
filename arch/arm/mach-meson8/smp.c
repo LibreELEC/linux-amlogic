@@ -136,7 +136,7 @@ int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 			(const uint32_t)virt_to_phys(meson_secondary_startup));
 	meson_set_cpu_power_ctrl(cpu, 1);
 	timeout = jiffies + (10* HZ);
-	while(meson_get_cpu_ctrl_addr(cpu));
+	while(meson_get_cpu_ctrl_addr(cpu))
 	{
 		if(!time_before(jiffies, timeout))
 			return -EPERM;

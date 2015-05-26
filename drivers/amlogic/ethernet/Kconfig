@@ -8,6 +8,13 @@ config AM_ETHERNET
 	select  NET
 	help
 		Depends on NET
+
+config AM_PHY
+	tristate "Amloigc PHY support"
+	select  NET
+	help
+		Depends on NET
+
 source "drivers/amlogic/ethernet/phy/Kconfig"
 
 config AM_ETHERNET_DEBUG_LEVEL

@@ -24,8 +24,6 @@
 #define VAL_EDP_TX_PHY_PREEMPHASIS_3					0x0f   // 9.5 db
 
 //AUX Channel Interface
-#define VAL_EDP_TX_AUX_WAIT_TIME						400	//us
-
 #define VAL_EDP_TX_AUX_CMD_WRITE						(0x8 << 8)
 #define VAL_EDP_TX_AUX_CMD_READ							(0x9 << 8)
 #define VAL_EDP_TX_AUX_CMD_I2C_WRITE					(0x0 << 8)
@@ -41,11 +39,13 @@
 #define VAL_EDP_TX_AUX_REPLY_CODE_I2C_NACK				(0x4 << 0)
 #define VAL_EDP_TX_AUX_REPLY_CODE_I2C_DEFER				(0x8 << 0)
 
+//AUX channel management logic
 #define VAL_EDP_TX_AUX_STATE_TIMEOUT					(1 << 3)
 #define VAL_EDP_TX_AUX_STATE_RECEIVED					(1 << 2)
 #define VAL_EDP_TX_AUX_STATE_REQUEST_IN_PROGRESS		(1 << 1)
 #define VAL_EDP_TX_AUX_STATE_HPD_STATE					(1 << 0)
 
+//AUX channel controller status
 #define VAL_EDP_TX_AUX_STATUS_REPLY_ERROR				(1 << 3)
 #define VAL_EDP_TX_AUX_STATUS_REQUEST_IN_PROGRESS		(1 << 2)
 #define VAL_EDP_TX_AUX_STATUS_REPLY_IN_PROGRESS			(1 << 1)
@@ -56,10 +56,10 @@
 #define VAL_EDP_TX_LANE_STATUS_OK_1						0x10007
 #define VAL_EDP_TX_LANE_STATUS_OK_NONE					0xfffff
 
-//operation
-#define VAL_EDP_TX_TRAINING_RETRY_COUNT			5
-#define VAL_EDP_TX_AUX_MAX_DEFER_COUNT			7
-#define VAL_EDP_TX_AUX_MAX_TIMEOUT_COUNT		5
+//AUX operation
+#define VAL_EDP_TX_AUX_WAIT_TIME						400	//us
+#define VAL_EDP_TX_AUX_MAX_DEFER_COUNT					7
+#define VAL_EDP_TX_AUX_MAX_TIMEOUT_COUNT				5
 
 
 //******************************************************//
@@ -115,6 +115,7 @@
 #define BIT_EDP_LANE_ALIGNMENT_DONE					0
 
 // Link training constants
+#define VAL_EDP_TX_TRAINING_RETRY_COUNT				5
 #define VAL_EDP_MAX_TRAINING_ATTEMPTS				5
 #define VAL_EDP_CLOCK_REC_TIMEOUT					1//ms //100 //us
 #define VAL_EDP_CHAN_EQ_TIMEOUT						4//ms //400 //us
@@ -123,11 +124,11 @@
 #define VAL_EDP_MAX_DELAY_CYCLES					10 // 10us delay
 
 // Link training state constants
-#define VAL_EDP_TS_CLOCK_REC						0x01
-#define VAL_EDP_TS_CHANNEL_EQ						0x02
-#define VAL_EDP_TS_ADJUST_SPD						0x04
-#define VAL_EDP_TS_ADJUST_LANES						0x08
-#define VAL_EDP_TS_UPDATE_STATUS					0x10
+#define STA_EDP_TRAINING_CLOCK_REC					0x01
+#define STA_EDP_TRAINING_CHANNEL_EQ					0x02
+#define STA_EDP_TRAINING_ADJUST_SPD					0x04
+#define STA_EDP_TRAINING_ADJUST_LANES				0x08
+#define STA_EDP_TRAINING_UPDATE_STATUS				0x10
 
 // Embedded DisplayPort constants
 #define VAL_EDP_NOT_SUPPORTED						0x707
@@ -138,43 +139,44 @@
 #define VAL_EDP_DPCD_TEST_RESPONSE_EDID_CHKSUM_WR	(1 << 2)
 
 //********************************************************//
-// displayport operation stauts
+// displayport operation return stauts
 //
 // 0x00xx: EDP total operaion
 // 0x11xx: AUX operation
-// 0xAAxx: EDP link policy maker control
-// 0xEExx: EDP configuration verify
-// 0xFFxx: EDP training operation
+// 0x22xx: EDP configuration verify
+// 0xAAxx: EDP training operation
+// 0xBBxx: EDP link policy maker control
 //
-// note: all success or correct status are x0000
+// note: all success or correct status are 0x0000
+//       all failed status are 0xxxFF
 //********************************************************//
-#define VAL_EDP_CONFIG_VALID					0x0000
-#define VAL_EDP_CONFIG_INVALID_LINK_RATE		0xEEAA
-#define VAL_EDP_CONFIG_INVALID_LANE_COUNT		0xEEBB
-#define VAL_EDP_CONFIG_HPD_DEASSERTED			0xEECC
+#define RET_EDP_TX_OPERATION_SUCCESS			0x0000
+#define RET_EDP_TX_OPERATION_FAILED				0x00FF
 
-#define VAL_EDP_TRAINING_CR_FAILED				0xFF11
-#define VAL_EDP_TRAINING_CHAN_EQ_FAILED			0xFF22
-#define VAL_EDP_TRAINING_INVALID_CONFIG			0xFF88
+#define RET_EDP_TX_AUX_OPERATION_SUCCESS		0x0000
+#define RET_EDP_TX_AUX_OPERATION_ERROR			0x1111
+#define RET_EDP_TX_AUX_OPERATION_TIMEOUT		0x1122
+#define RET_EDP_TX_AUX_INVALID_PARAMETER		0x1144
+#define RET_EDP_TX_AUX_OPERATION_FAILED			0x11FF
 
-#define VAL_EDP_LPM_STATUS_TRAINING_SUCCESS		0x0000
-#define VAL_EDP_LPM_STATUS_LINK_VALID			0x0000
-#define VAL_EDP_LPM_STATUS_CHANGED				0xAA10
-#define VAL_EDP_LPM_STATUS_RETRAIN				0xAA11
-#define VAL_EDP_LPM_STATUS_LINK_RATE_ADJUST		0xAA12
-#define VAL_EDP_LPM_STATUS_NOT_CONNECTED		0xAA13
-#define VAL_EDP_LPM_STATUS_TX_NOT_CONFIGURED	0xAA21
-#define VAL_EDP_LPM_STATUS_RX_IDLE				0xAA31
-#define VAL_EDP_LPM_STATUS_RX_ACTIVE			0xAA32
+#define RET_EDP_CONFIG_VALID					0x0000
+#define RET_EDP_CONFIG_INVALID_LINK_RATE		0x2211
+#define RET_EDP_CONFIG_INVALID_LANE_COUNT		0x2222
+#define RET_EDP_CONFIG_HPD_DEASSERTED			0x2244
 
-#define VAL_EDP_TX_AUX_INVALID_PARAMETER		0x1144
-#define VAL_EDP_TX_AUX_OPERATION_TIMEOUT		0x1133
-#define VAL_EDP_TX_AUX_OPERATION_ERROR			0x1122
-#define VAL_EDP_TX_AUX_OPERATION_FAILED			0x1111
-#define VAL_EDP_TX_AUX_OPERATION_SUCCESS		0x0000
+#define RET_EDP_TRAINING_CR_FAILED				0xAA11
+#define RET_EDP_TRAINING_CHAN_EQ_FAILED			0xAA22
+#define RET_EDP_TRAINING_INVALID_CONFIG			0xAA44
 
-#define VAL_EDP_TX_OPERATION_FAILED				0x00FF
-#define VAL_EDP_TX_OPERATION_SUCCESS			0x0000
+#define RET_EDP_LPM_STATUS_TRAINING_SUCCESS		0x0000
+#define RET_EDP_LPM_STATUS_LINK_VALID			0x0000
+#define RET_EDP_LPM_STATUS_CHANGED				0xBB10
+#define RET_EDP_LPM_STATUS_RETRAIN				0xBB11
+#define RET_EDP_LPM_STATUS_LINK_RATE_ADJUST		0xBB12
+#define RET_EDP_LPM_STATUS_NOT_CONNECTED		0xBB13
+#define RET_EDP_LPM_STATUS_TX_NOT_CONFIGURED	0xBB21
+#define RET_EDP_LPM_STATUS_RX_IDLE				0xBB31
+#define RET_EDP_LPM_STATUS_RX_ACTIVE			0xBB32
 //********************************************************//
 
 #define VAL_EDP_TX_INVALID_VALUE    0xFF
@@ -213,6 +215,16 @@ typedef enum {
 	EDP_HPD_STATE_CONNECTED,
 	EDP_HPD_STATE_INTERRUPT,
 } EDP_HPD_state_t;
+
+#define VAL_AUX_CMD_STATE_WRITE			0
+#define VAL_AUX_CMD_STATE_READ			1
+typedef struct {
+	unsigned int cmd_code;
+	unsigned int cmd_state;
+	unsigned int address;
+	unsigned int byte_count;
+	unsigned char *wr_data;
+} TRDP_AUXTrans_Req_t;
 
 typedef struct {
 	unsigned char dpcd_rev;
@@ -273,11 +285,65 @@ typedef struct {
 	unsigned int bit_rate; //Mbps
 } EDP_Link_Config_t;
 
+typedef struct {
+	unsigned int pclk;
+	unsigned short h_active;
+	unsigned short h_blank;
+	unsigned short v_active;
+	unsigned short v_blank;
+	unsigned short h_fp;
+	unsigned short h_pw;
+	unsigned short v_fp;
+	unsigned short v_pw;
+	unsigned int h_size;
+	unsigned int v_size;
+	unsigned short h_border;
+	unsigned short v_border;
+	unsigned int timing_ctrl;
+} EDID_Timing_t;
+
+typedef struct {
+	unsigned int min_vfreq;
+	unsigned int max_v_freq;
+	unsigned int min_hfreq;
+	unsigned int max_hfreq;
+	unsigned int max_pclk;
+	unsigned int GTF_ctrl;
+	unsigned int GTF_start_hfreq;
+	unsigned int GTF_C;
+	unsigned int GTF_M;
+	unsigned int GTF_K;
+	unsigned int GTF_J;
+} EDID_Range_Limit_t;
+
+typedef struct {
+	unsigned char mid[4];     //[8:9]2byte
+	unsigned short pid;     //[10:11]2byte
+	unsigned int psn;       //[12:15]4byte
+	unsigned char week;     //[16]1byte
+	unsigned int year;     //[17]1byte
+	unsigned short version;  //[18:19]2byte
+	unsigned int established_timing; //[35:37]3byte
+	unsigned int standard_timing1;   //[38:45]4byte
+	unsigned int standard_timing2;   //[46:53]4byte
+	EDID_Timing_t preferred_timing;
+	unsigned int string_flag; //[2]serial_num, [1]asc_string, [0]name
+	unsigned char name[14]; //include "\0"
+	unsigned char serial_num[14];
+	unsigned char asc_string[14];
+	EDID_Range_Limit_t range_limit;
+	unsigned char ext_flag;  //[126]1byte
+	unsigned char checksum;  //[127]1byte, 256-(sum(byte0:126)%256) =? 0x100-(sum(byte0:126) & 0xff)
+} EDP_EDID_Data_Type_t;
+
 extern void edp_phy_config_update(unsigned char vswing_tx, unsigned char preemp_tx);
 
-extern int dplpm_link_policy_maker(EDP_Link_Config_t *mlconfig, EDP_MSA_t *vm);
-extern int dplpm_link_off(void);
+extern unsigned int dplpm_link_policy_maker(EDP_Link_Config_t *mlconfig, EDP_MSA_t *vm);
+extern unsigned int dplpm_link_off(void);
 extern void dplpm_off(void);
+extern void edp_edid_pre_enable(void);
+extern void edp_edid_pre_disable(void);
+extern int edp_edid_timing_probe(Lcd_Config_t *pConf);
 extern void edp_probe(Lcd_Config_t *pConf);
 extern void edp_remove(Lcd_Config_t *pConf);
 

@@ -1202,7 +1202,7 @@ void SP1628_night_mode(struct sp1628_device *dev,enum  camera_night_mode_flip_e 
 			{
 				//i2c_put_byte_add8_new(client,0xfd,0x00);	//disable AE,add by sp_yjp,20120905
 				//i2c_put_byte_add8_new(client,0x32,0x08);
-				printk("night mode 50hz\r\n");
+				printk("night mode 50hz\n");
 				#if 0
 					//capture preview night  24M 3pll 50hz 17.6-6FPS vga
 				i2c_put_byte_add8_new(client,0xfd,0x00);
@@ -1284,7 +1284,7 @@ void SP1628_night_mode(struct sp1628_device *dev,enum  camera_night_mode_flip_e 
 			{
 				//i2c_put_byte_add8_new(client,,0xfd,0x00);	//disable AE,add by sp_yjp,20120905
 				//i2c_put_byte_add8_new(client,,0x32,0x08);
-				printk("night mode 60hz\r\n");
+				printk("night mode 60hz\n");
 	            #if 0
 				 //capture preview night  24M 3pll 60hz 17.6-6FPS vga
 				i2c_put_byte_add8_new(client,0xfd,0x00);
@@ -1371,7 +1371,7 @@ void SP1628_night_mode(struct sp1628_device *dev,enum  camera_night_mode_flip_e 
 			{
 				//i2c_put_byte_add8_new(client,0xfd,0x00);	//disable AE,add by sp_yjp,20120905
 				//i2c_put_byte_add8_new(client,0x32,0x08);
-				printk("normal mode 50hz\r\n");
+				printk("normal mode 50hz\n"); 
 	            #if 0
 			   //capture preview daylight 24M 3pll 50hz 17.6-9FPS vga
 				i2c_put_byte_add8_new(client,0xfd,0x00);
@@ -1451,7 +1451,7 @@ void SP1628_night_mode(struct sp1628_device *dev,enum  camera_night_mode_flip_e 
 			{
 				//i2c_put_byte_add8_new(client,0xfd,0x00);	//disable AE,add by sp_yjp,20120905
 				//i2c_put_byte_add8_new(client,0x32,0x08);
-				printk("normal mode 60hz\r\n");
+				printk("normal mode 60hz\n"); 
 			    #if 0
 				//capture preview daylight 24M 3pll 60hz 17.6-9FPS vga
 				i2c_put_byte_add8_new(client,0xfd,0x00);
@@ -1562,7 +1562,7 @@ void SP1628_set_param_banding(struct sp1628_device *dev,enum  camera_banding_fli
 
 			Antiflicker = DCAMERA_FLICKER_50HZ;
 
-			printk( " set_SP1628_anti_flicker  50hz \r\n" );
+			printk( " set_SP1628_anti_flicker  50hz\n" );
 
 			break;
 
@@ -1570,7 +1570,7 @@ void SP1628_set_param_banding(struct sp1628_device *dev,enum  camera_banding_fli
 
 			Antiflicker = DCAMERA_FLICKER_60HZ;
 
-			printk( " set_SP1628_anti_flicker  60hz \r\n" );
+			printk( " set_SP1628_anti_flicker  60hz\n" );
 
 			break;
 

@@ -45,8 +45,6 @@
 #include "remote_main.h"
 
 #undef NEW_BOARD_LEARNING_MODE
-
-//#define IR_CONTROL_HOLD_LAST_KEY    (1<<6)
 #define IR_CONTROL_DECODER_MODE     (3<<7)
 #define IR_CONTROL_SKIP_HEADER      (1<<7)
 #define IR_CONTROL_RESET            (1<<0)
@@ -73,63 +71,63 @@ static struct remote *gp_remote = NULL;
 char *remote_log_buf;
 // use 20 map for this driver
 static __u16 key_map[20][512];
-static  irqreturn_t (*remote_bridge_sw_isr[])(int irq, void *dev_id)={
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+static  irqreturn_t (*remote_bridge_sw_isr[])(int irq, void *dev_id)= {
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
+	remote_null_bridge_isr,
 	remote_bridge_isr,
 	remote_bridge_isr,
 };
 
-static  int (*remote_report_key[])(struct remote *remote_data)={
+static  int (*remote_report_key[])(struct remote *remote_data)= {
 	remote_hw_reprot_key,
 	remote_hw_reprot_key,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_reprot_null_key,
+	remote_hw_nec_rca_2in1_reprot_key,
+	remote_hw_nec_toshiba_2in1_reprot_key,
 	remote_sw_reprot_key
 };
 
-static  void (*remote_report_release_key[])(struct remote *remote_data)={
+static  void (*remote_report_release_key[])(struct remote *remote_data)= {
 	remote_nec_report_release_key,
 	remote_duokan_report_release_key,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_null_reprot_release_key,
+	remote_nec_rca_2in1_report_release_key,
+	remote_nec_toshiba_2in1_report_release_key,
 	remote_sw_reprot_release_key
 };
 static __u16 mouse_map[20][6];
@@ -167,10 +165,10 @@ static int remote_mouse_event(struct input_dev *dev, unsigned int scancode, unsi
 		return -1;
 	}
 	switch (type) {
-		case 1:		//press
+		case 1:     //press
 			repeat_count = 0;
 			break;
-		case 2:		//repeat
+		case 2:     //repeat
 			if (repeat_count >= ARRAY_SIZE(move_accelerate) - 1) {
 				repeat_count = ARRAY_SIZE(move_accelerate) - 1;
 			} else {
@@ -194,7 +192,7 @@ static int remote_mouse_event(struct input_dev *dev, unsigned int scancode, unsi
 			mouse_code = REL_Y;
 			mouse_value = 1 + move_accelerate[repeat_count];
 			break;
-		case 4:		//up
+		case 4:     //up
 			mouse_code = REL_WHEEL;
 			mouse_value = 0x1;
 			break;
@@ -224,34 +222,30 @@ static int remote_mouse_event(struct input_dev *dev, unsigned int scancode, unsi
 
 void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type,int event)
 {
-	printk("remote_send_key \n");
-	if(scancode == FN_KEY_SCANCODE && type == 1)
-    {
-	// switch from key to pointer
-        if(key_pointer_switch)
-        {
-            key_pointer_switch = false;
-            gp_remote->repeat_enable = 1;
-            gp_remote->input->rep[REP_DELAY] = gp_remote->repeat_delay;
-            gp_remote->input->rep[REP_PERIOD] = gp_remote->repeat_peroid;
-        }
-        // switch from pointer to key
-        else
-        {
-            key_pointer_switch = true;
-            gp_remote->repeat_enable = 0;
-            gp_remote->input->rep[REP_DELAY] = 0xffffffff;
-            gp_remote->input->rep[REP_PERIOD] = 0xffffffff;
-        }
-    }
+	printk("remote_send_key\n");
+	if(scancode == FN_KEY_SCANCODE && type == 1) {
+		// switch from key to pointer
+		if(key_pointer_switch) {
+			key_pointer_switch = false;
+			gp_remote->repeat_enable = 1;
+			gp_remote->input->rep[REP_DELAY] = gp_remote->repeat_delay[gp_remote->map_num];
+			gp_remote->input->rep[REP_PERIOD] = gp_remote->repeat_peroid[gp_remote->map_num];
+		}
+		// switch from pointer to key
+		else {
+			key_pointer_switch = true;
+			gp_remote->repeat_enable = 0;
+			gp_remote->input->rep[REP_DELAY] = 0xffffffff;
+			gp_remote->input->rep[REP_PERIOD] = 0xffffffff;
+		}
+	}
 
-    if(scancode == OK_KEY_SCANCODE && key_pointer_switch == false)
-    {
-	 input_event(dev, EV_KEY, BTN_MOUSE, type);
-		 input_sync(dev);
+	if(scancode == OK_KEY_SCANCODE && key_pointer_switch == false) {
+		input_event(dev, EV_KEY, BTN_MOUSE, type);
+		input_sync(dev);
 
-	 return;
-     }
+		return;
+	}
 
 	if (remote_mouse_event(dev, scancode, type,key_pointer_switch)) {
 		if (scancode > ARRAY_SIZE(key_map[gp_remote->map_num])) {
@@ -263,14 +257,14 @@ void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int 
 			input_dbg("scancode is 0x%04x, invalid key is 0x%04x.\n", scancode, key_map[gp_remote->map_num][scancode]);
 			return;
 		}
-		if(type == 1 && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074){
-		    disable_irq(NEC_REMOTE_IRQ_NO);
-                }
-		if(type == 0 && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074){
-		    enable_irq(NEC_REMOTE_IRQ_NO);
-                }
-		input_event(dev, EV_KEY, key_map[gp_remote->map_num][scancode], type);
-		input_sync(dev);
+
+		if(type == 2 && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074) {
+			return;
+		} else {
+			input_event(dev, EV_KEY, key_map[gp_remote->map_num][scancode], type);
+			input_sync(dev);
+		}
+
 		switch (type) {
 			case 0:
 				input_dbg("release ircode = 0x%02x, scancode = 0x%04x, maptable = %d \n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num);
@@ -282,8 +276,8 @@ void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int 
 				input_dbg("repeat ircode = 0x%02x, scancode = 0x%04x, maptable = %d \n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num);
 				break;
 		}
-		printk("%s sleep:%d\n", __func__, gp_remote->sleep);
-		if(gp_remote->sleep && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074){
+		input_dbg("%s sleep:%d\n", __func__, gp_remote->sleep);
+		if(gp_remote->sleep && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074) {
 			printk(" set AO_RTI_STATUS_REG2 0x4853ffff \n");
 			WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x4853ffff); // tell uboot don't suspend
 		}
@@ -292,7 +286,7 @@ void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int 
 
 static void disable_remote_irq(void)
 {
-	if (gp_remote->work_mode >= DECODEMODE_MAX){
+	if (gp_remote->work_mode >= DECODEMODE_MAX) {
 		disable_irq(NEC_REMOTE_IRQ_NO);
 	}
 }
@@ -305,7 +299,8 @@ static void enable_remote_irq(void)
 
 }
 
-void remote_reprot_key( struct remote * remote_data){
+void remote_reprot_key( struct remote * remote_data)
+{
 	remote_report_key[remote_data->work_mode](remote_data);
 }
 static void remote_release_timer_sr(unsigned long data)
@@ -316,14 +311,14 @@ static void remote_release_timer_sr(unsigned long data)
 	remote_data->key_release_report(remote_data);
 }
 
-static irqreturn_t remote_interrupt(int irq, void *dev_id){
+static irqreturn_t remote_interrupt(int irq, void *dev_id)
+{
 	tasklet_schedule(&tasklet);
 	return IRQ_HANDLED;
 }
 
 static void remote_fiq_interrupt(void)
 {
-	//struct remote *remote_data = (struct remote *)data;
 	remote_reprot_key(gp_remote);
 }
 
@@ -381,7 +376,7 @@ static int hardware_init(struct platform_device *pdev)
 	p=devm_pinctrl_get_select_default(&pdev->dev);
 	if (IS_ERR(p))
 		return -1;
-	set_remote_mode(DECODEMODE_NEC);
+	set_remote_mode(DECODEMODE_NEC_RCA_2IN1);
 	return request_irq(NEC_REMOTE_IRQ_NO, remote_interrupt, IRQF_SHARED, "keypad", (void *)remote_interrupt);
 }
 static int work_mode_config(unsigned int cur_mode)
@@ -395,7 +390,7 @@ static int work_mode_config(unsigned int cur_mode)
 	set_remote_init(gp_remote);
 	if(cur_mode == gp_remote->save_mode)
 		return 0;
-	if((cur_mode <= DECODEMODE_MAX)  && (gp_remote->save_mode > DECODEMODE_MAX) ){
+	if((cur_mode <= DECODEMODE_MAX)  && (gp_remote->save_mode > DECODEMODE_MAX) ) {
 		unregister_fiq_bridge_handle(&gp_remote->fiq_handle_item);
 		free_fiq(NEC_REMOTE_IRQ_NO, &remote_fiq_interrupt);
 		ret = request_irq(NEC_REMOTE_IRQ_NO, remote_interrupt, IRQF_SHARED, "keypad", (void *)remote_interrupt);
@@ -403,8 +398,7 @@ static int work_mode_config(unsigned int cur_mode)
 			printk(KERN_ERR "Remote: request_irq failed, ret=%d.\n", ret);
 			return ret;
 		}
-	}
-	else if((cur_mode > DECODEMODE_MAX)  && (gp_remote->save_mode < DECODEMODE_MAX)){
+	} else if((cur_mode > DECODEMODE_MAX)  && (gp_remote->save_mode < DECODEMODE_MAX)) {
 		free_irq(NEC_REMOTE_IRQ_NO, remote_interrupt);
 		gp_remote->fiq_handle_item.handle = remote_bridge_sw_isr[gp_remote->work_mode];
 		gp_remote->fiq_handle_item.key = (u32) gp_remote;
@@ -412,8 +406,7 @@ static int work_mode_config(unsigned int cur_mode)
 		register_fiq_bridge_handle(&gp_remote->fiq_handle_item);
 		desc->depth++;
 		request_fiq(NEC_REMOTE_IRQ_NO, remote_fiq_interrupt);
-	}
-	else{
+	} else {
 		printk("do nothing\n");
 	}
 	gp_remote->save_mode = cur_mode;
@@ -471,13 +464,13 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 			mouse_map[remote->map_num][val >> 16] = val & 0xff;
 			break;
 		case REMOTE_IOC_SET_RELT_DELAY:
-			ret = copy_from_user(&remote->relt_delay, argp, sizeof(long));
+			ret = copy_from_user(&remote->relt_delay[remote->map_num], argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_REPEAT_DELAY:
-			ret = copy_from_user(&remote->repeat_delay, argp, sizeof(long));
+			ret = copy_from_user(&remote->repeat_delay[remote->map_num], argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_REPEAT_PERIOD:
-			ret = copy_from_user(&remote->repeat_peroid, argp, sizeof(long));
+			ret = copy_from_user(&remote->repeat_peroid[remote->map_num], argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_REPEAT_ENABLE:
 			ret = copy_from_user(&remote->repeat_enable, argp, sizeof(long));
@@ -513,7 +506,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 			am_remote_write_reg(DURATION_REG0, val);
 			break;
 		case REMOTE_IOC_SET_RELEASE_DELAY:
-			ret = copy_from_user(&remote->release_delay, argp, sizeof(long));
+			ret = copy_from_user(&remote->release_delay[remote->map_num], argp, sizeof(long));
 			break;
 			//SW
 		case REMOTE_IOC_SET_TW_LEADER_ACT:
@@ -551,8 +544,8 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 	switch (cmd) {
 		case REMOTE_IOC_SET_REPEAT_ENABLE:
 			if (remote->repeat_enable) {
-				remote->input->rep[REP_DELAY] = remote->repeat_delay;
-				remote->input->rep[REP_PERIOD] = remote->repeat_peroid;
+				remote->input->rep[REP_DELAY] = remote->repeat_delay[remote->map_num] ;
+				remote->input->rep[REP_PERIOD] = remote->repeat_peroid[remote->map_num] ;
 			} else {
 				remote->input->rep[REP_DELAY] = 0xffffffff;
 				remote->input->rep[REP_PERIOD] = 0xffffffff;
@@ -612,14 +605,15 @@ static int register_remote_dev(struct remote *remote)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void remote_early_suspend(struct early_suspend *handler)
 {
-	 printk("remote_early_suspend, set sleep 1 \n");
-	 gp_remote->sleep = 1;
-	 return;
+	printk("remote_early_suspend, set sleep 1 \n");
+	gp_remote->sleep = 1;
+	return;
 }
 #endif
 
-static const struct of_device_id remote_dt_match[]={
-	{	.compatible 	= "amlogic,aml_remote",
+static const struct of_device_id remote_dt_match[]= {
+	{
+		.compatible     = "amlogic,aml_remote",
 	},
 	{},
 };
@@ -637,7 +631,7 @@ static int remote_probe(struct platform_device *pdev)
 		return -1;
 	}
 	ret = of_property_read_u32(pdev->dev.of_node,"ao_baseaddr",&ao_baseaddr);
-	if(ret){
+	if(ret) {
 		printk("don't find  match ao_baseaddr\n");
 		return -1;
 	}
@@ -664,13 +658,15 @@ static int remote_probe(struct platform_device *pdev)
 	remote->input = input_dev;
 	remote->release_fdelay = KEY_RELEASE_DELAY;
 	remote->custom_code[remote->map_num] = 0xfb04;
+	for(i=1; i<20; i++)
+		remote->custom_code[i] = 0xffff;
 	remote->bit_count = 32;
 	remote->last_jiffies = 0xffffffff;
 	remote->last_pulse_width = 0;
 	remote->step = REMOTE_STATUS_WAIT;
 	remote->sleep = 0;
 	//init logic0 logic1  time window
-	for(i = 0;i < 18;i++)
+	for(i = 0; i < 18; i++)
 		remote->time_window[i] = 0x1;
 	/* Disable the interrupt for the MPUIO keyboard */
 	for (i = 0; i < ARRAY_SIZE(key_map[remote->map_num]); i++) {
@@ -679,23 +675,23 @@ static int remote_probe(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(mouse_map); i++) {
 		mouse_map[remote->map_num][i] = 0xffff;
 	}
-	remote->repeat_delay = 250;
-	remote->repeat_peroid = 33;
+	remote->repeat_delay[remote->map_num]  = 250;
+	remote->repeat_peroid[remote->map_num]  = 33;
 	/* get the irq and init timer */
 	input_dbg("set drvdata completed\r\n");
 	tasklet_enable(&tasklet);
 	tasklet.data = (unsigned long)remote;
 	setup_timer(&remote->timer, remote_release_timer_sr, 0);
-        /*read status & frame register to abandon last key from uboot*/
+	/*read status & frame register to abandon last key from uboot*/
 	am_remote_read_reg(DURATION_REG1_AND_STATUS);
 	am_remote_read_reg(FRAME_BODY);
-	#ifdef CONFIG_HAS_EARLYSUSPEND
-    early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING + 1;
-    early_suspend.suspend = remote_early_suspend;
-    early_suspend.resume = NULL;
-    early_suspend.param = gp_remote;
-    register_early_suspend(&early_suspend);
-    #endif
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING + 1;
+	early_suspend.suspend = remote_early_suspend;
+	early_suspend.resume = NULL;
+	early_suspend.param = gp_remote;
+	register_early_suspend(&early_suspend);
+#endif
 
 	ret = device_create_file(&pdev->dev, &dev_attr_enable);
 	if (ret < 0) {
@@ -763,7 +759,7 @@ static int remote_remove(struct platform_device *pdev)
 	free_pages((unsigned long)remote_log_buf, REMOTE_LOG_BUF_ORDER);
 	device_remove_file(&pdev->dev, &dev_attr_enable);
 	device_remove_file(&pdev->dev, &dev_attr_log_buffer);
-	if(gp_remote->work_mode >= DECODEMODE_MAX){
+	if(gp_remote->work_mode >= DECODEMODE_MAX) {
 		free_fiq(NEC_REMOTE_IRQ_NO, remote_fiq_interrupt);
 		free_irq(BRIDGE_IRQ, gp_remote);
 	} else {
@@ -800,9 +796,9 @@ static int remote_resume(struct platform_device * pdev)
 		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
 	}
 	gp_remote->sleep = 0;
-        printk("to clear irq ...\n");
+	printk("to clear irq ...\n");
 	disable_irq(NEC_REMOTE_IRQ_NO);
-        udelay(1000);
+	udelay(1000);
 	enable_irq(NEC_REMOTE_IRQ_NO);
 
 	return 0;

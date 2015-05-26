@@ -68,6 +68,8 @@ static const char * bc_name[]={
 #define T_VDMSRC_DIS	(20 + 5)
 #define T_VDMSRC_ON	40
 
+extern void charger_detect_work(void *_vp);
+
 int dwc_otg_charger_detect(dwc_otg_core_if_t * _core_if)
 {
 	usb_peri_reg_t *peri;
@@ -143,6 +145,20 @@ int dwc_otg_charger_detect(dwc_otg_core_if_t * _core_if)
 	return bc_mode;
 }
 
+void dwc_otg_non_normal_usb_charger_detect(dwc_otg_core_if_t * _core_if)
+{
+	usb_peri_reg_t *peri;
+	usb_adp_bc_data_t adp_bc;
+
+	peri = _core_if->usb_peri_reg;
+	adp_bc.d32 = DWC_READ_REG32(&peri->adp_bc);
+	if(adp_bc.b.device_sess_vld){
+		DWC_WORKQ_SCHEDULE(_core_if->wq_otg,
+					   charger_detect_work, _core_if,
+					   "Charger detect");
+	}
+	return ;
+}
 
 /**
  * Choose endpoint from ep arrays using usb_ep structure.
@@ -2227,7 +2243,7 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t * pcd, void *ep_handle,
 	req->dw_align_buf = NULL;
 	if ((dma_buf & 0x3) && GET_CORE_IF(pcd)->dma_enable
 			&& !GET_CORE_IF(pcd)->dma_desc_enable && buflen)
-		req->dw_align_buf = DWC_DMA_ALLOC(buflen,
+		req->dw_align_buf = DWC_DMA_ALLOC_ATOMIC(buflen,
 				 &req->dw_align_buf_dma);
 	DWC_SPINLOCK_IRQSAVE(pcd->lock, &flags);
 #if 0

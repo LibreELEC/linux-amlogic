@@ -175,7 +175,7 @@ static void so340010_work(struct work_struct *work)
 		so340010_reset(kp->client);
 		return;
 	}
-	printk(KERN_INFO "gpio_val=0x%04x, button_val = 0x%04x\r\n", gpio_val, button_val);
+	printk(KERN_INFO "gpio_val=0x%04x, button_val = 0x%04x\n", gpio_val, button_val);
 
 	key = kp->key;
 	for (i = 0; i < kp->key_num; i++) {
@@ -296,11 +296,11 @@ static int so340010_register_device(struct so340010 *kp)
 	strcpy(kp->config_name,DRIVER_NAME);
 	ret=register_chrdev(0, kp->config_name, &so340010_fops);
 	if(ret<=0) {
-		printk("register char device error\r\n");
+		printk("register char device error\n");
 		return  ret ;
 	}
 	kp->config_major=ret;
-	printk("so340010 major:%d\r\n",ret);
+	printk("so340010 major:%d\n",ret);
 	kp->config_class=class_create(THIS_MODULE,kp->config_name);
 	kp->config_dev=device_create(kp->config_class,	NULL,
 	MKDEV(kp->config_major,0),NULL,kp->config_name);

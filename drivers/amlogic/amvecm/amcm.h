@@ -36,22 +36,24 @@ typedef struct cm_regs_s {
 // ***************************************************************************
 // *** IOCTL-oriented functions *********************************************
 // ***************************************************************************
-#ifdef AMVIDEO_REG_TABLE_DYNAMIC
-void am_set_regmap(unsigned int cnt, struct am_reg_s *p);
-#else
 void am_set_regmap(struct am_regs_s *p);
-#endif
+extern void amcm_enable(void);
+extern void amcm_level_sel(unsigned int cm_level);
+extern void cm2_frame_size_patch(unsigned int width,unsigned int height);
+extern void cm2_frame_switch_patch(void);
+extern void cm_latch_process(void);
+extern int cm_load_reg(am_regs_t *arg);
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
-#undef WRITE_CBUS_REG
-#undef WRITE_CBUS_REG_BITS
-#undef READ_CBUS_REG
-#undef READ_CBUS_REG_BITS
-
-#define WRITE_CBUS_REG(x,val)				WRITE_VCBUS_REG(x,val)
-#define WRITE_CBUS_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
-#define READ_CBUS_REG(x)				READ_VCBUS_REG(x)
-#define READ_CBUS_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#define WRITE_VPP_REG(x,val)				WRITE_VCBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_VCBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_VCBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_VCBUS_REG_BITS(x,start,length)
+#else
+#define WRITE_VPP_REG(x,val)				WRITE_CBUS_REG(x,val)
+#define WRITE_VPP_REG_BITS(x,val,start,length)		WRITE_CBUS_REG_BITS(x,val,start,length)
+#define READ_VPP_REG(x)					READ_CBUS_REG(x)
+#define READ_VPP_REG_BITS(x,start,length)		READ_CBUS_REG_BITS(x,start,length)
 #endif
 
 #endif

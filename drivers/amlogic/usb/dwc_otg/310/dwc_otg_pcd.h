@@ -262,6 +262,7 @@ static inline void dwc_otg_device_soft_disconnect(dwc_otg_core_if_t *_core_if) {
 	DWC_MODIFY_REG32( &_core_if->dev_if->dev_global_regs->dctl,0,2);  //set
 }
 int dwc_otg_charger_detect(dwc_otg_core_if_t * _core_if);
+void dwc_otg_non_normal_usb_charger_detect(dwc_otg_core_if_t * _core_if);
 //FIXME this functions should be static, and this prototypes should be removed
 extern void dwc_otg_request_nuke(dwc_otg_pcd_ep_t * ep);
 extern void dwc_otg_request_done(dwc_otg_pcd_ep_t * ep,

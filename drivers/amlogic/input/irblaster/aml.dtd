@@ -1,0 +1,13 @@
+#ifdef CONFIG_AM_IR_IRBLASTER
+//$$ DEVICE="meson_irblaster"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_STR = "pinctrl-names"
+//$$ L2 PROP_CHOICE "irblaster_pin_0_match" = "pinctrl-0"
+    meson-remote{
+		compatible = "amlogic,am_irblaster";
+		dev_name = "meson_ibr";
+		status = "ok";
+		pinctrl-names="default";
+		pinctrl-0=<&irblaster_pins>;
+	};
+#endif

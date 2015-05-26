@@ -7,39 +7,57 @@
 #define MII_BUSY 0x00000001
 #define MII_WRITE 0x00000002
 
+extern int aml1220_read(int add, uint8_t *val);
+extern int aml1220_write(int32_t add, uint8_t val);
+
 static int mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
 {
-	struct net_device *ndev = bus->priv;
-        struct am_net_private *priv = netdev_priv(ndev);
-        unsigned int mii_address = ETH_MAC_4_GMII_Addr;
-        unsigned int mii_data = ETH_MAC_5_GMII_Data;
-
-        int data;
-        u16 regValue = (((phyaddr << 11) & (0x0000F800)) |
+	int data;
+	struct net_device *ndev;
+	struct am_net_private *priv;
+	unsigned int mii_address;
+	unsigned int mii_data;
+	unsigned regValue;
+#ifdef CONFIG_AML1220
+	int data1;
+	uint8_t data_lo;
+	uint8_t data_hi;
+	if (phyaddr != 8)
+		return 0;
+	aml1220_write(0xa6, phyreg);
+	aml1220_read(0xa7,&data_lo);
+	aml1220_read(0xa8,&data_hi);
+	data1 = (data_hi<<8)|data_lo;
+#endif
+	ndev = bus->priv;
+        priv = netdev_priv(ndev);
+        mii_address = ETH_MAC_4_GMII_Addr;
+        mii_data = ETH_MAC_5_GMII_Data;
+        regValue = (((phyaddr << 11) & (0x0000F800)) |
                         ((phyreg << 6) & (0x000007C0)));
         regValue |= MII_BUSY | MDCCLK;
-
         do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
         writel(regValue, (void*)(priv->base_addr + mii_address));
         do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
-
         /* Read the data from the MII data register */
         data = (int)readl((void*)(priv->base_addr + mii_data));
-
-        return data;
+#ifdef CONFIG_AML1220
+        return data1;
+#else
+	return data;
+#endif
 }
 
 static int mdio_write(struct mii_bus *bus, int phyaddr, int phyreg, u16 phydata)
 {
+
         struct net_device *ndev = bus->priv;
         struct am_net_private *priv = netdev_priv(ndev);
 
         unsigned int mii_address = ETH_MAC_4_GMII_Addr;
         unsigned int mii_data = ETH_MAC_5_GMII_Data;
-
         u16 value = (((phyaddr << 11) & (0x0000F800)) | ((phyreg << 6) & (0x000007C0))) | MII_WRITE;
         value |= MII_BUSY | MDCCLK;
-
         do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
         writel(phydata, (void*)(priv->base_addr + mii_data));
 
@@ -96,6 +114,33 @@ int aml_mdio_register(struct net_device *ndev)
         priv->mii = new_bus;
 
         found = 0;
+#ifdef CONFIG_AML1220
+for (addr = 8; addr == 8; addr++) {
+	struct phy_device *phydev = new_bus->phy_map[addr];
+	if (phydev) {
+		priv->phydev = phydev;
+		if (priv->phy_addr == -1) {
+			priv->phy_addr = addr;
+			phydev->irq = PHY_POLL;
+			irqlist[addr] = PHY_POLL;
+		}
+		if (phydev->phy_id	!= 0) {
+			//priv->phydev->addr = addr;
+			if (!((phydev->phy_id  == 0x001cc916)&& (addr == 0)))
+			{
+				priv->phy_addr = addr;
+				phydev->irq = PHY_POLL;
+				irqlist[addr] = PHY_POLL;
+			}
+		}
+		pr_info("%s: PHY ID %08x at %d IRQ %d (%s)%s\n",
+				ndev->name, phydev->phy_id, addr,
+				phydev->irq, dev_name(&phydev->dev),
+				(addr == priv->phy_addr) ? " active" : "");
+		found = 1;
+	}
+}
+#else
 	for (addr = 0; addr < 32; addr++) {
 		struct phy_device *phydev = new_bus->phy_map[addr];
 		if (phydev) {
@@ -121,6 +166,7 @@ int aml_mdio_register(struct net_device *ndev)
 			found = 1;
 		}
 	}
+#endif
 
 	if (!found)
 		pr_warning("%s: No PHY found\n", ndev->name);

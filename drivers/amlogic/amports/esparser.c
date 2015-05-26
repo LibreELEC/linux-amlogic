@@ -242,7 +242,6 @@ s32 esparser_init(struct stream_buf_s *buf)
     u32 parser_sub_end_ptr;
     u32 parser_sub_rp;
     bool first_use = false;
-
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (HAS_HEVC_VDEC && (buf->type == BUF_TYPE_HEVC)) {
         pts_type = PTS_TYPE_HEVC;
@@ -257,7 +256,7 @@ s32 esparser_init(struct stream_buf_s *buf)
     } else {
         return -EINVAL;
     }
-
+    mutex_lock(&esparser_mutex);
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
@@ -417,7 +416,7 @@ s32 esparser_init(struct stream_buf_s *buf)
         WRITE_MPEG_REG(PARSER_INT_ENABLE,
                        PARSER_INTSTAT_SC_FOUND << PARSER_INT_HOST_EN_BIT);
     }
-
+    mutex_unlock(&esparser_mutex);
     return 0;
 
 Err_2:
@@ -426,6 +425,7 @@ Err_2:
 Err_1:
     atomic_dec(&esparser_use_count);
     buf->flag &= ~BUF_FLAG_PARSER;
+    mutex_unlock(&esparser_mutex);
     return r;
 }
 

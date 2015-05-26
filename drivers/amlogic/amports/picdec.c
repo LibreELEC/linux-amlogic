@@ -1354,7 +1354,7 @@ struct class* init_picdec_cls(void) {
 	ret = class_register(&picdec_class);
 	if(ret < 0)
 	{
-		amlog_level(LOG_LEVEL_HIGH,"error create picdec class\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"error create picdec class\n");
 		return NULL;
 	}
 	return &picdec_class;
@@ -1370,12 +1370,12 @@ int init_picdec_device(void)
 	ret=register_chrdev(0,picdec_device.name,&picdec_fops);
 	if(ret <=0)
 	{
-		amlog_level(LOG_LEVEL_HIGH,"register picdec device error\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"register picdec device error\n");
 		return  ret ;
 	}
 	picdec_device.major=ret;
 	picdec_device.dbg_enable=0;
-	amlog_level(LOG_LEVEL_LOW,"picdec_dev major:%d\r\n",ret);
+	amlog_level(LOG_LEVEL_LOW,"picdec_dev major:%d\n",ret);
 
 	picdec_device.cla = init_picdec_cls();
 	if(picdec_device.cla == NULL)

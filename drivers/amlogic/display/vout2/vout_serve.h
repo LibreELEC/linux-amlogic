@@ -77,7 +77,7 @@ static  void  write_reg(char *para);
 #endif
 static  void  set_vout_mode(char *mode) ;
 static void  set_vout_window(char *para) ;
-static  void   func_default_null(char  *str);
+static  int   func_default_null(char  *str);
 
 
 #endif

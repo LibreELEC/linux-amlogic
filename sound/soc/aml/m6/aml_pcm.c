@@ -112,6 +112,13 @@ EXPORT_SYMBOL(aml_i2s_capture_buf_size);
 EXPORT_SYMBOL(aml_i2s_playback_phy_start_addr);
 EXPORT_SYMBOL(aml_i2s_capture_phy_start_addr);
 EXPORT_SYMBOL(aml_i2s_alsa_write_addr);
+static int trigger_underrun = 0;
+void aml_audio_hw_trigger(void)
+{
+    trigger_underrun = 1;
+}
+EXPORT_SYMBOL(aml_audio_hw_trigger);
+
 #if 0
 static void aml_codec_power_switch_queue(struct work_struct* work)
 {

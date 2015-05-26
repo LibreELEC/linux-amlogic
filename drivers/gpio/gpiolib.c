@@ -455,7 +455,7 @@ static const struct {
 	{ "rising",  BIT(FLAG_TRIG_RISE) },
 	{ "both",    BIT(FLAG_TRIG_FALL) | BIT(FLAG_TRIG_RISE) },
 };
-
+#if 0
 static ssize_t gpio_edge_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -510,8 +510,11 @@ found:
 
 	return status;
 }
+#endif
 
+#if 0
 static DEVICE_ATTR(edge, 0644, gpio_edge_show, gpio_edge_store);
+#endif
 
 static int sysfs_set_active_low(struct gpio_desc *desc, struct device *dev,
 				int value)
@@ -808,14 +811,14 @@ static int gpiod_export(struct gpio_desc *desc, bool direction_may_change)
 		if (status)
 			goto fail_remove_attr_group;
 	}
-
+#if 0
 	if (gpiod_to_irq(desc) >= 0 && (direction_may_change ||
 				       !test_bit(FLAG_IS_OUT, &desc->flags))) {
 		status = device_create_file(dev, &dev_attr_edge);
 		if (status)
 			goto fail_remove_attr_direction;
 	}
-
+#endif
 	set_bit(FLAG_EXPORT, &desc->flags);
 	mutex_unlock(&sysfs_lock);
 	return 0;

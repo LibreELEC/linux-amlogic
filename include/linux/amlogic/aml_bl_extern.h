@@ -12,20 +12,13 @@ typedef enum {
 	BL_EXTERN_MAX,
 } Bl_Extern_Type_t;
 
-//global API
-struct aml_bl_extern_driver_t {
-	const char *name;
-	Bl_Extern_Type_t type;
-	int (*power_on) (void);
-	int (*power_off)(void);
-	int (*set_level)(unsigned int level);
-};
-
 struct bl_extern_config_t {
 	const char *name;
 	Bl_Extern_Type_t type;
 	unsigned int gpio_used;
 	int gpio;
+	unsigned char gpio_on;
+	unsigned char gpio_off;
 	int i2c_addr;
 	int i2c_bus;
 	int spi_cs;
@@ -35,6 +28,15 @@ struct bl_extern_config_t {
 	unsigned int dim_max;
 	unsigned int level_min;
 	unsigned int level_max;
+};
+
+//global API
+struct aml_bl_extern_driver_t {
+	const char *name;
+	Bl_Extern_Type_t type;
+	int (*power_on) (void);
+	int (*power_off)(void);
+	int (*set_level)(unsigned int level);
 };
 
 #define BL_EXTERN_DRIVER		"bl_extern"

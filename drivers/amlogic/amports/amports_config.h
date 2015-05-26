@@ -8,7 +8,19 @@ value seem:
 arch\arm\plat-meson\include\plat\cpu.h
 */
 
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+#define HAS_VPU_PROT  0
+#define HAS_VDEC2     0
+#define HAS_HEVC_VDEC 1
+#define HAS_HDEC      1
+
+#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
+#define HAS_VPU_PROT  0
+#define HAS_VDEC2     0
+#define HAS_HEVC_VDEC 1
+#define HAS_HDEC      1
+
+#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 #define HAS_VPU_PROT  0
 #define HAS_VDEC2     0
 #define HAS_HEVC_VDEC 1

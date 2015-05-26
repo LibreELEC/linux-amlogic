@@ -63,8 +63,7 @@ extern void set_foreign_affairs(enum foreign_affairs_e foreign_affairs);
 extern void rst_foreign_affairs(enum foreign_affairs_e foreign_affairs);
 
 #if defined(CONFIG_AM_VECM)
-extern void amvecm_video_latch(void);
-extern void ve_on_vs(vframe_t *vf);
+extern void amvecm_on_vs(vframe_t *vf);
 #endif
 
 #endif /* __AML_COMMON_H */

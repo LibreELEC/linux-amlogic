@@ -39,87 +39,88 @@
 #include <mach/clock.h>
 #include <linux/amlogic/vout/vinfo.h>
 #include <linux/amlogic/vout/enc_clk_config.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_compliance.h>
 
-#include "hdmi_info_global.h"
-#include "hdmi_tx_module.h"
-#include "hdmi_tx_compliance.h"
-#include "hdmi_tx_cec.h"
-#include "hdmi_tx_hdcp.h"
-#include "hw/hdmi_tx_reg.h"
+typedef struct{
+	char *ReceiverBrandName;
+	char *ReceiverProductName;
+	unsigned char blk0_chksum;
+}special_tv;
 
-// Note:
-// set P_HHI_VID_PLL_CNTL as 0x43e, get better clock performance
-// while as 0x21ef, get better clock precision
-// 24 * 62 = 1488
-// 24 / 8 * 495 = 1485
+static special_tv special_N_6144x2_tv_tab[]={
+	/*SONY KDL-32R300B*/
+	{
+		.ReceiverBrandName="SNY",
+		.ReceiverProductName="SONY",
+		.blk0_chksum=0xf8,
+	},
+	/*TCL L19F3270B*/
+	{
+		.ReceiverBrandName="TCL",
+		.ReceiverProductName="MST6M16",
+		.blk0_chksum=0xa9,
+	},
+	/*Panasonic TH-32A400C*/
+	{
+		.ReceiverBrandName="MEI",
+		.ReceiverProductName="Panasonic-TV",
+		.blk0_chksum=0x28,
+	},
+};
 
-static void hdmitx_get_clk_better_performance(hdmitx_dev_t* hdmitx_device)
+/*
+ * # cat /sys/class/amhdmitx/amhdmitx0/edid
+ * Receiver Brand Name: GSM
+ * Receiver Product Name: LG
+ * blk0 chksum: 0xe7
+ *
+ * recoginze_tv()
+ * parameters:
+ *      brand_name: the name of "Receiver Brand Name"
+ *      prod_name: the name of "Receiver Product Name"
+ *      blk0_chksum: the value of blk0 chksum
+ */
+static int recoginze_tv(hdmitx_dev_t* hdev, char *brand_name, char *prod_name, unsigned char blk0_chksum)
 {
-    if((aml_read_reg32(P_HHI_VID_PLL_CNTL) & 0x3fff ) == 0x21ef) {
-        aml_set_reg32_bits(P_HHI_VID_PLL_CNTL, 0x43e, 0, 15);
+    if((strncmp(hdev->RXCap.ReceiverBrandName, brand_name, strlen(brand_name)) == 0) && \
+     (strncmp(hdev->RXCap.ReceiverProductName, prod_name, strlen(prod_name)) == 0) && \
+     (hdev->RXCap.blk0_chksum == blk0_chksum))
+        return 1;
+    else return 0;
+}
+
+/*
+ * hdmitx_special_handler_video()
+ */
+void hdmitx_special_handler_video(hdmitx_dev_t* hdev)
+{
+	if (recoginze_tv(hdev, "GSM", "LG", 0xE7)) {
+        hdev->HWOp.CntlMisc(hdev, MISC_COMP_HPLL, COMP_HPLL_SET_OPTIMISE_HPLL1);
+    }
+    if (recoginze_tv(hdev, "SAM", "SAMSUNG", 0x22)) {
+        hdev->HWOp.CntlMisc(hdev, MISC_COMP_HPLL, COMP_HPLL_SET_OPTIMISE_HPLL2);
     }
 }
 
-static void hdmitx_reset_audio_n(hdmitx_dev_t* hdmitx_device)
+/*
+ * hdmitx_special_handler_audio()
+ */
+void hdmitx_special_handler_audio(hdmitx_dev_t* hdev)
 {
-    static int rewrite_flag = 0;
-    unsigned int audio_N_para = 6144;
-    switch(hdmitx_device->cur_VIC) {
-    case HDMI_480p60:
-    case HDMI_480p60_16x9:
-    case HDMI_576p50:
-    case HDMI_576p50_16x9:
-    case HDMI_480i60:
-    case HDMI_480i60_16x9:
-    case HDMI_576i50:
-    case HDMI_576i50_16x9:
-        switch(hdmitx_device->cur_audio_param.sample_rate){
-        case FS_44K1:
-            audio_N_para = 6272 * 3;
-            rewrite_flag = 1;
-            break;
-        case FS_48K:
-            audio_N_para = 6144 * 3;
-            rewrite_flag = 1;
-            break;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
+    int i = 0;
+    for(i = 0; i < ARRAY_SIZE(special_N_6144x2_tv_tab); i++) {
+        if (recoginze_tv(hdev, special_N_6144x2_tv_tab[i].ReceiverBrandName, special_N_6144x2_tv_tab[i].ReceiverProductName, special_N_6144x2_tv_tab[i].blk0_chksum))
+			hdev->HWOp.CntlMisc(hdev, MISC_COMP_AUDIO, COMP_AUDIO_SET_N_6144x2);
     }
-    if(rewrite_flag) {
-        hdmi_wr_reg(TX_SYS1_ACR_N_0, (audio_N_para&0xff)); // N[7:0]
-        hdmi_wr_reg(TX_SYS1_ACR_N_1, (audio_N_para>>8)&0xff); // N[15:8]
-        hdmi_wr_reg(TX_SYS1_ACR_N_2, hdmi_rd_reg(TX_SYS1_ACR_N_2) | ((audio_N_para>>16)&0xf)); // N[19:16]
+
+#if 0
+	// TODO
+
+	if (recoginze_tv(hdev, "SAM", "SAMSUNG", 0x22)) {
+        hdev->HWOp.CntlMisc(hdev, MISC_COMP_AUDIO, COMP_AUDIO_SET_N_6144x2);
     }
-}
-
-// a sony special tv edid hash value: "acc0df36f1e523a2e02cfd54514732513e3a4351"
-// got the first 4 bytes
-static unsigned int SONY_EDID_HASH = 0xacc0df36;
-static int edid_hash_compare(unsigned char *dat, unsigned int SPECIAL)
-{
-    int ret = 0;
-
-    if((dat[0] == ((SPECIAL >> 24)&0xff)) && (dat[1] == ((SPECIAL >> 16)&0xff)) && (dat[2] == ((SPECIAL >> 8)&0xff)) && (dat[3] == (SPECIAL & 0xff)))
-        ret = 1;
-    return ret;
-}
-
-void hdmitx_special_handler_audio(hdmitx_dev_t* hdmitx_device)
-{
-    if(edid_hash_compare(&hdmitx_device->EDID_hash[0], SONY_EDID_HASH)) {
-        hdmitx_reset_audio_n(hdmitx_device);
+    if (recoginze_tv(hdev, "GSM", "LG", 0xE7)) {
+        hdev->HWOp.CntlMisc(hdev, MISC_COMP_AUDIO, COMP_AUDIO_SET_N_6144x3);
     }
-}
-
-void hdmitx_special_handler_video(hdmitx_dev_t* hdmitx_device)
-{
-    if(strncmp(hdmitx_device->RXCap.ReceiverBrandName, HDMI_RX_VIEWSONIC, strlen(HDMI_RX_VIEWSONIC)) == 0) {
-        if(strncmp(hdmitx_device->RXCap.ReceiverProductName, HDMI_RX_VIEWSONIC_MODEL, strlen(HDMI_RX_VIEWSONIC_MODEL)) == 0) {
-            hdmitx_get_clk_better_performance(hdmitx_device);
-        }
-    }
+#endif
 }

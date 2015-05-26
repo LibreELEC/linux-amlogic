@@ -12,5 +12,6 @@ int ext_get_cur_video_frame(vframe_t **vf,int *canvas_index);
 int ext_put_video_frame(vframe_t *vf);
 int ext_register_end_frame_callback(struct amvideocap_req *req);
 int request_video_firmware(const char * file_name,char *buf,int size);
+void set_vsync_pts_inc_mode(int inc);
 
 #endif

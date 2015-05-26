@@ -6,7 +6,7 @@
 //#include "a9_l2_func.h"
 
 #include "demod_func.h"
-#include "aml_demod.h"
+#include <linux/dvb/aml_demod.h>
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include "acf_filter_coefficient.h"
@@ -21,7 +21,7 @@
 #define pr_error(fmt, args...) printk("FE: " fmt, ## args)
 
 MODULE_PARM_DESC(debug_demod, "\n\t\t Enable frontend debug information");
-static int debug_demod = 0;
+static int debug_demod = 1;
 module_param(debug_demod, int, 0644);
 
 //8vsb
@@ -281,26 +281,15 @@ static atsc_cfg_t list_qam256[113] = {
 	{0x0001, 0x05, 1},
 	{0x0000, 0x00, 1}};
 
-
+#if 0 
 #if (defined CONFIG_AM_SI2176)
-#include "si2176_func.h"
+#include "../si2176/si2176_func.h"
 extern struct si2176_device_s *si2176_devp;
 extern void si2176_set_frequency(unsigned int freq);
-#elif (defined CONFIG_AM_SI2177)
-//#include "si2177_func.h"
-#include "../../../../hardware/dvb/silabs/drivers/si2177/si2177_func.h"
-
+#elif ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
+#include "si2177_func.h"
 extern struct si2177_device_s *si2177_devp;
 extern void si2177_set_frequency(unsigned int freq);
-/*extern int si2177_init(struct i2c_client *si2177, si2177_cmdreplyobj_t *rsp, si2177_common_reply_struct *common_reply);
-extern int si2177_configure(struct i2c_client *si2177, si2177_propobj_t *prop, si2177_cmdreplyobj_t *rsp, si2177_common_reply_struct *common_reply);
-extern unsigned char si2177_set_property(struct i2c_client *si2177,
-                unsigned char   reserved,
-                unsigned int    prop,
-                unsigned int    data,
-                si2177_cmdreplyobj_t *rsp);*/
-
-
 #endif
 
 #if (defined CONFIG_AM_SI2176)
@@ -345,7 +334,7 @@ int demod_set_tuner(struct aml_demod_sta *demod_sta,
 		tuner_sys->rssi=si2176_get_strength();
 		return 0;
 }
-#elif (defined CONFIG_AM_SI2177)
+#elif ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 int demod_set_tuner(struct aml_demod_sta *demod_sta,
 		  struct aml_demod_i2c *demod_i2c,
 		  struct aml_tuner_sys *tuner_sys)
@@ -385,8 +374,9 @@ int demod_set_tuner(struct aml_demod_sta *demod_sta,
 
 
 #endif
+#endif
 
-
+#ifndef G9_TV
 void demod_set_adc_core_clk(int clk_adc, int clk_dem,int dvb_mode)//dvbt dvbc 28571, 66666
 {
     int unit, error;
@@ -543,6 +533,186 @@ void demod_set_adc_core_clk(int clk_adc, int clk_dem,int dvb_mode)//dvbt dvbc 28
         pr_dbg(" ADC %7d kHz %7d kHz\n", freq_adc/(unit/1000), freq_adc_act/(unit/1000));
     }
 }
+#else
+void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
+{
+#if 0
+    volatile unsigned long *p_adc_pll_cntl /*= P_HHI_ADC_PLL_CNTL*/;
+    volatile unsigned long *p_adc_pll_cntl2 /*= P_HHI_ADC_PLL_CNTL2*/;
+    volatile unsigned long *p_adc_pll_cntl3 /*= P_HHI_ADC_PLL_CNTL3*/;
+    volatile unsigned long *p_adc_pll_cntl4 /*= P_HHI_ADC_PLL_CNTL4*/;
+    volatile unsigned long *p_demod_dig_clk /*= P_HHI_DEMOD_CLK_CNTL*/;
+#endif
+    int unit, found, ena, enb, div2;
+    int pll_m, pll_n, pll_od_a, pll_od_b, pll_xd_a, pll_xd_b;
+    long freq_osc, freq_dco, freq_b, freq_a, freq_sys;
+    long freq_b_act, freq_a_act, freq_sys_act, err_tmp, best_err;
+    adc_pll_cntl_t adc_pll_cntl;
+    adc_pll_cntl2_t adc_pll_cntl2;
+    adc_pll_cntl3_t adc_pll_cntl3;
+    adc_pll_cntl4_t adc_pll_cntl4;
+    demod_dig_clk_t dig_clk_cfg;
+
+    adc_pll_cntl.d32 = 0;
+    adc_pll_cntl2.d32 = 0;
+    adc_pll_cntl3.d32 = 0;
+    adc_pll_cntl4.d32 = 0;
+
+    pr_dbg("target clk_a %d  clk_b %d\n", clk_a, clk_b);
+
+    unit = 10000; // 10000 as 1 MHz, 0.1 kHz resolution.
+    freq_osc = 24*unit;
+
+    if (clk_a < 1000) 
+        freq_a = clk_a*unit;
+    else
+        freq_a = clk_a*(unit/1000);
+
+    if (clk_b < 1000) 
+        freq_b = clk_b*unit;
+    else
+        freq_b = clk_b*(unit/1000);
+
+    ena = clk_a>0 ? 1 : 0;
+    enb = clk_b>0 ? 1 : 0;
+
+    if (ena || enb) adc_pll_cntl3.b.enable = 1;
+    adc_pll_cntl3.b.reset = 1;
+
+    found = 0;
+    best_err = 100*unit;
+    pll_od_a = 1;
+    pll_od_b = 1;
+	pll_n=1;
+    for (pll_m=1; pll_m<512; pll_m++) {
+       // for (pll_n=1; pll_n<=5; pll_n++) { 
+            freq_dco = freq_osc * pll_m / pll_n;
+            if (freq_dco<750*unit || freq_dco>1550*unit) continue;
+            
+            pll_xd_a = freq_dco / (1<<pll_od_a) / freq_a;
+            pll_xd_b = freq_dco / (1<<pll_od_b) / freq_b;
+                
+            freq_a_act = freq_dco / (1<<pll_od_a) / pll_xd_a;
+            freq_b_act = freq_dco / (1<<pll_od_b) / pll_xd_b;
+
+            err_tmp = (freq_a_act - freq_a)*ena + (freq_b_act - freq_b)*enb;
+                        
+            if (err_tmp >= best_err) continue;
+                
+            adc_pll_cntl.b.pll_m = pll_m;
+            adc_pll_cntl.b.pll_n = pll_n;
+            adc_pll_cntl.b.pll_od0 = pll_od_b;
+            adc_pll_cntl.b.pll_od1 = pll_od_a;
+            adc_pll_cntl.b.pll_xd0 = pll_xd_b;
+            adc_pll_cntl.b.pll_xd1 = pll_xd_a;
+
+            adc_pll_cntl2.b.div2_ctrl = freq_dco > 1000*unit ? 1 : 0;
+            
+            found = 1;
+            best_err = err_tmp;
+     //   }
+    }
+    
+    pll_m = adc_pll_cntl.b.pll_m;   
+    pll_n = adc_pll_cntl.b.pll_n;   
+    pll_od_b = adc_pll_cntl.b.pll_od0;
+    pll_od_a = adc_pll_cntl.b.pll_od1;
+    pll_xd_b = adc_pll_cntl.b.pll_xd0;
+    pll_xd_a = adc_pll_cntl.b.pll_xd1;
+    
+    div2 = adc_pll_cntl2.b.div2_ctrl;
+ /*   
+    *p_adc_pll_cntl  =  adc_pll_cntl.d32; 
+    *p_adc_pll_cntl2 = adc_pll_cntl2.d32;
+    *p_adc_pll_cntl3 = adc_pll_cntl3.d32;
+    *p_adc_pll_cntl4 = adc_pll_cntl4.d32;
+*/
+    adc_pll_cntl3.b.reset = 0;
+//    *p_adc_pll_cntl3 = adc_pll_cntl3.d32;
+
+    if (!found) {
+        pr_dbg(" ERROR can't setup %7ld kHz %7ld kHz\n", 
+                  freq_b/(unit/1000), freq_a/(unit/1000));
+    }
+    else {
+        freq_dco = freq_osc * pll_m / pll_n;    
+        pr_dbg(" ADC PLL  M %3d   N %3d\n", pll_m, pll_n);
+        pr_dbg(" ADC PLL DCO %ld kHz\n", freq_dco/(unit/1000));
+
+        pr_dbg(" ADC PLL XD %3d  OD %3d\n", pll_xd_b, pll_od_b);
+        pr_dbg(" ADC PLL XD %3d  OD %3d\n", pll_xd_a, pll_od_a);
+
+        freq_a_act = freq_dco / (1<<pll_od_a) / pll_xd_a;
+        freq_b_act = freq_dco / (1<<pll_od_b) / pll_xd_b;
+
+        pr_dbg(" B %7ld kHz %7ld kHz\n", 
+                  freq_b/(unit/1000), freq_b_act/(unit/1000));
+        pr_dbg(" A %7ld kHz %7ld kHz\n", 
+                  freq_a/(unit/1000), freq_a_act/(unit/1000));
+
+        if (clk_sys > 0) {
+            dig_clk_cfg.b.demod_clk_en = 1;
+            dig_clk_cfg.b.demod_clk_sel = 3;        
+            if (clk_sys < 1000) 
+                freq_sys = clk_sys*unit;
+            else
+                freq_sys = clk_sys*(unit/1000);
+
+            dig_clk_cfg.b.demod_clk_div = freq_dco/(1+div2)/freq_sys - 1;
+            freq_sys_act = freq_dco/(1+div2)/(dig_clk_cfg.b.demod_clk_div + 1);
+            pr_dbg(" SYS %7ld kHz div %d+1  %7ld kHz\n", 
+                   freq_sys/(unit/1000), dig_clk_cfg.b.demod_clk_div,
+                   freq_sys_act/(unit/1000));
+            
+        }
+        else {
+            dig_clk_cfg.b.demod_clk_en = 0;
+        }
+
+     //   *p_demod_dig_clk = dig_clk_cfg.d32;
+     	demod_set_cbus_reg(ADC_RESET_VALUE,ADC_REG3);  //adc reset
+		demod_set_cbus_reg(adc_pll_cntl.d32, ADC_REG1);
+	//	demod_set_cbus_reg(adc_pll_cntl2.d32, ADC_REG2);
+	//	demod_set_cbus_reg(adc_pll_cntl3.d32, ADC_REG3);
+	//	demod_set_cbus_reg(adc_pll_cntl4.d32, ADC_REG4);
+	//	demod_set_cbus_reg(dig_clk_cfg.d32, ADC_REG6);
+		demod_set_cbus_reg(dig_clk_cfg.d32, ADC_REG6);
+		demod_set_cbus_reg(ADC_REG3_VALUE,ADC_REG3);
+		
+    }
+
+	//debug
+	pr_dbg("[adc][%x]%lx\n",ADC_REG1,demod_read_cbus_reg(ADC_REG1));
+	pr_dbg("[adc][%x]%lx\n",ADC_REG2,demod_read_cbus_reg(ADC_REG2));
+	pr_dbg("[adc][%x]%lx\n",ADC_REG3,demod_read_cbus_reg(ADC_REG3));
+	pr_dbg("[adc][%x]%lx\n",ADC_REG4,demod_read_cbus_reg(ADC_REG4));
+
+	pr_dbg("[adc][%x]%lx\n",ADC_REG6,demod_read_cbus_reg(ADC_REG6));
+//	pr_dbg("[adc][%x]%lx\n",ADC_REG6,demod_read_cbus_reg(ADC_REG6));
+//	pr_dbg("[adc][%x]%lx\n",ADC_REG7,demod_read_cbus_reg(ADC_REG7));
+//	pr_dbg("[adc][%x]%lx\n",ADC_REG8,demod_read_cbus_reg(ADC_REG8));
+
+	pr_dbg("[demod][%x]%lx\n",DEMOD_REG1,demod_read_demod_reg(DEMOD_REG1));
+	pr_dbg("[demod][%x]%lx\n",DEMOD_REG2,demod_read_demod_reg(DEMOD_REG2));
+	pr_dbg("[demod][%x]%lx\n",DEMOD_REG3,demod_read_demod_reg(DEMOD_REG3));
+		
+	
+}
+
+void demod_set_adc_core_clk(int adc_clk, int sys_clk,int dvb_mode)
+{
+  /*  demod_cfg_regs_t *demod_cfg_regs;
+	*demod_cfg_regs = DEMOD_CFG_BASE;
+    demod_cfg2_t cfg2;
+
+    cfg2.b.biasgen_en = 1;
+    cfg2.b.en_adc = 1;
+    demod_cfg_regs->cfg2 = cfg2.d32;*/
+    adc_dpll_setup(25, adc_clk, sys_clk);
+}
+
+
+#endif
 
 void demod_set_cbus_reg(int data, int addr)
 {
@@ -579,17 +749,89 @@ unsigned long demod_read_demod_reg(unsigned long addr)
     return tmp;
 }
 
+void demod_power_switch(int pwr_cntl)
+{
+	int i,j;
+	i=0;
+	j=0;
+	pr_dbg("P_AO_RTI_GEN_PWR_SLEEP0 is %x,HHI_DEMOD_MEM_PD_REG is %x,P_RESET0_LEVEL is %x,P_AO_RTI_GEN_PWR_ISO0 is %x\n",P_AO_RTI_GEN_PWR_SLEEP0,P_HHI_DEMOD_MEM_PD_REG,P_RESET0_LEVEL,P_AO_RTI_GEN_PWR_ISO0);
+	 if(pwr_cntl == PWR_ON) {
+	 	pr_dbg("[PWR]: Power on demod_comp\n");
+	// Powerup demod_comb
+	Wr(P_AO_RTI_GEN_PWR_SLEEP0, Rd(P_AO_RTI_GEN_PWR_SLEEP0) & (~(0x1<<10))); // [10] power on
+
+	// Power up memory
+	Wr( P_HHI_DEMOD_MEM_PD_REG, Rd(P_HHI_DEMOD_MEM_PD_REG) & (~0x2fff) );
+/*	for(i=0;i<7;i++){
+		j=~(0x11<<i);
+		Wr( P_HHI_DEMOD_MEM_PD_REG, Rd(P_HHI_DEMOD_MEM_PD_REG) & (j) );
+		msleep(5);
+	}*/
 
 
-void clocks_set_sys_defaults(unsigned char dvb_mode)
+	// reset
+	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) & (~(0x1<<8)) );	
+
+	
+//	*P_RESET0_LEVEL &= ~(0x1<<8);
+	msleep(5);
+
+	// remove isolation
+	Wr( P_AO_RTI_GEN_PWR_ISO0, Rd(P_AO_RTI_GEN_PWR_ISO0) & (~(0x3<<12)) );	
+
+	// pull up reset
+	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) | (0x1<<8) );	
+//	*P_RESET0_LEVEL |= (0x1<<8);
+
+} else {
+		pr_dbg("[PWR]: Power off demod_comp\n");
+	    
+		// add isolation
+        Wr( P_AO_RTI_GEN_PWR_ISO0, Rd(P_AO_RTI_GEN_PWR_ISO0) | (0x3<<12) );
+
+		// power down memory
+		Wr( P_HHI_DEMOD_MEM_PD_REG, Rd(P_HHI_DEMOD_MEM_PD_REG) | 0x2fff );
+
+
+		// power down demod_comb
+        Wr(P_AO_RTI_GEN_PWR_SLEEP0, Rd(P_AO_RTI_GEN_PWR_SLEEP0) | (0x1<<10));
+	}
+
+
+
+}
+
+
+static void clocks_set_sys_defaults(unsigned char dvb_mode)
 {
 	demod_cfg0_t cfg0;
+	demod_cfg2_t cfg2;
+	
+	
+#ifdef G9_TV
+		demod_power_switch(PWR_ON);
+#endif
+	
+	#ifndef G9_TV
 	demod_set_cbus_reg(ADC_REG1_VALUE,ADC_REG1);
 	demod_set_cbus_reg(ADC_REG2_VALUE,ADC_REG2);
 	demod_set_cbus_reg(ADC_REG3_VALUE,ADC_REG3);
 	demod_set_cbus_reg(ADC_REG4_VALUE,ADC_REG4);
 	demod_set_cbus_reg(ADC_REG5_VALUE,ADC_REG5);
 	demod_set_cbus_reg(ADC_REG6_VALUE,ADC_REG6);
+	#else
+	demod_set_cbus_reg(ADC_RESET_VALUE,ADC_REG3);  //adc reset
+	demod_set_cbus_reg(ADC_REG1_VALUE,ADC_REG1);
+	demod_set_cbus_reg(ADC_REG2_VALUE,ADC_REG2);
+	demod_set_cbus_reg(ADC_REG4_VALUE,ADC_REG4);
+	demod_set_cbus_reg(ADC_REG3_VALUE,ADC_REG3);
+	//dadc
+	demod_set_cbus_reg(ADC_REG7_VALUE,ADC_REG7);
+	demod_set_cbus_reg(ADC_REG8_VALUE,ADC_REG8);
+	demod_set_cbus_reg(ADC_REG9_VALUE,ADC_REG9);
+	demod_set_cbus_reg(ADC_REGA_VALUE,ADC_REGA);
+	#endif
+
 
 	demod_set_demod_reg(DEMOD_REG1_VALUE,DEMOD_REG1);
 	demod_set_demod_reg(DEMOD_REG2_VALUE,DEMOD_REG2);
@@ -606,6 +848,11 @@ void clocks_set_sys_defaults(unsigned char dvb_mode)
 		cfg0.b.ts_sel=4;
 	}
 	demod_set_demod_reg(cfg0.d32,DEMOD_REG1);
+
+	cfg2.b.biasgen_en = 1;
+    cfg2.b.en_adc = 1;
+	demod_set_demod_reg(cfg2.d32,DEMOD_REG3);
+	
 	pr_dbg("0xc8020c00 is %lx,dvb_mode is %d\n",demod_read_demod_reg(0xc00),dvb_mode);
 
 }
@@ -615,7 +862,7 @@ void dtmb_write_reg(int reg_addr, int reg_data)
 	apb_write_reg(DTMB_BASE+(reg_addr<<2),reg_data);
 }
 
-unsigned int dtmb_read_reg(int reg_addr)
+long dtmb_read_reg(int reg_addr)
 {
     return apb_read_reg(DTMB_BASE+(reg_addr<<2));
 }
@@ -867,11 +1114,9 @@ static dtmb_cfg_t list_dtmb_v1[99] = {
 
 extern int memstart;
 
-void dtmb_initial(struct aml_demod_sta *demod_sta)
-{
 
-	pr_dbg("[dtmb]mem_buf is 0x%x\n",memstart);
-	dtmb_write_reg(0x049, memstart);		//only for init
+void dtmb_all_reset(void)
+{
 	dtmb_write_reg(0x010, 0x52);
 	dtmb_write_reg(0x047, 0x33202);  //20 bits, 1 - fpga. 0 - m6tvd
 	dtmb_write_reg(0xd, 0x141a0320); // increase interleaver0 waiting time.
@@ -879,7 +1124,14 @@ void dtmb_initial(struct aml_demod_sta *demod_sta)
     dtmb_write_reg(0x18,0x000a1316); // shorten mobile detect time.
     dtmb_write_reg(0x15,0x0199999A); // shift -5M.
 	dtmb_write_reg(0x2f,0x13064263); // speed up src
-#if 0
+
+}
+
+void dtmb_initial(struct aml_demod_sta *demod_sta)
+{
+//	dtmb_write_reg(0x049, memstart);		//only for init
+	dtmb_all_reset();
+#if 0	
 	int i;
 	  for (i=0; list_dtmb_v1[i].adr != 0; i++) {
 	        if (list_dtmb_v1[i].rw){
@@ -900,13 +1152,13 @@ int dtmb_information(void)
 {
 	int tps;
 	tps = dtmb_read_reg(0xe5);
-	pr_dbg("¡¾FSM ¡¿: %x %x %x %x  \n",dtmb_read_reg(0xd7),dtmb_read_reg(0xd6),dtmb_read_reg(0xd5),dtmb_read_reg(0xd4));
-	pr_dbg("¡¾AGC ¡¿: agc_power %d, dagc_power %3d, dagc_gain %3d mobi_det_power %d \n",
+	pr_dbg("¡¾FSM ¡¿: %lx %lx %lx %lx  \n",dtmb_read_reg(0xd7),dtmb_read_reg(0xd6),dtmb_read_reg(0xd5),dtmb_read_reg(0xd4));
+	pr_dbg("¡¾AGC ¡¿: agc_power %ld, dagc_power %3ld, dagc_gain %3ld mobi_det_power %ld \n",
 		(-(((dtmb_read_reg(0xd9) >> 22) & 0x1ff) / 16)),
 		((dtmb_read_reg(0xda) >> 0) & 0x3f),
 		((dtmb_read_reg(0xda) >> 8) & 0x3ff),
 		(dtmb_read_reg(0xf1)>>8) & 0x7ffff);
-	pr_dbg("¡¾TPS ¡¿ SC or MC %2d,f_r %2d qam_nr %2d intlv %2d cr %2d constl %2d,\n",
+	pr_dbg("¡¾TPS ¡¿ SC or MC %2ld,f_r %2d qam_nr %2d intlv %2d cr %2d constl %2d,\n",
 		(dtmb_read_reg(0xe6) >> 24) & 0x1,
 		(tps >> 22) &0x1,
 		(tps >> 21) &0x1,
@@ -914,20 +1166,80 @@ int dtmb_information(void)
 		(tps >> 18) &0x3,
 		(tps >> 16) &0x3);
 
-	return 0;
+		return 0;
+
+}
+
+void dtmb_mobile_mode_set(int mode)
+{	
+	  if(mode==enable_mobile){
+		  dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9) + (1 << 1)); // set mobile mode
+		  #ifdef dtmb_mobile_mode
+		  dtmb_write_reg(0x50, 0x1241);	//180m mobile mode
+		  dtmb_write_reg(0x4f, 0x303f05df);// set belta byhand
+		  #endif
+	  }else if(mode==disable_mobile){
+		  dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9)); // set static mode
+		  #ifdef dtmb_mobile_mode
+		  dtmb_write_reg(0x50, 0x1120); //180m mobile mode
+		  dtmb_write_reg(0x4f, 0x1f0205df);// set belta byhand
+		  #endif
+	}
+	  
+
+}
+
+void dtmb_time_eq_mode_set(int mode)
+{
+	int reg_46,reg_6b;
+	if(CLOSE_TIME_EQ==mode){
+		dtmb_write_reg(0x2e, 0x131a747d);  // cancel timing-loop
+		dtmb_write_reg(0xd, 0x141a0320); // increase interleaver0 waiting time.
+		reg_46 = dtmb_read_reg(0x46);
+		reg_46 = reg_46 &~ ((1<<20) + (1<<16));			// bypass fe and set time_eq
+		dtmb_write_reg(0x46, reg_46);
+	}else if (OPEN_TIME_EQ==mode){
+		dtmb_write_reg(0x2e, 0x31a747d);  // start timing-loop
+        dtmb_write_reg(0x0d, 0x14400640);  // delay fec sync time
+        reg_46 = dtmb_read_reg(0x46);
+        reg_46 = reg_46 | ((1<<20) + (1<<16));           // bypass fe and set time_eq
+        dtmb_write_reg(0x46, reg_46);
+        reg_6b = dtmb_read_reg(0x6b);
+        reg_6b = (reg_6b &~(0x3<<16)) | (1<<17);           // set tune auto
+        dtmb_write_reg(0x6b, reg_6b);
+	}
+
+
+}
+
+void dtmb_set_ddc_phase(void)
+{
+	int ddc_phase,icfo_phase,fcfo_phase,ddc_phase_new;
+	ddc_phase  = dtmb_read_reg(0x15) & 0x1ffffff;
+	icfo_phase = dtmb_read_reg(0xe0) & 0xfffff;
+	fcfo_phase = dtmb_read_reg(0xe1) & 0xfffff;
+	if(icfo_phase > (1<<19))
+		icfo_phase -= (1<<20);
+	if(fcfo_phase > (1<<19))
+		fcfo_phase -= (1<<20);
+	ddc_phase_new = ddc_phase + icfo_phase*4 + fcfo_phase;
+	//pr_dbg("before is DDC_phase %x, now is %x \n", ddc_phase, ddc_phase_new);
+	dtmb_write_reg(0x15, ddc_phase_new);
 
 }
 
 
+static int mobile_times = 0;
+static int time_eq_cnt = 0;
+static int time_eq_lost_cnt = 0;
 int dtmb_read_snr(void){
-	int tmp,che_snr,snr,snr_avg,fec_lock,reg_46;
+	int tmp,che_snr,snr,snr_avg,fec_lock;
 	int fsm_state,fec_ldpc_it_avg,local_state,fbe_in_num,SC_mode,time_eq;
 	int time_cnt=0,fec_bch_add;
-	int ddc_phase,icfo_phase,fcfo_phase,ddc_phase_new,reg_6b;
 	int mobi_det_power;
-    int mobile_times;
+    int front_cci0_count;
     int ctrl_che_working_state,pm_change,constell;
-	mobile_times = 0;
+	
 	pm_change = 0;
 
 	tmp=dtmb_read_reg(0x0e3);
@@ -951,39 +1263,36 @@ int dtmb_read_snr(void){
 		dtmb_reset();
 		return 0;
 	}else{
-		 if(fec_lock && fec_ldpc_it_avg < (3 * 256)){
+		 if(fec_lock && fec_ldpc_it_avg < (4 * 256)){		// 0.4 is 3~4*256, 0.6 is 5~6*256,0.8 is 6~7*256
 			 pr_dbg("-----------  lock ! ------------ \n");
 			 return 1;
 		 }else{
 			fsm_state = dtmb_read_reg(0xd7) & 0xf;
-            local_state = 2;
+            local_state = AMLOGIC_DTMB_STEP2;
 			time_cnt=0;
 			 while(fsm_state < 8 && time_cnt < 10) {// state change to pm
                 msleep(50);
                 fsm_state = dtmb_read_reg(0xd7) & 0xf;
                 time_cnt++;
-                local_state = 3;
+                local_state = AMLOGIC_DTMB_STEP3;
                 pr_dbg("*************** local_state = %d ************ \n", local_state);
             }
 
-			 if(fsm_state >= 8) { // check whether SC and two path mode
+			 if(fsm_state >= DTMB_PM_INIT_READY) { // check whether SC and two path mode
 			  fbe_in_num = (dtmb_read_reg(0xe4) >> 16) & 0x3ff;  // two path distance
 			  SC_mode = (dtmb_read_reg(0xe6) >> 24) & 0x1;
 			  time_eq = (dtmb_read_reg(0x46) >> 16) & 0x1;
 			  fec_ldpc_it_avg = dtmb_read_reg(0xdd) & 0xffff;
-
 				  mobi_det_power = (dtmb_read_reg(0xf1)>>8) & 0x7ffff;
 
-		  if(mobi_det_power > 10) {
-		      mobile_times = 8;
-		      dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9) + (1 << 1)); // set mobile mode
-		   //   dtmb_write_reg(0x50, 0x1241);
+             	  if(mobi_det_power > 10 && (time_eq == 0)) {
+             	      mobile_times = 8;//8;
+             	      dtmb_mobile_mode_set(enable_mobile);
 		  }
 		  else {
 		      mobile_times -= 1;
 		      if(mobile_times <= 0) {
-		          dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9)); // set static mode
-		       //   dtmb_write_reg(0x50, 0x1120);
+					  	  dtmb_mobile_mode_set(disable_mobile);
 		          mobile_times = 0;
 		      }
 		  }
@@ -1000,79 +1309,72 @@ int dtmb_read_snr(void){
 		  }
 
 
-			  local_state = 4;
+		     	  local_state = AMLOGIC_DTMB_STEP4;
 			  pr_dbg("*************** local_state = %d ************ \n", local_state);
 			  if(mobile_times > 0)
-                         pr_dbg("***************  mobile state ************ \n");
+                         pr_dbg("***************  mobile state ************,mobile_times is %d \n",mobile_times);
 			  if(time_eq){  // in time_eq mode
-			      local_state = 5;
-			      pr_dbg("*************** local_state = %d ************ \n", local_state);
-
-			      if(SC_mode == 1 || fbe_in_num < 30){ // MC mode or not two path mode, restore normal mode
-			          dtmb_write_reg(0x2e, 0x131a747d);  // cancel timing-loop
-			          dtmb_write_reg(0xd, 0x141a0320); // increase interleaver0 waiting time.
-			          reg_46 = dtmb_read_reg(0x46);
-		                reg_46 = reg_46 &~ ((1<<20) + (1<<16));           // bypass fe and set time_eq
-		                dtmb_write_reg(0x46, reg_46);
-		                pr_dbg(" ------------ normal mode -------------\n");
-		                local_state = 6;
-		                pr_dbg("*************** local_state = %d ************ \n", local_state);
-
-			      }
+		     	      local_state = AMLOGIC_DTMB_STEP5;
+					  mobile_times = 0;
+		     	      pr_dbg("*************** local_state = %d ,time_eq_cnt is %d************ \n", local_state,time_eq_cnt);
+                      if(fec_lock == 1){
+					  	  return 1;
+                      }
+					  else if(SC_mode == 1) {
+					  	  dtmb_time_eq_mode_set(CLOSE_TIME_EQ);
+		                  pr_dbg(" ------------ normal mode MC-------------\n");
+		                  local_state = AMLOGIC_DTMB_STEP10;
+		                  pr_dbg("*************** local_state = %d ************ \n", local_state);					  	
+					  }
+					  else {
+			     	      if(fbe_in_num < 30 || time_eq_lost_cnt > 5){ // MC mode or not two path mode, restore normal mode
+			     	          if(time_eq_cnt <= 0) {
+							  	time_eq_lost_cnt = 0;
+							    dtmb_time_eq_mode_set(CLOSE_TIME_EQ);
+				                pr_dbg(" ------------ normal mode SC-------------\n");
+				                local_state = AMLOGIC_DTMB_STEP6;
+								dtmb_reset();
+				                pr_dbg("*************** local_state = %d ************ \n", local_state);
+			     	        }
+							else{
+								time_eq_cnt--;
+							}
+			     	      }
+						  else{
+						  	time_eq_lost_cnt++;
+						  }
+						 }
 		        }
 		        else {
-		            local_state = 7;
-		            pr_dbg("*************** local_state = %d ************ \n", local_state);
+		            local_state = AMLOGIC_DTMB_STEP7;
+					front_cci0_count=(dtmb_read_reg(0xe9) >> 22) & 0xff;
+		            pr_dbg("*************** local_state = %d ************ ,front_cci0_count is %d\n", local_state,front_cci0_count);
 		            constell = (dtmb_read_reg(0xe5) >> 16) & 0x3;
-		            if((SC_mode == 0) && (fbe_in_num > 30) && (fec_ldpc_it_avg > 640)&& (constell > 1)/*2.5*256*/) { // switch to time_eq mode
-		                ddc_phase  = dtmb_read_reg(0x15) & 0x1ffffff;
-		                icfo_phase = dtmb_read_reg(0xe0) & 0xfffff;
-		                fcfo_phase = dtmb_read_reg(0xe1) & 0xfffff;
-		                if(icfo_phase > (1<<19))
-		                    icfo_phase -= (1<<20);
-		                if(fcfo_phase > (1<<19))
-		                    fcfo_phase -= (1<<20);
-		                ddc_phase_new = ddc_phase + icfo_phase*4 + fcfo_phase;
-		                //printf("before is DDC_phase %x, now is %x \n", ddc_phase, ddc_phase_new);
-		                dtmb_write_reg(0x15, ddc_phase_new);
-
-		                //printf("switch to time_eq configure : 0 -- No, 1 -- yes");
-		                //scanf("%d", &tmp);
-		                tmp = 1;
-		                if(tmp == 1) {
-		                    dtmb_write_reg(0x2e, 0x31a747d);  // start timing-loop
-		                    dtmb_write_reg(0x0d, 0x14400640);  // delay fec sync time
-		                    reg_46 = dtmb_read_reg(0x46);
-		                    reg_46 = reg_46 | ((1<<20) + (1<<16));           // bypass fe and set time_eq
-		                    dtmb_write_reg(0x46, reg_46);
-
-		                    reg_6b = dtmb_read_reg(0x6b);
-		                    reg_6b = (reg_6b &~(0x3<<16)) | (1<<17);           // set tune auto
-		                    dtmb_write_reg(0x6b, reg_6b);
-		                }
+		            if((SC_mode == 0)&&(fec_ldpc_it_avg > 640)&& (constell > 0)/*2.5*256*/&& ((fbe_in_num > 30)||(front_cci0_count>0))) { // switch to time_eq mode
+		                time_eq_cnt = 5;
+						time_eq_lost_cnt = 0;
+		                dtmb_set_ddc_phase();
+						dtmb_time_eq_mode_set(OPEN_TIME_EQ);
 		                pr_dbg(" ------------ time_eq mode -------------\n");
-		                local_state = 8;
+		                local_state = AMLOGIC_DTMB_STEP8;
 		                pr_dbg("*************** local_state = %d ************ \n", local_state);
 		                dtmb_reset();
 						msleep(300);
-	                        }
-	                    }
-	                }else if(time_cnt >=10) // don't sync, all reset
-                        {
-                            local_state = 9;
-                            pr_dbg("*************** local_state = %d ************ \n", local_state);
+	                  }
+	               }
+	           }else if(time_cnt >=10) // don't sync, all reset
+	            {
+	                local_state = AMLOGIC_DTMB_STEP9;
+	                pr_dbg("*************** local_state = %d ************ \n", local_state);
 
-                            dtmb_register_reset();
-                        //    dtmb_write_reg(0x49,memstart); //set memory
-                            dtmb_write_reg(0x10,0x52); //set memory
-                            dtmb_write_reg(0xd, 0x141a0320); // increase interleaver0 waiting time.
-                            dtmb_write_reg(0xc, 0x41444400); // shorten che waiting time.
-                            dtmb_write_reg(0x47,0x33202);
-							dtmb_write_reg(0x18,0x000a1316); // shorten mobile detect time.
-				            dtmb_write_reg(0x15,0x0199999A); // shift -5M.
-				            dtmb_write_reg(0x2f,0x13064263); // speed up src
-				            pm_change = 0;
-                        }
+	                dtmb_register_reset();
+	            //    dtmb_write_reg(0x49,memstart); //set memory
+	                dtmb_all_reset();
+		            time_eq_cnt = 0;
+					time_eq_lost_cnt = 0;
+					mobile_times= 0;
+		            pm_change = 0;
+	            }
 
 		 }
 
@@ -1257,7 +1559,6 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
     return ret;
 }
 
-extern int clk_measure(char index);
 int demod_set_sys(struct aml_demod_sta *demod_sta,
 		  struct aml_demod_i2c *demod_i2c,
 		  struct aml_demod_sys *demod_sys)
@@ -1271,6 +1572,7 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 	clk_dem=demod_sys->demod_clk;
 	pr_dbg("demod_set_sys,clk_adc is %d,clk_demod is %d,demod_sta.tmp is %d\n",clk_adc,clk_dem,demod_sta->tmp);
     clocks_set_sys_defaults(dvb_mode);
+	#ifndef G9_TV
 	if(demod_sta->tmp==Adc_mode){
 		demod_set_cbus_reg(ADC_REG4_VALUE,ADC_REG4);
 		pr_dbg("Adc_mode\n");
@@ -1279,11 +1581,26 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 		demod_set_cbus_reg(ADC_REG4_CRY_VALUE,ADC_REG4);
 		pr_dbg("Cry_mode\n");
 	}
+	#endif
+	//open dtv adc pinmux
+	demod_set_cbus_reg(0x10000,0x2034);
+	printk("[R840]set adc pinmux\n");
+
+	//
     demod_set_adc_core_clk(clk_adc, clk_dem,dvb_mode);
+	//init for dtmb
+	if(dvb_mode==M6_Dtmb){
+		dtmb_write_reg(0x049, memstart);	
+		pr_dbg("[dtmb]mem_buf is 0x%x\n",memstart);
+	}
+	//
 	demod_sta->adc_freq=clk_adc;
 	demod_sta->clk_freq=clk_dem;
 	adc_clk=clk_measure(17);
 	adc_clk=clk_measure(56);
+	adc_clk=clk_measure(64);
+	adc_clk=clk_measure(65);
+	adc_clk=clk_measure(25);
 
     return 0;
 }
@@ -1302,13 +1619,27 @@ void demod_set_reg(struct aml_demod_reg *demod_reg)
 	}else if(demod_reg->mode==5){
 		demod_reg->addr=demod_reg->addr+DEMOD_BASE;
 	//	printk("DEMOD_BASE    	0xf1100000+addr*4 \n ISDBT_BASE 	  	0xf1100000+addr*4\n QAM_BASE	  	0xf1100400+addr\n DEMOD_CFG_BASE	0xf1100c00+addr\n");
-	}else if(demod_reg->mode==7){
+	}else if(demod_reg->mode==6){
+	
+	//	demod_reg->addr=demod_reg->addr*4+DEMOD_CFG_BASE;
+	}
+	else if(demod_reg->mode==11){
 
+		demod_reg->addr=demod_reg->addr;
 
 	}
-	if(demod_reg->mode==3)
+	else if(demod_reg->mode==10){
+		demod_reg->addr=(u32_t)phys_to_virt(demod_reg->addr);
+	
+		}
+
+	
+	if(demod_reg->mode==3){
 		atsc_write_reg(demod_reg->addr, demod_reg->val);
 	//	apb_write_reg(demod_reg->addr, (demod_reg->val&0xffff)<<8 | (demod_reg->val&0xff));
+	}else if(demod_reg->mode==11){
+		demod_set_cbus_reg(demod_reg->val,demod_reg->addr);
+	}
 	else
 		apb_write_reg(demod_reg->addr, demod_reg->val);
 }
@@ -1327,8 +1658,14 @@ void demod_get_reg(struct aml_demod_reg *demod_reg)
 	}else if(demod_reg->mode==5){
 		demod_reg->addr=demod_reg->addr+DEMOD_BASE;
 	//	printk("DEMOD_BASE    	0xf1100000+addr*4 \n ISDBT_BASE 	  	0xf1100000+addr*4\n QAM_BASE	  	0xf1100400+addr\n DEMOD_CFG_BASE	0xf1100c00+addr\n");
-	}else if(demod_reg->mode==7){
+	}else if(demod_reg->mode==6){
+	//	demod_reg->addr=demod_reg->addr*4+DEMOD_CFG_BASE;
+	}
+	else if(demod_reg->mode==11){
+		demod_reg->addr=demod_reg->addr;
 
+	}else if(demod_reg->mode==10){
+		demod_reg->addr=(u32_t)phys_to_virt(demod_reg->addr);
 
 	}
 
@@ -1340,9 +1677,12 @@ void demod_get_reg(struct aml_demod_reg *demod_reg)
 		demod_reg->val=atsc_read_iqr_reg();
 	//	apb_write_reg(ATSC_BASE+4, (demod_reg->addr&0xffff)<<8);
 	//	demod_reg->val = apb_read_reg(ATSC_BASE)&0xff;
+	}else if(demod_reg->mode==11){
+		demod_reg->val = demod_read_cbus_reg(demod_reg->addr);
 	}
 	else
 		demod_reg->val = apb_read_reg(demod_reg->addr);
+
 }
 
 
@@ -1351,6 +1691,7 @@ void demod_reset()
     Wr(RESET0_REGISTER, (1<<8));
 }
 
+#if 0
 void demod_set_irq_mask()
 {
  (*(volatile unsigned long *)(P_SYS_CPU_0_IRQ_IN4_INTR_MASK)) |= (1 << 8);
@@ -1360,6 +1701,7 @@ void demod_clr_irq_stat()
 {
    (*(volatile unsigned long *)(P_SYS_CPU_0_IRQ_IN4_INTR_STAT)) |= (1 << 8);
 }
+#endif
 
 void demod_set_adc_core_clk_quick(int clk_adc_cfg, int clk_dem_cfg)
 {
@@ -1664,52 +2006,55 @@ void  ini_icfo_pn_index (int mode) // 00:DVBT,01:ISDBT
     }
 }
 
+
+
+static int coef[] = {
+    0xf900, 0xfe00, 0x0000, 0x0000, 0x0100, 0x0100, 0x0000, 0x0000,
+    0xfd00, 0xf700, 0x0000, 0x0000, 0x4c00, 0x0000, 0x0000, 0x0000,
+    0x2200, 0x0c00, 0x0000, 0x0000, 0xf700, 0xf700, 0x0000, 0x0000,
+    0x0300, 0x0900, 0x0000, 0x0000, 0x0600, 0x0600, 0x0000, 0x0000,
+    0xfc00, 0xf300, 0x0000, 0x0000, 0x2e00, 0x0000, 0x0000, 0x0000,
+    0x3900, 0x1300, 0x0000, 0x0000, 0xfa00, 0xfa00, 0x0000, 0x0000,
+    0x0100, 0x0200, 0x0000, 0x0000, 0xf600, 0x0000, 0x0000, 0x0000,
+    0x0700, 0x0700, 0x0000, 0x0000, 0xfe00, 0xfb00, 0x0000, 0x0000,
+    0x0900, 0x0000, 0x0000, 0x0000, 0x3200, 0x1100, 0x0000, 0x0000,
+    0x0400, 0x0400, 0x0000, 0x0000, 0xfe00, 0xfb00, 0x0000, 0x0000,
+    0x0e00, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfb00, 0x0000, 0x0000,
+    0x0100, 0x0200, 0x0000, 0x0000, 0xf400, 0x0000, 0x0000, 0x0000,
+    0x3900, 0x1300, 0x0000, 0x0000, 0x1700, 0x1700, 0x0000, 0x0000,
+    0xfc00, 0xf300, 0x0000, 0x0000, 0x0c00, 0x0000, 0x0000, 0x0000,
+    0x0300, 0x0900, 0x0000, 0x0000, 0xee00, 0x0000, 0x0000, 0x0000,
+    0x2200, 0x0c00, 0x0000, 0x0000, 0x2600, 0x2600, 0x0000, 0x0000,
+    0xfd00, 0xf700, 0x0000, 0x0000, 0x0200, 0x0000, 0x0000, 0x0000,
+    0xf900, 0xfe00, 0x0000, 0x0000, 0x0400, 0x0b00, 0x0000, 0x0000,
+    0xf900, 0x0000, 0x0000, 0x0000, 0x0700, 0x0200, 0x0000, 0x0000,
+    0x2100, 0x2100, 0x0000, 0x0000, 0x0200, 0x0700, 0x0000, 0x0000,
+    0xf900, 0x0000, 0x0000, 0x0000, 0x0b00, 0x0400, 0x0000, 0x0000,
+    0xfe00, 0xf900, 0x0000, 0x0000, 0x0200, 0x0000, 0x0000, 0x0000,
+    0xf700, 0xfd00, 0x0000, 0x0000, 0x2600, 0x2600, 0x0000, 0x0000,
+    0x0c00, 0x2200, 0x0000, 0x0000, 0xee00, 0x0000, 0x0000, 0x0000,
+    0x0900, 0x0300, 0x0000, 0x0000, 0x0c00, 0x0000, 0x0000, 0x0000,
+    0xf300, 0xfc00, 0x0000, 0x0000, 0x1700, 0x1700, 0x0000, 0x0000,
+    0x1300, 0x3900, 0x0000, 0x0000, 0xf400, 0x0000, 0x0000, 0x0000,
+    0x0200, 0x0100, 0x0000, 0x0000, 0xfb00, 0xfb00, 0x0000, 0x0000,
+    0x0e00, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfe00, 0x0000, 0x0000,
+    0x0400, 0x0400, 0x0000, 0x0000, 0x1100, 0x3200, 0x0000, 0x0000,
+    0x0900, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfe00, 0x0000, 0x0000,
+    0x0700, 0x0700, 0x0000, 0x0000, 0xf600, 0x0000, 0x0000, 0x0000,
+    0x0200, 0x0100, 0x0000, 0x0000, 0xfa00, 0xfa00, 0x0000, 0x0000,
+    0x1300, 0x3900, 0x0000, 0x0000, 0x2e00, 0x0000, 0x0000, 0x0000,
+    0xf300, 0xfc00, 0x0000, 0x0000, 0x0600, 0x0600, 0x0000, 0x0000,
+    0x0900, 0x0300, 0x0000, 0x0000, 0xf700, 0xf700, 0x0000, 0x0000,
+    0x0c00, 0x2200, 0x0000, 0x0000, 0x4c00, 0x0000, 0x0000, 0x0000,
+    0xf700, 0xfd00, 0x0000, 0x0000, 0x0100, 0x0100, 0x0000, 0x0000,
+    0xfe00, 0xf900, 0x0000, 0x0000, 0x0b00, 0x0400, 0x0000, 0x0000,
+    0xfc00, 0xfc00, 0x0000, 0x0000, 0x0200, 0x0700, 0x0000, 0x0000,
+    0x4200, 0x0000, 0x0000, 0x0000, 0x0700, 0x0200, 0x0000, 0x0000,
+    0xfc00, 0xfc00, 0x0000, 0x0000, 0x0400, 0x0b00, 0x0000, 0x0000};
+
 void tfd_filter_coff_ini(void)
 {
-    int i;
-    int coef[] = {
-        0xf900, 0xfe00, 0x0000, 0x0000, 0x0100, 0x0100, 0x0000, 0x0000,
-        0xfd00, 0xf700, 0x0000, 0x0000, 0x4c00, 0x0000, 0x0000, 0x0000,
-        0x2200, 0x0c00, 0x0000, 0x0000, 0xf700, 0xf700, 0x0000, 0x0000,
-        0x0300, 0x0900, 0x0000, 0x0000, 0x0600, 0x0600, 0x0000, 0x0000,
-        0xfc00, 0xf300, 0x0000, 0x0000, 0x2e00, 0x0000, 0x0000, 0x0000,
-        0x3900, 0x1300, 0x0000, 0x0000, 0xfa00, 0xfa00, 0x0000, 0x0000,
-        0x0100, 0x0200, 0x0000, 0x0000, 0xf600, 0x0000, 0x0000, 0x0000,
-        0x0700, 0x0700, 0x0000, 0x0000, 0xfe00, 0xfb00, 0x0000, 0x0000,
-        0x0900, 0x0000, 0x0000, 0x0000, 0x3200, 0x1100, 0x0000, 0x0000,
-        0x0400, 0x0400, 0x0000, 0x0000, 0xfe00, 0xfb00, 0x0000, 0x0000,
-        0x0e00, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfb00, 0x0000, 0x0000,
-        0x0100, 0x0200, 0x0000, 0x0000, 0xf400, 0x0000, 0x0000, 0x0000,
-        0x3900, 0x1300, 0x0000, 0x0000, 0x1700, 0x1700, 0x0000, 0x0000,
-        0xfc00, 0xf300, 0x0000, 0x0000, 0x0c00, 0x0000, 0x0000, 0x0000,
-        0x0300, 0x0900, 0x0000, 0x0000, 0xee00, 0x0000, 0x0000, 0x0000,
-        0x2200, 0x0c00, 0x0000, 0x0000, 0x2600, 0x2600, 0x0000, 0x0000,
-        0xfd00, 0xf700, 0x0000, 0x0000, 0x0200, 0x0000, 0x0000, 0x0000,
-        0xf900, 0xfe00, 0x0000, 0x0000, 0x0400, 0x0b00, 0x0000, 0x0000,
-        0xf900, 0x0000, 0x0000, 0x0000, 0x0700, 0x0200, 0x0000, 0x0000,
-        0x2100, 0x2100, 0x0000, 0x0000, 0x0200, 0x0700, 0x0000, 0x0000,
-        0xf900, 0x0000, 0x0000, 0x0000, 0x0b00, 0x0400, 0x0000, 0x0000,
-        0xfe00, 0xf900, 0x0000, 0x0000, 0x0200, 0x0000, 0x0000, 0x0000,
-        0xf700, 0xfd00, 0x0000, 0x0000, 0x2600, 0x2600, 0x0000, 0x0000,
-        0x0c00, 0x2200, 0x0000, 0x0000, 0xee00, 0x0000, 0x0000, 0x0000,
-        0x0900, 0x0300, 0x0000, 0x0000, 0x0c00, 0x0000, 0x0000, 0x0000,
-        0xf300, 0xfc00, 0x0000, 0x0000, 0x1700, 0x1700, 0x0000, 0x0000,
-        0x1300, 0x3900, 0x0000, 0x0000, 0xf400, 0x0000, 0x0000, 0x0000,
-        0x0200, 0x0100, 0x0000, 0x0000, 0xfb00, 0xfb00, 0x0000, 0x0000,
-        0x0e00, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfe00, 0x0000, 0x0000,
-        0x0400, 0x0400, 0x0000, 0x0000, 0x1100, 0x3200, 0x0000, 0x0000,
-        0x0900, 0x0000, 0x0000, 0x0000, 0xfb00, 0xfe00, 0x0000, 0x0000,
-        0x0700, 0x0700, 0x0000, 0x0000, 0xf600, 0x0000, 0x0000, 0x0000,
-        0x0200, 0x0100, 0x0000, 0x0000, 0xfa00, 0xfa00, 0x0000, 0x0000,
-        0x1300, 0x3900, 0x0000, 0x0000, 0x2e00, 0x0000, 0x0000, 0x0000,
-        0xf300, 0xfc00, 0x0000, 0x0000, 0x0600, 0x0600, 0x0000, 0x0000,
-        0x0900, 0x0300, 0x0000, 0x0000, 0xf700, 0xf700, 0x0000, 0x0000,
-        0x0c00, 0x2200, 0x0000, 0x0000, 0x4c00, 0x0000, 0x0000, 0x0000,
-        0xf700, 0xfd00, 0x0000, 0x0000, 0x0100, 0x0100, 0x0000, 0x0000,
-        0xfe00, 0xf900, 0x0000, 0x0000, 0x0b00, 0x0400, 0x0000, 0x0000,
-        0xfc00, 0xfc00, 0x0000, 0x0000, 0x0200, 0x0700, 0x0000, 0x0000,
-        0x4200, 0x0000, 0x0000, 0x0000, 0x0700, 0x0200, 0x0000, 0x0000,
-        0xfc00, 0xfc00, 0x0000, 0x0000, 0x0400, 0x0b00, 0x0000, 0x0000};
+    int i = 0;
 
     for (i=0; i<336; i++) {
         apb_write_reg(DVBT_BASE+0x99*4, (i<<16) | coef[i]);

@@ -76,8 +76,8 @@
 #define AMAUDIO_IOC_GET_RESAMPLE_TYPE       _IOR(AMAUDIO_IOC_MAGIC, 0x1c, unsigned long)
 #define AMAUDIO_IOC_SET_RESAMPLE_DELTA      _IOW(AMAUDIO_IOC_MAGIC, 0x1d, unsigned long)
 #define AMAUDIO_IOC_GET_RESAMPLE_DELTA      _IOW(AMAUDIO_IOC_MAGIC, 0x1e, unsigned long)
-
-
+#define AMAUDIO_IOC_MUTE_LEFT_RIGHT_CHANNEL _IOW(AMAUDIO_IOC_MAGIC, 0x1f, unsigned long)
+#define AMAUDIO_IOC_MUTE_UNMUTE             _IOW(AMAUDIO_IOC_MAGIC, 0x20, unsigned long)
 
 #define DIRECT_AUDIO_OFF	0
 #define DIRECT_AUDIO_ON	    1

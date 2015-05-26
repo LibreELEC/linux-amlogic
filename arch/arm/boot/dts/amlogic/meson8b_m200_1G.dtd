@@ -186,7 +186,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reserve-memory = <0x01000000>; // 16M
+		reserve-memory = <0x02000000>; // 32M
 	};
 
 /// ***************************************************************************************
@@ -287,7 +287,7 @@ void root_func(){
         status = "ok";
         share-memory-name = "ppmgr0";
         share-memory-offset = <0>;
-        share-memory-size = <0x01000000>; //16M
+        share-memory-size = <0x02000000>; //32M
     };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
@@ -395,7 +395,6 @@ void root_func(){
 		interrupt_pin = "GPIOX_21";
 		irq_num = <4>;
 		irq_trigger_type = "GPIO_IRQ_HIGH";
-		power_on_pin = "GPIOAO_6";
 		power_on_pin2 = "GPIOX_11";
 		clock_32k_pin = "GPIOX_10";
 	};
@@ -1217,9 +1216,10 @@ void root_func(){
 		dev_name = "nand";
 		status = "ok";
 		reg = <0xd0048600 0x24>;
-		pinctrl-names = "nand_rb_mod","nand_norb_mod";
-		pinctrl-0 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
-		pinctrl-1 = <&nand_input_state &conf_nand_state &conf_nand_state1 &nand_base>;
+		pinctrl-names = "nand_rb_mod","nand_norb_mod", "nand_cs_pins_only";
+		pinctrl-0 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-1 = <&conf_nand_pulldown &conf_nand_pullup &all_nand_pins>;
+		pinctrl-2 = <&nand_cs_pins>;
 		device_id = <0>;
 		plat-names = "nandnormal";
 		plat-num = <1>;
@@ -1465,10 +1465,15 @@ void root_func(){
         status = "okay";
     };
 
-//    crypto_device{
-//       compatible = "amlogic,crypto-device";
-//       dev_name = "crypto_device";
-//    };
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
+    };
+
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 
 /// **************************************************************************************
 /// -   GPIO
@@ -1512,48 +1517,43 @@ void root_func(){
 			amlogic,setmask=<4 0x03c0>;
 			amlogic,pins="GPIOX_16", "GPIOX_17", "GPIOX_18", "GPIOX_19";
 		};
-
-//$$ MATCH "Nand_pin_0_match" = "&nand_input_state"
-//$$ MATCH "Nand_pin_1_match" = "&nand_input_state"
-//$$ L2 PROP_STR 18 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
-		nand_input_state:nand_input{
-			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
-						"BOOT_5","BOOT_6","BOOT_7","BOOT_12","BOOT_13",
-						"BOOT_8","BOOT_9","BOOT_10","BOOT_11",
-						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
-			amlogic,enable-output=<1>;
-		};
-
-//$$ MATCH "Nand_pin_0_match" = "&conf_nand_state"
-//$$ MATCH "Nand_pin_1_match" = "&conf_nand_state"
+//$$ MATCH "Nand_pin_0_match" = "&conf_nand_pulldown"
+//$$ MATCH "Nand_pin_1_match" = "&conf_nand_pulldown"
 //$$ L2 PROP_STR 9 = "amlogic,pins"
 //$$ L2 PROP_U32 = "amlogic,pullup"
-		conf_nand_state: conf_nand{
+		conf_nand_pulldown: conf_nand_pulldown{
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_15";
 			amlogic,pullup=<0>;
 			amlogic,pullupen=<1>;
 		};
-		conf_nand_state1: conf_nand1{
+		conf_nand_pullup: conf_nand_pullup{
 			amlogic,pins = "BOOT_8", "BOOT_10";
 			amlogic,pullup=<1>;
 			amlogic,pullupen=<1>;
 		};
-//$$ MATCH "Nand_pin_0_match" = "&nand_base"
-//$$ MATCH "Nand_pin_1_match" = "&nand_base"
+//$$ MATCH "Nand_pin_0_match" = "&all_nand_pins"
+//$$ MATCH "Nand_pin_1_match" = "&all_nand_pins"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
 //$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 17 = "amlogic,pins"
-		nand_base: nand{
+		all_nand_pins: all_nand_pins{
 			amlogic,setmask=<2 0x7fe0000>;
 			amlogic,clrmask=<	5 0xe
 							6 0x3f000000
 							4 0x7c000000>;
 			amlogic,pins = "BOOT_0","BOOT_1","BOOT_2","BOOT_3","BOOT_4",
 						"BOOT_5","BOOT_6","BOOT_7","BOOT_8","BOOT_9",
-						"BOOT_10","BOOT_12","BOOT_13",
+						"BOOT_10","BOOT_11","BOOT_12","BOOT_13",
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
+			amlogic,enable-output=<1>;
+		};
+		
+		nand_cs_pins: nand_cs{
+			amlogic,setmask=<2 0x3000000>;
+			amlogic,clrmask=<7 0x80000
+							6 0x80000000>;
+			amlogic,pins = "BOOT_8","BOOT_9";
 		};
 
 //$$ MATCH "Card_pin_0_match" = "&sdhc_b_pins"
@@ -1896,25 +1896,116 @@ void root_func(){
 			amlogic,clrmask=<2 0x380000>;
 			amlogic,pins = "BOOT_11","BOOT_12","BOOT_13","BOOT_18";
 		};
+//$$ MATCH "dvb_p_ts0_pins_match" = "&dvb_p_ts0_pins"
+//$$ L2 PROP_U32 1 = "amlogic,setmask"
+//$$ L2 PROP_U32 2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 11 = "amlogic,pins"
+		dvb_p_ts0_pins: dvb_p_ts0_pins {
+			amlogic,setmask = <3 0x37>;
+			amlogic,clrmask = <5 0xC0
+								9 0x37C>;
+			amlogic,pins = "GPIOY_9","GPIOY_10","GPIOY_11","GPIOY_12","GPIOY_13","GPIOY_14","GPIOY_6","GPIOY_7","GPIOY_0","GPIOY_1","GPIOY_8";
+		};
 
+//$$ MATCH "dvb_s_ts0_pins_match" = "&dvb_s_ts0_pins"
+//$$ L2 PROP_U32 1 = "amlogic,setmask"
+//$$ L2 PROP_U32 1 = "amlogic,clrmask"
+//$$ L2 PROP_STR 4 = "amlogic,pins"
+		dvb_s_ts0_pins: dvb_s_ts0_pins {
+			amlogic,setmask = <3 0x17>;
+			amlogic,clrmask = <9 0x378>;
+			amlogic,pins = "GPIOY_9","GPIOY_0","GPIOY_1","GPIOY_8";
+		};
+		
+		smc_pins:smc_pins {
+		amlogic,setmask = <4 0xC0000>;
+		amlogic,clrmask = <4 0x3F0
+								3 0x1000>;
+		amlogic,pins= "GPIOX_18","GPIOX_19";
+		
+		};
 	};
 /// ***************************************************************************************
 ///	-	Ethernet
-//$$ MODULE="Ethernet"
-//$$ DEVICE="meson-eth"
+        ethmac: ethernet@0xc9410000{
+                compatible = "amlogic,meson8b-rgmii-dwmac", "snps,dwmac";
+                reg = <0xc9410000 0x10000
+                       0xc1108108 0x4>;
+                interrupts = <0 8 1>;
+                interrupt-names = "macirq";
+                clocks = "clk81";
+                clock-names = "stmmaceth";
+        };
+///	-	RNG
+//$$ MODULE="RNG"
+//$$ DEVICE="meson-rng"
 //$$ L2 PROP_STR = "status"
-    meson-eth{
-		compatible = "amlogic,meson-eth";
-		dev_name = "meson-eth";
-		status = "okay";
-		ethbaseaddr = <0xfe0c0000>;
-		interruptnum = <40>;
-                savepowermode = <0>;
-                phy_interface = <0>;
-                new_maclogic = <1>;
-                reset_pin_enable = <0>;
-                reset_pin = "GPI0H_4";
-                reset_delay = <100>;
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
+	};
+///	-	DVB
+//$$ MODULE="DVB"
+
+//$$ DEVICE="dvb"
+//$$ L2 PROP_STR = "ts0"
+//$$ L2 PROP_U32 = "ts0_invert"
+//$$ L2 PROP_U32 = "ts0_control"
+//$$ L2 PROP_STR 6 = "pinctrl-names"
+//$$ L2 PROP_CHOICE "dvb_p_ts0_pins_match" = "pinctrl-0"
+//$$ L2 PROP_CHOICE "dvb_s_ts0_pins_match" = "pinctrl-1"
+	dvb{
+		compatible = "amlogic,dvb";
+		/*"parallel","serial","disable"*/
+		ts0 = "parallel";
+		ts0_control = <0>;
+		ts0_invert = <0>;
+		pinctrl-names = "p_ts0", "s_ts0";
+		pinctrl-0 = <&dvb_p_ts0_pins>;
+		pinctrl-1 = <&dvb_s_ts0_pins>;
+	};
+
+//$$ DEVICE="dvbfe"
+//$$ L2 PROP_STR = "dtv_demod0"
+//$$ L2 PROP_U32 = "dtv_demod0_i2c_adap_id"
+//$$ L2 PROP_U32 = "dtv_demod0_i2c_addr"
+//$$ L2 PROP_U32 = "dtv_demod0_reset_value"
+//$$ L2 PROP_STR = "dtv_demod0_reset_gpio"
+//$$ L2 PROP_U32 = "fe0_dtv_demod"
+//$$ L2 PROP_U32 = "fe0_ts"
+//$$ L2 PROP_U32 = "fe0_dev"
+//$$ L2 PROP_STR 6 = "pinctrl-names"
+//$$ L2 PROP_CHOICE "dvb_fe_pins_match" = "pinctrl-0"
+
+
+	dvbfe{
+		compatible = "amlogic,dvbfe";
+		dtv_demod0 = "Mxl241";
+		dtv_demod0_i2c_adap_id = <2>;
+		dtv_demod0_i2c_addr = <0x60>;
+		dtv_demod0_reset_value = <0>;
+		dtv_demod0_reset_gpio = "GPIOY_3";
+		fe0_dtv_demod = <0>;
+		fe0_ts = <0>;
+		fe0_dev = <0>;
+	};
+	
+	smartcard {
+		compatible = "amlogic,smartcard";
+		smc0_irq = <69>;
+		//smc0_enable_pin = "GPIOX_16";
+		//smc0_enable_level = <1>;
+		smc0_reset_pin = "GPIOX_17";
+		smc0_reset_level = <0>;
+		smc0_clk_pinmux_reg = <0x2030>;
+		smc0_clk_pinmux_bit = <0x80000>;
+		smc0_clk_oen_reg = <0x200C>;
+		smc0_clk_out_reg = <0x200D>;
+		//smc0_clk_pin = "GPIOX_18";
+		smc0_clk_bit = <0x40000>;
+		smc0_det_pin = "GPIOX_16";
+		pinctrl-names = "default";
+		pinctrl-0 = <&smc_pins>;
 	};
 
 }; /* end of / */

@@ -1,0 +1,6 @@
+config MACH_MESONG9BB_COMMON_BOARD
+	depends on ARCH_MESONG9BB
+	bool "G9BB Common Board"
+	default y
+	help
+	  Support for Amlogic G9BB common development platform.

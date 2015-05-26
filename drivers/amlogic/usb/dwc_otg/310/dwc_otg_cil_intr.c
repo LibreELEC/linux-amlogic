@@ -64,7 +64,7 @@ static const char * bc_name[]={
 	"DCP (Charger)",
 	"CDP (PC with Charger)",
 };
-static void charger_detect_work(void *_vp)
+void charger_detect_work(void *_vp)
 {
 	dwc_otg_core_if_t * core_if = (dwc_otg_core_if_t *) _vp;
 	dwc_irqflags_t flags;
@@ -93,19 +93,31 @@ static void charger_detect_work(void *_vp)
 			core_if->bc_mode = USB_BC_MODE_DISCONNECT;
 		}else{
 			one_loop = 100; // ms
-			delay = one_loop * 20; // MAX 2s
+			if (core_if->non_normal_usb_charger_detect_delay != 0){
+			   delay = core_if->non_normal_usb_charger_detect_delay; // MAX 20s,for non-normol usb charger detect
+			   core_if->non_normal_usb_charger_detect_delay = 0;
+			}
+			else
+				delay = one_loop * 20; // MAX 2s
 
 			while(delay > 0){
 				if(core_if->device_connected){
-					core_if->bc_mode = USB_BC_MODE_SDP;	// PC
+					if(!core_if->session_valid)  
+						core_if->bc_mode = USB_BC_MODE_DISCONNECT;  //check if USB power removed
+					else
+					  core_if->bc_mode = USB_BC_MODE_SDP;	// PC
 					break;
 				}
 				DWC_MSLEEP(one_loop);
 				delay -= one_loop;
 			}
 
-			if(delay <= 0)	// Time out
-				core_if->bc_mode = USB_BC_MODE_DCP;	// Charger
+			if(delay <= 0) {	// Time out
+				if(!core_if->session_valid)  
+						core_if->bc_mode = USB_BC_MODE_DISCONNECT;  //check if USB power removed
+				else
+				    core_if->bc_mode = USB_BC_MODE_DCP;	// Charger
+			}
 		}
 		DWC_PRINTF("Detected battery charger type: %s\n",bc_name[core_if->bc_mode]);
 		dwc_otg_charger_detect_notifier_call(core_if->bc_mode);

@@ -40,6 +40,9 @@ typedef struct {
 #define AMVDEC_ALL_CANVAS_RANGE_0 0xb  // vc1/real/mpeg12/mpeg4/ jpeg logo / h264
 #define AMVDEC_ALL_CANVAS_RANGE_1 0x25 //mjpeg
 
+#define PPMGR2_MAX_CANVAS 8
+#define PPMGR2_CANVAS_INDEX 0x70    // 0x70-0x7f for PPMGR2 (IONVIDEO)
+
 #define AMVDEC_H264MVC_CANVAS_INDEX 0x78
 #define AMVDEC_H264MVC_CANVAS_MAX 0xbf
 
@@ -96,11 +99,17 @@ typedef struct {
 #define DI_CONTPRD_CANVAS_IDX           0x74
 #define DI_CONTP2RD_CANVAS_IDX           0x75
 #define DI_CONTWR_CANVAS_IDX            0x76
+#define DI_MCINFORD_CANVAS_IDX          0x26
+#define DI_MCINFOWR_CANVAS_IDX          0x27
+#define DI_MCVECWR_CANVAS_IDX           0x28
 //DI POST, share with DISPLAY
 #define DI_POST_BUF0_CANVAS_IDX         0x66
 #define DI_POST_BUF1_CANVAS_IDX         0x67
 #define DI_POST_MTNCRD_CANVAS_IDX       0x68
 #define DI_POST_MTNPRD_CANVAS_IDX       0x69
+//MCDI POST
+#define DI_POST_MCVECRD_CANVAS_IDX      0xE4
+#define DI_POST_MCVECRD_CANVAS_IDX2     0xE5
 
 #ifdef CONFIG_VSYNC_RDMA
 #define DI_POST_BUF0_CANVAS_IDX2         0x6a
@@ -126,7 +135,7 @@ typedef struct {
 #define MIPI_CANVAS_MAX_INDEX 0x7f
 
 //tvin vdin: 0x18-0x3B
-#define VDIN_CANVAS_INDEX              0x26
+#define VDIN_CANVAS_INDEX              0x29
 #define VDIN_CANVAS_MAX_INDEX          0x3B
 
 #define CAMERA_USER_CANVAS_INDEX             0x4e

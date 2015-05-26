@@ -36,7 +36,7 @@
 #include <net/netlink.h>
 #include <net/genetlink.h>
 
-#include "thermal_core.h"
+#include <linux/thermal_core.h>
 
 MODULE_AUTHOR("Zhang Rui");
 MODULE_DESCRIPTION("Generic thermal management sysfs support");

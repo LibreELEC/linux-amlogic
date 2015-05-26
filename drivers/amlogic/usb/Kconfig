@@ -1,6 +1,18 @@
 
 menu "USB Support"
 
+config AMLOGIC_USB_3
+	tristate "Amlogic USB 3.0 controller support"
+	select CONFIG_USB_DWC3
+	select CONFIG_USB_XHCI_HCD
+	select CONFIG_USB_ARCH_HAS_XHCI
+	select CONFIG_USB_PHY
+	select CONFIG_AMLOGIC_USB2PHY
+  select CONFIG_AMLOGIC_USB3PHY
+	depends on USB
+	help
+	   dwc3 USB host controller
+
 config AMLOGIC_USB
 	tristate "Amlogic USB controller support"
 	select USB_DWC_OTG_HCD

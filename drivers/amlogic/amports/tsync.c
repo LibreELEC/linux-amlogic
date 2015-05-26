@@ -114,7 +114,9 @@ static int tsync_trickmode = 0;
 static int vpause_flag = 0;
 static int apause_flag = 0;
 static bool dobly_avsync_test = false;
-
+extern bool disable_slow_sync;
+static int slowsync_enable = 0;
+static int startsync_mode = 2; // used to set player start sync mode, 0-none; 1-smoothsync; 2-droppcm;  default drop pcm
 
 /*
                   threshold_min              threshold_max
@@ -387,12 +389,13 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 
 	printk("%c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%lu,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
 	if (!tsync_enable) {
-        if(tsync_mode != TSYNC_MODE_VMASTER)
+        if (tsync_mode != TSYNC_MODE_VMASTER) {
 			tsync_mode = TSYNC_MODE_VMASTER;
         tsync_av_mode=TSYNC_STATE_S;
 		tsync_av_dynamic_duration_ms=0;
         printk("tsync_enable [%d] \n",tsync_enable);
 		return 0;
+	}
     }
 	if(mode=='T'){/*D/A--> ...*/
 		if(tsync_av_mode==TSYNC_STATE_D){
@@ -507,8 +510,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         tsync_video_started = 1;
         /*set tsync mode to vmaster to avoid video block caused by avpts-diff too much
           threshold 120s is an arbitrary value*/
-        t = abs(timestamp_apts_get()-timestamp_vpts_get())/TIME_UNIT90K;
-        if (tsync_enable && !get_vsync_pts_inc_mode() && t<120) {
+        if (tsync_enable && !get_vsync_pts_inc_mode()) {
             tsync_mode = TSYNC_MODE_AMASTER;
         } else {
             tsync_mode = TSYNC_MODE_VMASTER;
@@ -521,26 +523,26 @@ void tsync_avevent_locked(avevent_t event, u32 param)
             tsync_dec_reset_video_start = 1;
         }
 
-#ifndef TSYNC_SLOW_SYNC
-        if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_NONE)
-#endif
+        if(slowsync_enable == 1) // slow sync enable
         {
-#ifndef TSYNC_SLOW_SYNC
-            if (tsync_syncthresh && (tsync_mode == TSYNC_MODE_AMASTER)) {
-                timestamp_pcrscr_set(param - VIDEO_HOLD_THRESHOLD);
-            } else {
-                timestamp_pcrscr_set(param);
-            }
-#else
             timestamp_pcrscr_set(param);
-#endif
-
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
-            amlog_level(LOG_LEVEL_INFO, "vpts to scr, apts = 0x%x, vpts = 0x%x\n",
-                        timestamp_apts_get(),
-                        timestamp_vpts_get());
         }
-
+        else
+        {
+            if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_NONE) {
+                if (tsync_syncthresh && (tsync_mode == TSYNC_MODE_AMASTER)) {
+                    timestamp_pcrscr_set(param - VIDEO_HOLD_THRESHOLD);
+                } else {
+                    timestamp_pcrscr_set(param);
+                }
+                tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
+            }
+        }
+        amlog_level(LOG_LEVEL_INFO, "vpts to scr, apts = 0x%x, vpts = 0x%x\n",
+                timestamp_apts_get(),
+                timestamp_vpts_get());
+ 
         if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_AUDIO) {
             t = timestamp_pcrscr_get();
             if (abs(param - t) > tsync_av_threshold_max) {
@@ -1049,6 +1051,30 @@ int tsync_set_vpause_flag(int mode)
 }
 EXPORT_SYMBOL(tsync_set_vpause_flag);
 
+int tsync_get_slowsync_enable(void)
+{
+    return slowsync_enable;
+}
+EXPORT_SYMBOL(tsync_get_slowsync_enable);
+
+int tsync_set_slowsync_enable(int enable)
+{
+    return slowsync_enable=enable;
+}
+EXPORT_SYMBOL(tsync_set_slowsync_enable);
+
+int tsync_get_startsync_mode(void)
+{
+    return startsync_mode;
+}
+EXPORT_SYMBOL(tsync_get_startsync_mode);
+
+int tsync_set_startsync_mode(int mode)
+{
+    return startsync_mode=mode;
+}
+EXPORT_SYMBOL(tsync_set_startsync_mode);
+
 static ssize_t store_pcr_recover(struct class *class,
                                  struct class_attribute *attr,
                                  const char *buf,
@@ -1514,8 +1540,6 @@ static ssize_t show_firstvpts(struct class *class,
     return sprintf(buf, "0x%x\n", timestamp_firstvpts_get());
 }
 
-
-
 static ssize_t show_firstapts(struct class *class,
                          struct class_attribute *attr,
                          char *buf)
@@ -1572,6 +1596,53 @@ static ssize_t store_vpause_flag(struct class *class,
     return size;
 }
 
+static ssize_t show_slowsync_enable(struct class *class,
+        struct class_attribute *attr,
+        char *buf)
+{
+    return sprintf(buf, "slowsync enable:0x%x\n", tsync_get_slowsync_enable());
+}
+
+static ssize_t store_slowsync_enable(struct class *class,
+        struct class_attribute *attr,
+        const char *buf,
+        size_t size)
+{
+    unsigned mode;
+    ssize_t r;
+    r = sscanf(buf, "%d", &mode);
+    if (r != 1) {
+        return -EINVAL;
+    }
+
+    tsync_set_slowsync_enable(mode);
+    return size;
+}
+
+static ssize_t show_startsync_mode(struct class *class,
+        struct class_attribute *attr,
+        char *buf)
+{
+    return sprintf(buf, "0x%x\n", tsync_get_startsync_mode());
+}
+
+static ssize_t store_startsync_mode(struct class *class,
+        struct class_attribute *attr,
+        const char *buf,
+        size_t size)
+{
+    unsigned mode;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &mode);
+    if (r != 1) {
+        return -EINVAL;
+    }
+
+    tsync_set_startsync_mode(mode);
+    return size;
+}
+
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR | S_IWGRP, show_vpts,    store_vpts),
     __ATTR(pts_audio,  S_IRUGO | S_IWUSR | S_IWGRP, show_apts,    store_apts),
@@ -1591,7 +1662,9 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(last_checkin_apts, S_IRUGO | S_IWUSR, show_last_checkin_apts, NULL),
     __ATTR(firstvpts, S_IRUGO | S_IWUSR, show_firstvpts, NULL),
     __ATTR(vpause_flag, S_IRUGO | S_IWUSR, show_vpause_flag, store_vpause_flag),
-    __ATTR(firstapts,  S_IRUGO | S_IWUSR | S_IWGRP, show_firstapts,    store_firstapts),
+    __ATTR(slowsync_enable, S_IRUGO | S_IWUSR, show_slowsync_enable, store_slowsync_enable),
+    __ATTR(startsync_mode, S_IRUGO | S_IWUSR, show_startsync_mode, store_startsync_mode),
+	__ATTR(firstapts,  S_IRUGO | S_IWUSR | S_IWGRP, show_firstapts,    store_firstapts),
     __ATTR(checkin_firstvpts, S_IRUGO | S_IWUSR, show_checkin_firstvpts, NULL),
     __ATTR_NULL
 };

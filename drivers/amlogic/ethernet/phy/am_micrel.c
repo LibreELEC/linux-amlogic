@@ -38,6 +38,7 @@
 #include <linux/phy.h>
 /* Operation Mode Strap Override */
 #define MII_KSZPHY_OMSO				0x16
+#define PHY_ID_KSZ9031_RNX			0x221622
 #define KSZPHY_OMSO_B_CAST_OFF			(1 << 9)
 #define KSZPHY_OMSO_RMII_OVERRIDE		(1 << 1)
 #define KSZPHY_OMSO_MII_OVERRIDE		(1 << 0)
@@ -128,7 +129,73 @@ static int ks8737_config_intr(struct phy_device *phydev)
 	rc = kszphy_set_interrupt(phydev);
 	return rc < 0 ? rc : 0;
 }
+#define MMD_CTRL			       0x0d
+#define MMD_REG_DATA			0x0e
+static int cnt;
+static int ksz9031RNX_read_status(struct phy_device *phydev){
+       int val = 0;
+       int err = genphy_read_status(phydev);
+       if((!phydev->link)&& (cnt <= 1)){
+               cnt++;
+               phy_write(phydev,0x4,0x5e1);
+               val=phy_read(phydev,0x0);
+               phy_write(phydev,0x0,val| 1<<9);
 
+       }
+
+       return err;
+
+}
+static int ksz9031_RNX_config_init(struct phy_device *phydev)
+{/*Set Auto-Negotiation FLP interval to 16ms using the following programming sequence to set MMD ? Device Address 0h, Register 4h = 0x0006
+
+and MMD ? Device Address 0h, Register 3h = 0x1A80
+
+*/
+      int val=0;
+      cnt = 0;
+#if 1
+	phy_write(phydev,MMD_CTRL,0x0);
+	phy_write(phydev,MMD_REG_DATA,0x4);
+	phy_write(phydev,MMD_CTRL,0x4000);
+	phy_write(phydev,MMD_REG_DATA,0x6);
+
+	phy_write(phydev,MMD_CTRL,0x0);
+	phy_write(phydev,MMD_REG_DATA,0x3);
+	phy_write(phydev,MMD_CTRL,0x4000);
+	phy_write(phydev,MMD_REG_DATA,0x1A80);
+
+	phy_write(phydev,MMD_CTRL,0x1);
+	phy_write(phydev,MMD_REG_DATA,0x5a);
+	phy_write(phydev,MMD_CTRL,0x4001);
+	phy_write(phydev,MMD_REG_DATA,0x106);
+#endif
+	printk("----micrel phy init--------\n");
+
+/*
+delay rxclock
+SET MMD ? Device Address 2h, Register 8h = 0x01F
+*/
+#if 0
+	phy_write(phydev,MMD_CTRL,0x2);
+	phy_write(phydev,MMD_REG_DATA,0x8);
+	phy_write(phydev,MMD_CTRL,0x4002);
+	phy_write(phydev,MMD_REG_DATA,0x3de0);
+#endif
+	phy_write(phydev,MMD_CTRL,0x2);
+	phy_write(phydev,MMD_REG_DATA,0x5);
+	phy_write(phydev,MMD_CTRL,0x4002);
+	phy_write(phydev,MMD_REG_DATA,0xffff);
+	
+	phy_write(phydev,0x4,0x5e1);
+	val=phy_read(phydev,0x0);
+	phy_write(phydev,0x0,val| 1<<9);
+	return 0;
+}
+static int ksz9031_config_init(struct phy_device *phydev)
+{
+	return 0;
+}
 static int kszphy_config_init(struct phy_device *phydev)
 {
 	int temp;
@@ -253,8 +320,8 @@ static void ksz8091_get_wol(struct phy_device *phydev, struct ethtool_wolinfo *w
 static int ksz8091_set_wol(struct phy_device *phydev, struct ethtool_wolinfo *wol)
 {
 	int err, oldpage, temp;
-
 	int i = 0;
+
 	oldpage = phy_read(phydev, KSZ8091_MMD_CTRL);
 /*
 Magic-packet detection is enabled by writing a 1 to MMD address 1Fh,register 0h, bit [6]
@@ -467,16 +534,28 @@ static struct phy_driver ksphy_driver[] = {
 	.driver		= { .owner = THIS_MODULE, },
 }, {
 	.phy_id		= PHY_ID_KSZ9031,
-	.phy_id_mask	= 0x00fffff0,
+	.phy_id_mask	= 0x00ffffff,
 	.name		= "Micrel KSZ9031 Gigabit PHY",
 	.features	= (PHY_GBIT_FEATURES | SUPPORTED_Pause
 				| SUPPORTED_Asym_Pause),
 	.flags		= PHY_HAS_MAGICANEG | PHY_HAS_INTERRUPT,
-	.config_init	= kszphy_config_init,
+	.config_init	= ksz9031_config_init,
 	.config_aneg	= genphy_config_aneg,
 	.read_status	= genphy_read_status,
 	.ack_interrupt	= kszphy_ack_interrupt,
 	.config_intr	= ksz9021_config_intr,
+	.driver		= { .owner = THIS_MODULE, },
+}, {
+	.phy_id		= PHY_ID_KSZ9031_RNX,
+	.phy_id_mask	= 0x00ffffff,
+	.name		= "Micrel KSZ9031RNX Gigabit PHY",
+	.features	= (PHY_GBIT_FEATURES | SUPPORTED_Pause
+				| SUPPORTED_Asym_Pause),
+	.flags		= PHY_HAS_MAGICANEG | PHY_HAS_INTERRUPT,
+	.config_init	= ksz9031_RNX_config_init,
+	.config_aneg	= genphy_config_aneg,
+	.read_status	= ksz9031RNX_read_status,
+	.ack_interrupt	= kszphy_ack_interrupt,
 	.driver		= { .owner = THIS_MODULE, },
 }, {
 	.phy_id		= PHY_ID_KSZ8873MLL,
@@ -521,7 +600,8 @@ MODULE_LICENSE("GPL");
 
 static struct mdio_device_id __maybe_unused micrel_tbl[] = {
 	{ PHY_ID_KSZ9021, 0x000ffffe },
-	{ PHY_ID_KSZ9031, 0x00fffff0 },
+	{ PHY_ID_KSZ9031, 0x00ffffff },
+	{ PHY_ID_KSZ9031_RNX, 0x00ffffff },
 	{ PHY_ID_KSZ8001, 0x00ffffff },
 	{ PHY_ID_KS8737, 0x00fffff0 },
 	{ PHY_ID_KSZ8021, 0x00ffffff },
@@ -536,3 +616,4 @@ static struct mdio_device_id __maybe_unused micrel_tbl[] = {
 };
 
 MODULE_DEVICE_TABLE(mdio, micrel_tbl);
+

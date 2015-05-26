@@ -97,7 +97,8 @@ void clk_switch(int flag)
 					udelay(10);
 					aml_set_reg32_mask(clks[i].clk_addr,(1<<8));//switch to pll
 					udelay(10);
-					uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
+					if(!((aml_read_reg32(P_AO_UART_REG5) & (1 << 24)) && IS_MESON_M8M2_CPU))//Not from crystal pad
+						uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
 					clks[i].clk_flag = 0;
 				}
 			printk(KERN_INFO "clk %s(%x) on\n", clks[i].clk_name, ((clks[i].clk_addr)&0xffff)>>2);
@@ -114,7 +115,8 @@ void clk_switch(int flag)
 					udelay(10);
 					aml_clr_reg32_mask(clks[i].clk_addr, (1 << 7)); // switch to 24M
 					udelay(10);
-					uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
+					if(!((aml_read_reg32(P_AO_UART_REG5) & (1 << 24)) && IS_MESON_M8M2_CPU))//Not from crystal pad
+						uart_change_buad(P_AO_UART_REG5,uart_rate_clk);
 					clks[i].clk_flag=1;
 				}
 			}
@@ -343,6 +345,7 @@ static struct platform_suspend_ops meson_pm_ops = {
 
 static void m6ref_set_vccx2(int power_on)
 {
+	/*
     if(power_on == OFF) {
         printk("m6ref_set_vccx2: OFF");
         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
@@ -352,6 +355,7 @@ static void m6ref_set_vccx2(int power_on)
         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
     }
+	*/
     return;
 }
 

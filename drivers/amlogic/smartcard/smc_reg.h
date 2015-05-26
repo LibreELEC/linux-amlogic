@@ -32,6 +32,7 @@
 #define FREQ_DEFAULT 4000 //KHz
 #define FIFO_THRESHOLD_DEFAULT 1
 #define ETU_DIVIDER_CLOCK_HZ    24000 // KHz
+#define ETU_CLK_SEL  0
 #define ATR_HOLDOFF_EN 1
 #define ATR_CLK_MUX_DEFAULT 4
 #define ATR_HOLDOFF_TCNT_DEFAULT 255
@@ -42,8 +43,7 @@
 #define N_DEFAULT 0
 #define CWI_DEFAULT 13
 #define BWI_DEFAULT 4
-#define BGT_DEFAULT 20
-#define CLK_SRC_DEFAULT 0
+#define BGT_DEFAULT 22
 
 typedef struct SMCCARD_HW_Reg0
 {
@@ -83,9 +83,11 @@ typedef struct SMC_ANSWER_TO_RST
 	unsigned atr_holdoff_tcnt: 8;       // Bit 23:16
 	unsigned atr_clk_mux: 3;            // Bit 26:24
 	unsigned atr_holdoff_en: 1;         // Bit 27
-	unsigned unused: 4;                 // Bit 31:28
+	unsigned etu_clk_sel: 2;            // Bit 29:28
+	unsigned unused: 2;                 // Bit 31:30
 #else
-	unsigned unused: 4;                 // Bit 31:28
+	unsigned unused: 2;                 // Bit 31:30
+	unsigned etu_clk_sel: 2;            // Bit 29:28
 	unsigned atr_holdoff_en: 1;         // Bit 27
 	unsigned atr_clk_mux: 3;            // Bit 26:24
 	unsigned atr_holdoff_tcnt: 8;       // Bit 23:16
@@ -110,9 +112,11 @@ typedef struct SMCCARD_HW_Reg2
 	unsigned det_filter_sel: 3;         // Bit 22:20
 	unsigned io_filter_sel: 3;          // Bit 25:23
 	unsigned recv_retry_cnt: 3;         // Bit 28:26
-	unsigned clk_sel: 3;                // Bit 31:29
+	unsigned reserved: 1;               // Bit 29
+	unsigned clk_sel: 2;                // Bit 31:30
 #else
-	unsigned clk_sel: 3;                // Bit 31:29
+	unsigned clk_sel: 2;                // Bit 31:30
+	unsigned reserved: 1;               // Bit 29
 	unsigned recv_retry_cnt: 3;         // Bit 28:26
 	unsigned io_filter_sel: 3;          // Bit 25:23
 	unsigned det_filter_sel: 3;         // Bit 22:20

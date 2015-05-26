@@ -167,7 +167,7 @@ struct class* init_vm_cls() {
 	ret = class_register(&vm_class);
 	if(ret < 0)
 	{
-		amlog_level(LOG_LEVEL_HIGH,"error create vm class\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"error create vm class\n");
 		return NULL;
 	}
 	return &vm_class;

@@ -368,4 +368,18 @@ fi
 cd ../../../../../
 echo ""
 
+
+if [ ! -d "hardware/wifi/realtek/drivers/8812au" ]; then
+	mkdir -p hardware/wifi/realtek/drivers
+	cd hardware/wifi/realtek/drivers
+	git clone git://git-sc.amlogic.com/platform/hardware/wifi/realtek/drivers/8812au.git
+	cd 8812au
+	git checkout -t origin/8812au -b 8812au
+else
+	cd hardware/wifi/realtek/drivers/8812au
+	echo "updating hardware/wifi/realtek/drivers/8812au"
+	git pull
+fi
+
+
 echo "done"

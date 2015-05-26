@@ -458,7 +458,7 @@ void phy_start_machine(struct phy_device *phydev,
 {
 	phydev->adjust_state = handler;
 
-	schedule_delayed_work(&phydev->state_queue, HZ);
+	schedule_delayed_work(&phydev->state_queue, 0.1*HZ);
 }
 
 /**

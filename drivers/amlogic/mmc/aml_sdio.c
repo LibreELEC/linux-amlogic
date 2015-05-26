@@ -381,7 +381,7 @@ void aml_sdio_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
     // }
     //del_timer(&host->timeout_tlist);
     if(delayed_work_pending(&host->timeout))
-		cancel_delayed_work(&host->timeout);
+    		cancel_delayed_work_sync(&host->timeout);
   //  cancel_delayed_work(&host->timeout_cmd);
 
     spin_lock_irqsave(&host->mrq_lock, flags);
@@ -674,7 +674,6 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
     sdio_dbg(AMLSD_DBG_REQ ,"%s: starting CMD%u arg %08x flags %08x\n",
         mmc_hostname(mmc), mrq->cmd->opcode,
         mrq->cmd->arg, mrq->cmd->flags);
-
     if(mrq->data) {
         /*Copy data to dma buffer for write request*/
         aml_sdio_prepare_dma(host, mrq);
@@ -1276,7 +1275,7 @@ static int aml_sdio_probe(struct platform_device *pdev)
             ret = -ENOMEM;
             goto probe_free_host;
         }
-
+	
         pdata = mmc_priv(mmc);
         memset(pdata, 0, sizeof(struct amlsd_platform));
         if(amlsd_get_platform_data(pdev, pdata, mmc, i)) {
@@ -1341,10 +1340,8 @@ static int aml_sdio_probe(struct platform_device *pdev)
             mmc->host_rescan_disable = false;
 			mmc->rescan_entered = 0;
         }
-
         if(pdata->port_init)
             pdata->port_init(pdata);
-
         aml_sduart_pre(pdata);
 
         ret = mmc_add_host(mmc);

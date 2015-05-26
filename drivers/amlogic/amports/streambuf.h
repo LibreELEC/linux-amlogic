@@ -39,6 +39,7 @@
 #define INVALID_PTS 0xffffffff
 
 #define FETCHBUF_SIZE   (64*1024)
+#define USER_DATA_SIZE  (8*1024)
 
 typedef struct stream_buf_s {
     s32   flag;
@@ -82,6 +83,31 @@ typedef struct stream_port_s {
     u32 sid;
     u32 pcrid;
 } stream_port_t;
+typedef enum {
+    DRM_LEVEL1     = 1,
+    DRM_LEVEL2     = 2,
+    DRM_LEVEL3     = 3,
+    DRM_NONE       = 4, 
+} drm_level_t;
+
+
+typedef struct drm_info {
+    drm_level_t drm_level;
+	int drm_flag;
+	int drm_hasesdata;
+	int drm_priv;
+    unsigned int drm_pktsize;
+	unsigned int drm_pktpts;
+	unsigned int drm_phy;
+	unsigned int drm_vir;
+	unsigned int drm_remap;
+	int data_offset;
+	int extpad[8];
+} drminfo_t;
+
+
+
+#define TYPE_DRMINFO   0x80
 
 extern ulong fetchbuf, *fetchbuf_remap;
 

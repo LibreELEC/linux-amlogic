@@ -1,7 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#include "aml_demod.h"
+#include <linux/dvb/aml_demod.h>
 #include "demod_func.h"
 
 static int debug_amldvbt;

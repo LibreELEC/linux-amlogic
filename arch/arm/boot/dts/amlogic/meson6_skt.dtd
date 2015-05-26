@@ -209,6 +209,11 @@
         status = "okay";
     };
 
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
+
     meson_vcck_dvfs_driver{
         compatible = "amlogic, meson_vcck_dvfs";
         pinctrl-names = "default";

@@ -176,10 +176,12 @@ typedef struct {
 	u16 GammaTableR[256];
 	u16 GammaTableG[256];
 	u16 GammaTableB[256];
-	void (*set_gamma_table)(unsigned gamma_en);
+	void (*set_gamma_table)(unsigned int gamma_en);
+	void (*gamma_test)(unsigned int num);
 } Lcd_Effect_t;
 
 //mipi-dsi config
+#define DSI_CMD_CNT_INDEX         1 //byte[1]
 #define DSI_INIT_ON_MAX           100
 #define DSI_INIT_OFF_MAX          30
 
@@ -217,6 +219,7 @@ typedef struct {
 	unsigned char preemphasis;
 	unsigned int bit_rate;
 	unsigned int sync_clock_mode;
+	unsigned char edid_timing_used;
 } EDP_Config_t;
 
 typedef struct {
@@ -296,6 +299,7 @@ typedef struct {
     void (*module_disable)(void);
     void (*lcd_test)(unsigned num);
     void (*print_version)(void);
+    void (*edp_edid_load)(void);
 } Lcd_Misc_Ctrl_t;
 
 typedef struct {
