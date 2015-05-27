@@ -127,7 +127,6 @@ static inline bool kvm_page_empty(void *ptr)
 #define kvm_pmd_table_empty(pmdp) kvm_page_empty(pmdp)
 #define kvm_pud_table_empty(pudp) (0)
 
-
 struct kvm;
 
 #define kvm_flush_dcache_to_poc(a,l)	__cpuc_flush_dcache_area((a), (l))
@@ -142,7 +141,7 @@ static inline void coherent_cache_guest_page(struct kvm_vcpu *vcpu, hva_t hva,
 {
 	if (!vcpu_has_cache_enabled(vcpu))
 		kvm_flush_dcache_to_poc((void *)hva, size);
-	
+
 	/*
 	 * If we are going to insert an instruction page and the icache is
 	 * either VIPT or PIPT, there is a potential problem where the host

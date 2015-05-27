@@ -125,7 +125,6 @@ static inline bool kvm_page_empty(void *ptr)
 #endif
 #define kvm_pud_table_empty(pudp) (0)
 
-
 struct kvm;
 
 #define kvm_flush_dcache_to_poc(a,l)	__flush_dcache_area((a), (l))
