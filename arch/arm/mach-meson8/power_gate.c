@@ -28,6 +28,8 @@ typedef struct{
 }mod_record_t;
 
 DEFINE_SPINLOCK(gate_lock);
+EXPORT_SYMBOL(gate_lock);
+
 
 static mod_record_t mod_records[MOD_MAX_NUM + 1] = {
 	{
