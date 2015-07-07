@@ -213,6 +213,11 @@ struct kvm_vcpu *kvm_arch_vcpu_create(struct kvm *kvm, unsigned int id)
 	int err;
 	struct kvm_vcpu *vcpu;
 
+	if (irqchip_in_kernel(kvm) && vgic_initialized(kvm)) {
+		err = -EBUSY;
+		goto out;
+	}
+
 	vcpu = kmem_cache_zalloc(kvm_vcpu_cache, GFP_KERNEL);
 	if (!vcpu) {
 		err = -ENOMEM;
@@ -659,10 +664,21 @@ static int kvm_arch_vcpu_ioctl_vcpu_init(struct kvm_vcpu *vcpu,
 		return ret;
 
 	/*
+	 * Ensure a rebooted VM will fault in RAM pages and detect if the
+	 * guest MMU is turned off and flush the caches as needed.
+	 */
+	if (vcpu->arch.has_run_once)
+		stage2_unmap_vm(vcpu->kvm);
+
+	vcpu_reset_hcr(vcpu);
+
+	/*
 	 * Handle the "start in power-off" case by marking the VCPU as paused.
 	 */
-	if (__test_and_clear_bit(KVM_ARM_VCPU_POWER_OFF, vcpu->arch.features))
+	if (test_bit(KVM_ARM_VCPU_POWER_OFF, vcpu->arch.features))
 		vcpu->arch.pause = true;
+	else
+		vcpu->arch.pause = false;
 
 	return 0;
 }
