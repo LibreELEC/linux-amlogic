@@ -75,7 +75,7 @@ obj-$(CONFIG_TVIN) += tvin/
 
 obj-$(CONFIG_AML_EXT_HDMIIN) += ext_hdmiin/
 
-#obj-y += thermal/
+obj-y += thermal/
 
 
 #####Sound system is later init in kernel default..######################
