@@ -4340,6 +4340,7 @@ int readlink_copy(char __user *buffer, int buflen, const char *link)
 out:
 	return len;
 }
+EXPORT_SYMBOL(readlink_copy);
 
 /*
  * A helper for ->readlink().  This should be used *ONLY* for symlinks that
