@@ -537,6 +537,7 @@ el0_dbg:
 	disable_step x1
 	mov	x1, x25
 	mov	x2, sp
+	adr	lr, ret_from_exception
 	b	do_debug_exception
 el0_inv:
 	ct_user_exit
