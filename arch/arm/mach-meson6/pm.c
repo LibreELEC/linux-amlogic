@@ -199,7 +199,7 @@ void early_power_gate_switch(int flag)
     //GATE_SWITCH(flag, LED_PWM);
     //GATE_SWITCH(flag, GE2D);
     //GATE_SWITCH(flag, VIDEO_IN);
-    GATE_SWITCH(flag, VI_CORE);
+    //GATE_SWITCH(flag, VI_CORE);
 
     GATE_SWITCH(flag, HDMI_INTR_SYNC);
     GATE_SWITCH(flag, HDMI_PCLK);
