@@ -11,11 +11,11 @@
 
 #include "aml_nftl_block.h"
 
-extern int aml_nftl_start(void* priv,void* cfg,struct aml_nftl_part_t ** ppart,uint64_t size,unsigned erasesize,unsigned writesize,unsigned oobavail,char* name,int no,char type);
+extern int aml_nftl_start(void* priv,void* cfg,struct aml_nftl_part_t ** ppart,uint64_t size,unsigned erasesize,unsigned writesize,unsigned oobavail,char* name,int no,char type,int init_flag);
 extern uint32 gc_all(struct aml_nftl_part_t* part);
 extern uint32 gc_one(struct aml_nftl_part_t* part);
 extern void print_nftl_part(struct aml_nftl_part_t * part);
-extern int part_param_init(struct aml_nftl_part_t *part,uint16 start_block,uint32_t logic_sects,uint32_t backup_cap_in_sects);
+extern int part_param_init(struct aml_nftl_part_t *part,uint16 start_block,uint32_t logic_sects,uint32_t backup_cap_in_sects,int init_flag);
 extern uint32 is_no_use_device(struct aml_nftl_part_t * part,uint32 size);
 extern uint32 create_part_list_first(struct aml_nftl_part_t * part,uint32 size);
 extern uint32 create_part_list(struct aml_nftl_part_t * part);
@@ -29,8 +29,12 @@ extern uint32 __nand_flush_write_cache(struct aml_nftl_part_t* part);
 extern uint32 __shutdown_op(struct aml_nftl_part_t* part);
 extern void print_free_list(struct aml_nftl_part_t* part);
 extern void print_block_invalid_list(struct aml_nftl_part_t* part);
-extern int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no);
 extern int aml_nftl_erase_part(struct aml_nftl_part_t *part);
+extern int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no);
+extern int aml_nftl_reinit_part(struct aml_nftl_blk_t *aml_nftl_blk);
+extern uint32 write_error_handle(struct aml_nftl_part_t* part);
+extern int nftl_error_handle_test(struct aml_nftl_part_t *part);
+extern int aml_nftl_set_status(struct aml_nftl_part_t *part,unsigned char status);
 
 uint32 _nand_flush_write_cache(struct aml_nftl_blk_t *aml_nftl_blk);
 uint32 _shutdown_op(struct aml_nftl_blk_t *aml_nftl_blk);
@@ -70,6 +74,10 @@ int aml_nftl_reinit_part(struct aml_nftl_blk_t *aml_nftl_blk)
 	int ret =0;
 
 	part = aml_nftl_blk->aml_nftl_part;
+   aml_nftl_set_status(part,0);
+   if(aml_nftl_blk->nftl_thread!=NULL){
+        kthread_stop(aml_nftl_blk->nftl_thread); //add stop thread to ensure nftl quit safely
+    }
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
 
 	//kthread_stop(aml_nftl_blk->nftl_thread);
@@ -85,7 +93,9 @@ int aml_nftl_reinit_part(struct aml_nftl_blk_t *aml_nftl_blk)
 
 	mutex_unlock(aml_nftl_blk->aml_nftl_lock);
 	//wake_up_process(aml_nftl_blk->nftl_thread);
-
+   if(aml_nftl_blk->nftl_thread!=NULL){
+    wake_up_process(aml_nftl_blk->nftl_thread);
+    }
 	return ret ;
 }
 
@@ -145,11 +155,20 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no)
 	aml_nftl_blk->nftl_cfg.nftl_gc_threshold_ratio_denominator = GC_THRESHOLD_RATIO_DENOMINATOR;
 	aml_nftl_blk->nftl_cfg.nftl_max_cache_write_num = MAX_CACHE_WRITE_NUM;
 
-	ret = aml_nftl_start((void*)aml_nftl_blk,&aml_nftl_blk->nftl_cfg,&aml_nftl_blk->aml_nftl_part,mtd->size,mtd->erasesize,mtd->writesize,mtd->oobavail,mtd->name,no,0);
+	ret = aml_nftl_start((void*)aml_nftl_blk,&aml_nftl_blk->nftl_cfg,&aml_nftl_blk->aml_nftl_part,mtd->size,mtd->erasesize,mtd->writesize,mtd->oobavail,mtd->name,no,0,aml_nftl_blk->init_flag);
 	if(ret != 0)
-	    return ret;
-
+	{
+        //if(memcmp(mtd->name, "cache", 5)==0 || memcmp(mtd->name, "userdata", 8)==0)
+        {
+            if(aml_nftl_blk->init_flag == 0)
+            {
+                aml_nftl_set_status(aml_nftl_blk->aml_nftl_part,1);
+            }
+	   // return ret;
+        }
+	}
 	aml_nftl_blk->mbd.size = aml_nftl_get_part_cap(aml_nftl_blk->aml_nftl_part);
+	printk("#####logic size =%ld\n",aml_nftl_blk->mbd.size);
 	//aml_nftl_blk->read_data = _nand_read;
 	//aml_nftl_blk->write_data = _nand_write;
 	aml_nftl_blk->flush_write_cache = _nand_flush_write_cache;

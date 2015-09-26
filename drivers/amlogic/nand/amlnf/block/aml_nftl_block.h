@@ -54,10 +54,12 @@ struct aml_nftl_dev{
     int                   reboot_flag;
 	uint32 (*read_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*write_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
-    uint32 (*discard_data)(struct aml_nftl_dev *nftl_dev, unsigned int block, uint32 nblk);
+    uint32 (*discard_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk);
 	uint32 (*flush_write_cache)(struct aml_nftl_dev *nftl_dev);
     uint32 (*flush_discard_cache)(struct aml_nftl_dev *nftl_dev);
-
+    uint32 (*write_pair_page)(struct aml_nftl_dev *nftl_dev);
+    uint32 (*check_mapping)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
+    uint32 (*discard_partition)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
 };
 
 struct aml_nftl_blk{
@@ -76,7 +78,7 @@ struct aml_nftl_blk{
 
 	uint32 (*read_data)(struct aml_nftl_blk *nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*write_data)(struct aml_nftl_blk *nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
-    uint32 (*discard_data)(struct aml_nftl_blk *nftl_blk, unsigned int block, uint32 nblk);
+    uint32 (*discard_data)(struct aml_nftl_blk *nftl_blk, unsigned long block, unsigned nblk);
 	uint32 (*flush_write_cache)(struct aml_nftl_blk *nftl_blk);
 };
 

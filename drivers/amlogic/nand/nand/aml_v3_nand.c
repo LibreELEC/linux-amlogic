@@ -1740,8 +1740,8 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
                                 if(0/*buf > PAGE_OFFSET*/)
 					    error = aml_chip->aml_nand_dma_write(aml_chip, (unsigned char *)buf, nand_page_size, aml_chip->bch_mode);
                                 else{
-						memcpy(aml_chip->aml_nand_data_buf, buf, nand_page_size);
-						error = aml_chip->aml_nand_dma_write(aml_chip, aml_chip->aml_nand_data_buf, nand_page_size, aml_chip->bch_mode);
+					memcpy(aml_chip->aml_nand_data_buf, buf, nand_page_size);
+					error = aml_chip->aml_nand_dma_write(aml_chip, aml_chip->aml_nand_data_buf, nand_page_size, aml_chip->bch_mode);
                                 }
 					if (error){
 						aml_nand_debug ("aml_nand_dma_write  plane 1 fail\n");
@@ -1761,8 +1761,8 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 							if(0/*buf > PAGE_OFFSET*/)
 					    error = aml_chip->aml_nand_dma_write(aml_chip, (unsigned char *)buf, nand_page_size, aml_chip->bch_mode);
                                 else{
-						memcpy(aml_chip->aml_nand_data_buf, buf, nand_page_size);
-						error = aml_chip->aml_nand_dma_write(aml_chip, aml_chip->aml_nand_data_buf, nand_page_size, aml_chip->bch_mode);
+					memcpy(aml_chip->aml_nand_data_buf, buf, nand_page_size);
+					error = aml_chip->aml_nand_dma_write(aml_chip, aml_chip->aml_nand_data_buf, nand_page_size, aml_chip->bch_mode);
                                 }
 					if (error){
 						aml_nand_debug ("aml_nand_dma_write fail\n");

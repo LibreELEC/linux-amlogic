@@ -22,7 +22,7 @@
 #define MAX_CACHE_WRITE_NUM  				      4
 
 //for req sync flag, writting into flash immediately
-#define NFTL_CACHE_FLUSH_SYNC                      1
+#define NFTL_CACHE_FLUSH_SYNC                      0
 
 
 
@@ -32,3 +32,4 @@ extern void* aml_nftl_get_part_priv(void * _part);
 extern void aml_nftl_add_part_total_write(void * _part);
 extern void aml_nftl_add_part_total_read(void * _part);
 extern uint16 aml_nftl_get_part_write_cache_nums(void * _part);
+

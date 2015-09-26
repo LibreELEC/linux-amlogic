@@ -756,7 +756,9 @@ int amlnand_save_info_by_name(struct amlnand_chip *aml_chip,unsigned char * info
 	unsigned char phys_erase_shift, phys_page_shift;
 	unsigned char  oob_buf[sizeof(struct _nand_arg_oobinfo)];
 	unsigned short tmp_blk;
-	int full_page_flag=0, ret = 0, i,test_cnt = 0,extra_page = 0;
+	unsigned tmp_addr, temp_option;
+	unsigned char temp_ran_mode;
+	int full_page_flag=0, ret = 0, i,test_cnt = 0,extra_page = 0,write_page_cnt=0,temp_page_num = 0;
 
 	nand_boot = 1;
 	/*if(boot_device_flag == 0){
@@ -793,7 +795,7 @@ int amlnand_save_info_by_name(struct amlnand_chip *aml_chip,unsigned char * info
 	}else{
 		pages_read = pages_per_blk;
 	}
-
+write_again:
 	arg_oob_info =(nand_arg_oobinfo *) oob_buf;
 	arg_info->timestamp +=1;
 	arg_oob_info->timestamp = arg_info->timestamp;
@@ -843,8 +845,76 @@ get_free_blk:
 //	show_data_buf(buf);
 	if(arg_info->arg_type == FULL_BLK){
 		for(i=0; i<pages_read;){
-				if((pages_read -i) < arg_pages)
-					break;
+					if((pages_read -i) < arg_pages){
+
+						if(flash->new_type == HYNIX_1YNM_8GB) {
+							aml_nand_msg("starting write dummy random data......");
+							if(i < pages_read) {
+								/*for slc mode, if not full block write, need write dummy random data to lock data*/
+								//write dummy page
+								memset((unsigned char *)ops_para, 0x0, sizeof(struct chip_ops_para));
+								ops_para->option |= DEV_SLC_MODE;
+								ops_para->page_addr =((((blk_addr - blk_addr % controller->chip_num) /controller->chip_num) \
+									+ tmp_blk -tmp_blk/controller->chip_num) * pages_per_blk) + i;
+
+								ops_para->page_addr = (ops_para->page_addr & (~(pages_per_blk -1))) |(slc_info->pagelist[ops_para->page_addr % 256]);
+								ops_para->chipnr = blk_addr % controller->chip_num;
+								controller->select_chip(controller, ops_para->chipnr );
+								ops_para->data_buf = aml_chip->user_page_buf;
+								ops_para->oob_buf = aml_chip->user_oob_buf;
+								ops_para->ooblen = sizeof(oob_buf);
+								memset(aml_chip->user_oob_buf, 0x5a,sizeof(oob_buf));
+								memset(aml_chip->user_page_buf, 0x5a, flash->pagesize);
+
+								#ifdef AML_NAND_UBOOT
+								nand_get_chip();
+								#else
+								if(aml_chip->state == CHIP_READY){
+									nand_get_chip(aml_chip);
+								}
+								#endif
+								aml_nand_msg("dummy random data->i=%d  page addr=%x", i, ops_para->page_addr);
+								ret = operation->write_page(aml_chip);
+								#ifdef AML_NAND_UBOOT
+								nand_release_chip();
+								#else
+								if(aml_chip->state == CHIP_READY)
+									nand_release_chip(aml_chip);
+								#endif
+
+								//write dummy page paried
+								tmp_addr =	ops_para->page_addr;
+								temp_ran_mode = controller->ran_mode;
+								temp_option = ops_para->option;
+								controller->ran_mode = 0;
+								ops_para->page_addr +=1;
+								aml_nand_msg("dummy random paired data->i=%d  page addr=%x", i, ops_para->page_addr);
+								ops_para->option |= DEV_ECC_SOFT_MODE;
+								ops_para->option &=DEV_SERIAL_CHIP_MODE;
+								memset(aml_chip->user_page_buf, 0xff, flash->pagesize);
+								memset(aml_chip->user_oob_buf, 0xff,sizeof(oob_buf));
+								#ifdef AML_NAND_UBOOT
+								nand_get_chip();
+								#else
+								if(aml_chip->state == CHIP_READY)
+
+									nand_get_chip(aml_chip);
+								#endif
+								ret = operation->write_page(aml_chip);
+								#ifdef AML_NAND_UBOOT
+								nand_release_chip();
+								#else
+								if(aml_chip->state == CHIP_READY)
+									nand_release_chip(aml_chip);
+								#endif
+								controller->ran_mode = temp_ran_mode;
+								ops_para->page_addr = tmp_addr;
+								ops_para->option = temp_option;
+
+							}
+						}
+						break;
+				}
 				offset_tmp =0;
 				amount_saved = 0;
 				while(amount_saved < (size+extra_page*flash->pagesize)){
@@ -908,6 +978,46 @@ get_free_blk:
 						printk("rewrite!\n");
 						goto get_free_blk;
 					}
+					/*for slc mode*/
+					if(flash->new_type == HYNIX_1YNM_8GB) {
+						temp_page_num = offset_tmp + i;
+						//if((temp_page_num == 1)||((temp_page_num>1)&&((temp_page_num%2) ==0))) {
+						if(temp_page_num >= 1) {
+
+							ops_para->chipnr = blk_addr % controller->chip_num;
+							controller->select_chip(controller, ops_para->chipnr );
+
+							tmp_addr =	ops_para->page_addr;
+							temp_ran_mode = controller->ran_mode;
+							temp_option = ops_para->option;
+							controller->ran_mode = 0;
+							ops_para->page_addr +=1;
+							ops_para->option |= DEV_ECC_SOFT_MODE;
+							ops_para->option &=DEV_SERIAL_CHIP_MODE;
+							memset(aml_chip->user_page_buf, 0xff, flash->pagesize);
+							memset(aml_chip->user_oob_buf, 0xff,sizeof(oob_buf));
+							#ifdef AML_NAND_UBOOT
+							nand_get_chip();
+							#else
+							if(aml_chip->state == CHIP_READY)
+								nand_get_chip(aml_chip);
+							#endif
+							aml_nand_msg("normal blk write data->temp_page_num=%d  page addr=%x", temp_page_num, ops_para->page_addr);
+							ret = operation->write_page(aml_chip);
+							#ifdef AML_NAND_UBOOT
+							nand_release_chip();
+							#else
+							if(aml_chip->state == CHIP_READY)
+								nand_release_chip(aml_chip);
+							#endif
+							controller->ran_mode = temp_ran_mode;
+							ops_para->page_addr = tmp_addr;
+							ops_para->option = temp_option;
+							//ops_para->option &= DEV_ECC_HW_MODE;
+							//ops_para->option |=DEV_SLC_MODE;
+						}
+					}
+
 					offset_tmp += 1;
 					amount_saved += flash->pagesize;
 				}
@@ -932,6 +1042,15 @@ get_free_blk:
 			if(arg_info->arg_valid && (!full_page_flag)&&(!arg_info->update_flag)){
 				ops_para->page_addr += (arg_info->valid_page_addr +arg_pages);
 			}
+
+
+			/*for slc mode*/
+			if(flash->new_type == HYNIX_1YNM_8GB){
+					if(arg_info->arg_valid && (!full_page_flag)&&(!arg_info->update_flag))
+						ops_para->page_addr +=1;
+					temp_page_num = ops_para->page_addr % 256;
+			}
+
 
 			if((ops_para->option & DEV_SLC_MODE)) {
 				if((flash->new_type > 0) && (flash->new_type <10))
@@ -975,15 +1094,124 @@ get_free_blk:
                     ret = operation->test_block_reserved(aml_chip,blk_addr);
                     test_cnt++;
                     if(ret){
-					ret = operation->block_markbad(aml_chip);
-					if(ret < 0){
-						aml_nand_msg("nand mark bad block failed at blk %d", blk_addr);
-					}
+				ret = operation->block_markbad(aml_chip);
+				if(ret < 0){
+					aml_nand_msg("nand mark bad block failed at blk %d", blk_addr);
+				}
                         }
 				goto get_free_blk;
 			}
+
+			/*for slc mode*/
+			if(flash->new_type == HYNIX_1YNM_8GB) {
+				//if((temp_page_num == 1)||((temp_page_num>1)&&((temp_page_num%2) ==0))) {
+				if(temp_page_num >= 1) {
+
+
+					ops_para->chipnr = blk_addr % controller->chip_num;
+					controller->select_chip(controller, ops_para->chipnr );
+
+					tmp_addr =	ops_para->page_addr;
+					temp_ran_mode = controller->ran_mode;
+					temp_option = ops_para->option;
+					controller->ran_mode = 0;
+					ops_para->page_addr +=1;
+					ops_para->option |= DEV_ECC_SOFT_MODE;
+					ops_para->option &=DEV_SERIAL_CHIP_MODE;
+					memset(aml_chip->user_page_buf, 0xff, flash->pagesize);
+					memset(aml_chip->user_oob_buf, 0xff,sizeof(oob_buf));
+					#ifdef AML_NAND_UBOOT
+					nand_get_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_get_chip(aml_chip);
+					#endif
+					aml_nand_msg("temp_page_num=%d  page addr=%x", temp_page_num, ops_para->page_addr);
+					ret = operation->write_page(aml_chip);
+					#ifdef AML_NAND_UBOOT
+					nand_release_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_release_chip(aml_chip);
+					#endif
+					controller->ran_mode = temp_ran_mode;
+					ops_para->page_addr = tmp_addr;
+					ops_para->option = temp_option;
+					//ops_para->option &= DEV_ECC_HW_MODE;
+					//ops_para->option |=DEV_SLC_MODE;
+				}
+			}
+
 			offset_tmp += 1;
 			amount_saved += flash->pagesize;
+
+			if(flash->new_type == HYNIX_1YNM_8GB) {
+				if(amount_saved >= size+extra_page*flash->pagesize) {
+					/*for slc mode, if not full block write, need write dummy random data to lock data*/
+					//write dummy page
+					memset((unsigned char *)ops_para, 0x0, sizeof(struct chip_ops_para));
+					ops_para->option |= DEV_SLC_MODE;
+					ops_para->page_addr =((((blk_addr - blk_addr % controller->chip_num) /controller->chip_num) \
+						+ tmp_blk -tmp_blk/controller->chip_num) * pages_per_blk) + temp_page_num + 1;
+
+					ops_para->page_addr = (ops_para->page_addr & (~(pages_per_blk -1))) |(slc_info->pagelist[ops_para->page_addr % 256]);
+					ops_para->chipnr = blk_addr % controller->chip_num;
+					controller->select_chip(controller, ops_para->chipnr );
+					ops_para->data_buf = aml_chip->user_page_buf;
+					ops_para->oob_buf = aml_chip->user_oob_buf;
+					ops_para->ooblen = sizeof(oob_buf);
+
+					memset(aml_chip->user_page_buf, 0x5a, flash->pagesize);
+					memset(aml_chip->user_oob_buf, 0x5a,sizeof(oob_buf));
+
+					#ifdef AML_NAND_UBOOT
+					nand_get_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_get_chip(aml_chip);
+					#endif
+
+					aml_nand_msg("dummy random data:temp_page_num=%d  page addr=%x", temp_page_num, ops_para->page_addr);
+					ret = operation->write_page(aml_chip);
+					#ifdef AML_NAND_UBOOT
+					nand_release_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_release_chip(aml_chip);
+					#endif
+
+					//write dummy page paried
+					tmp_addr =	ops_para->page_addr;
+					temp_ran_mode = controller->ran_mode;
+					temp_option = ops_para->option;
+					controller->ran_mode = 0;
+					ops_para->page_addr +=1;
+					ops_para->option |= DEV_ECC_SOFT_MODE;
+					ops_para->option &=DEV_SERIAL_CHIP_MODE;
+					memset(aml_chip->user_page_buf, 0xff, flash->pagesize);
+					memset(aml_chip->user_oob_buf, 0xff,sizeof(oob_buf));
+					#ifdef AML_NAND_UBOOT
+					nand_get_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_get_chip(aml_chip);
+					#endif
+					aml_nand_msg("dummy random paired data:temp_page_num=%d  page addr=%x", temp_page_num, ops_para->page_addr);
+					ret = operation->write_page(aml_chip);
+					#ifdef AML_NAND_UBOOT
+					nand_release_chip();
+					#else
+					if(aml_chip->state == CHIP_READY)
+						nand_release_chip(aml_chip);
+					#endif
+					controller->ran_mode = temp_ran_mode;
+					ops_para->page_addr = tmp_addr;
+					ops_para->option = temp_option;
+
+				}
+			}
+
+
 		}
 	}
 
@@ -1017,8 +1245,11 @@ get_free_blk:
 		if((arg_info->arg_type == FULL_PAGE) && (arg_info->arg_valid)){
 			if(full_page_flag || arg_info->update_flag)
 				arg_info->valid_page_addr  = 0;
-			else
+			else{
 				arg_info->valid_page_addr += arg_pages;
+				if(flash->new_type == HYNIX_1YNM_8GB)
+					arg_info->valid_page_addr += 1;
+			}
 		}else if((arg_info->arg_type == FULL_BLK) && (arg_info->arg_valid)){
 			arg_info->valid_page_addr  = 0;
 		}
@@ -1071,10 +1302,20 @@ get_free_blk:
 #endif
 				}
 			}
+        if(arg_info->arg_type == FULL_PAGE)
+        {
+            if(write_page_cnt==0)
+            {
+                arg_info->arg_valid = 1;
+                full_page_flag = 0;
+                arg_info->update_flag = 0;
+                write_page_cnt = 1;
+                goto write_again;
+            }
+        }
 		arg_info->arg_valid = 1;   //SAVE SET VALID
 		full_page_flag = 0;
 	}
-
 
 exit_error0:
 
@@ -1419,6 +1660,9 @@ int amlnand_check_info_by_name(struct amlnand_chip *aml_chip,unsigned char * inf
 						break;
 					}
 					i +=(size >> phys_page_shift) + 1;
+					/*for hynix slc mode*/
+					if(flash->new_type == HYNIX_1YNM_8GB)
+						i +=1;
 				}
 
 			}
@@ -1841,6 +2085,7 @@ int aml_nand_save_hynix_info(struct amlnand_chip *aml_chip)
 	int ret = 0;
 	unsigned tmp_addr;
 	int save_cnt =20,test_cnt = 0;
+	unsigned char tmp_rand;
 
 	if(retry_info->retry_cnt_lp > 20)
 		save_cnt = retry_info->retry_cnt_lp;
@@ -1906,22 +2151,27 @@ get_free_blk:
 		if(flash->new_type == HYNIX_1YNM_8GB) {
 			if((i>1)&&((i%2) ==0)) {
 				tmp_addr =	ops_para->page_addr;
+				tmp_rand = controller->ran_mode;
 				ops_para->page_addr -=1;
+				controller->ran_mode = 0;
 				ops_para->option |= DEV_ECC_SOFT_MODE;
 				ops_para->option &=DEV_SERIAL_CHIP_MODE;
 				memset(aml_chip->user_page_buf, 0xff, flash->pagesize);
 				#ifdef AML_NAND_UBOOT
 				nand_get_chip();
 				#else
-				nand_get_chip(aml_chip);
+				if(aml_chip->state == CHIP_READY)
+					nand_get_chip(aml_chip);
 				#endif
 				ret = operation->write_page(aml_chip);
 				#ifdef AML_NAND_UBOOT
 				nand_release_chip();
 				#else
-				nand_release_chip(aml_chip);
+				if(aml_chip->state == CHIP_READY)
+					nand_release_chip(aml_chip);
 				#endif
 				ops_para->page_addr = tmp_addr;
+				controller->ran_mode = tmp_rand;
 				ops_para->option &= DEV_ECC_HW_MODE;
 				ops_para->option |=DEV_SLC_MODE;
 			}
@@ -1963,7 +2213,7 @@ get_free_blk:
 			ret = operation->block_markbad(aml_chip);
 			if(ret < 0){
 				aml_nand_dbg("nand mark bad block failed at blk %d", blk_addr);
-				}
+			}
                 }
 			goto get_free_blk;
 		}
@@ -2305,7 +2555,7 @@ int aml_nand_scan_hynix_info(struct amlnand_chip *aml_chip)
 					}
 
 					//bad block should less than 6% of total blocks
-					if((factory_badblock_cnt++ >= (total_block/20))){
+					if((factory_badblock_cnt++ >= (total_block/5))){
 						aml_nand_msg("detect factory bad block over 6%, hardware problem and factory_badblock_cnt:%d, total_block:%d, chipnr:%d !!!", \
 												factory_badblock_cnt, total_block, chipnr);
 						if(aml_chip->shipped_retry_flag){
@@ -2720,3 +2970,4 @@ exit_error0:
 	}
 	return ret ;
 }
+

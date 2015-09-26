@@ -490,3 +490,5 @@ U_BOOT_CMD(amlnf_test, CONFIG_SYS_MAXARGS, 1, do_amlnand_test,
 	"amlnf_test  5 READ one page every block \n"
 	"amlnf_test  8 exit sync \n"
 );
+
+

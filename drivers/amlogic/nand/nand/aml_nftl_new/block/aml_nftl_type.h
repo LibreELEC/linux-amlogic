@@ -88,3 +88,5 @@ struct _nftl_cfg{
     uint16 nftl_max_cache_write_num;
 
 };
+
+

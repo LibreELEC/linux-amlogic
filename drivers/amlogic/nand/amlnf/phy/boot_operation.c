@@ -358,6 +358,7 @@ static int write_uboot(struct amlnand_phydev *phydev)
 				while(ops_tem > (priv_lsb+1)) {
 				ops_para->data_buf = fill_buf;
 				controller->bch_mode =NAND_ECC_NONE;
+				controller->ran_mode =0;
 				ops_para->page_addr = priv_lsb+1;
 				 operation->write_page(aml_chip);
 				 priv_lsb++;
@@ -702,3 +703,4 @@ exit_error0:
 	return ret;
 }
 #endif
+

@@ -154,11 +154,17 @@ static struct nand_ecclayout aml_nand_oob_744 = {
 	.eccbytes = 700,
 	.oobfree = {
 		{.offset = 0,
-		 .length = 32}}
+		 .length = 16}}
 };
 
 static struct nand_ecclayout aml_nand_oob_1280 = {
 	.eccbytes = 1200,
+	.oobfree = {
+		{.offset = 0,
+		 .length = 32}}
+};
+static struct nand_ecclayout aml_nand_oob_1664 = {
+	.eccbytes = 1584,
 	.oobfree = {
 		{.offset = 0,
 		 .length = 32}}
@@ -172,6 +178,7 @@ static unsigned default_environment_size = (ENV_SIZE - sizeof(struct aml_nand_bb
 static uint8_t nand_boot_flag = 0;
 static uint8_t nand_erarly_suspend_flag = 0;
 static uint8_t nand_mode_time[6] = {9, 7, 6, 5, 5, 4};
+extern unsigned char pagelist_1ynm_hynix256[128];
 extern ssize_t show_nand_version_info(struct class *class,
 			struct class_attribute *attr,	char *buf);
 static int aml_nand_update_env(struct mtd_info *mtd);
@@ -189,6 +196,7 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 	{"C revision 20nm NAND 4GiB H27UBG8T2C", {NAND_MFR_HYNIX, 0xd7, 0x94, 0x91, 0x60, 0x44}, 8192, 4096, 0x200000, 640, 1, 16, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE)},	//need readretry, disable two plane mode
 	{"A revision 20nm NAND 8GiB H27UCG8T2A", {NAND_MFR_HYNIX, 0xde, 0x94, 0xda, 0x74, 0xc4}, 8192, 8192, 0x200000, 640, 1, 16, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},	//need readretry, disable two plane mode
 	{"B revision 20nm NAND 8GiB H27UCG8T2B",	{NAND_MFR_HYNIX, 0xde, 0x94, 0xeb, 0x74, 0x44}, 16384, 8192, 0x400000, 1280, 1, 16, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE)},	//need readretry, disable two plane mode
+	{"E revision 1ynm NAND 8GiB H27UCG8T2E",	{NAND_MFR_HYNIX, 0xde, 0x14, 0xa7, 0x42, 0x4a}, 16384, 8192, 0x400000, 1664, 1, 16, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE)},	//need readretry, disable two plane mode
 
 #endif
 #ifdef NEW_NAND_SUPPORT
@@ -217,14 +225,16 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 	{"F serials NAND 8GiB TC58NVG6D2GTA00", {NAND_MFR_TOSHIBA, 0xDE, 0x94, 0x82, 0x76, 0x56}, 8192, 8192, 0x200000, 640, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},	//need readretry, disable two plane mode
 	{"F serials NAND 8GiB TC58TEG6DCJTA00",  {NAND_MFR_TOSHIBA, 0xDE, 0x84, 0x93, 0x72, 0x57}, 16384, 8192, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},  //need readretry, disable two plane mode
 	{"A serials NAND 4GiB TC58TEG5DCJTA00 ", {NAND_MFR_TOSHIBA, 0xD7, 0x84, 0x93, 0x72, 0x57}, 16384, 4096, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
-
+	{"A serials NAND 8GiB TC58TEG6DDKTA00 ", {NAND_MFR_TOSHIBA, 0xDE, 0x94, 0x93, 0x76, 0x50}, 16384, 8192, 0x400000, 1280, 1, 16, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
+	{"A serials NAND 16GiB TC58TEG7DCJTA00 ", {NAND_MFR_TOSHIBA, 0x3a, 0x85, 0x93, 0x76, 0x57}, 16384, 16384, 0x400000, 1280, 2, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
 #endif
 #ifdef NEW_NAND_SUPPORT
 	{"A serials NAND 8GiB SDTNQGAMA-008G ", {NAND_MFR_SANDISK, 0xDE, 0x94, 0x93, 0x76, 0x57}, 16384, 8192, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
 	{"A serials NAND 4GiB SDTNQGAMA-004G ", {NAND_MFR_SANDISK, 0xD7, 0x84, 0x93, 0x72, 0x57}, 16384, 4096, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
 	{"A serials NAND 8GiB SDTNPMAHEM-008G ", {NAND_MFR_SANDISK, 0xDE, 0xA4, 0x82, 0x76, 0x56}, 8192, 8192, 0x200000, 640, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
+	{"A serials NAND 8GiB SDTNRGAMA-008G ", {NAND_MFR_SANDISK, 0xDE, 0x94, 0x93, 0x76, 0x50}, 16384, 8192, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},
 #endif
-
+	{"M Generation NAND 4Gib K9F4G08U0D", {NAND_MFR_SAMSUNG, 0xDC, 0x10, 0x95, 0x54,0XEC,}, 2048, 512, 0x20000, 64, 1, 20, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH8_MODE)},
 	{"M Generation NAND 2GiB K9GAG08U0M", {NAND_MFR_SAMSUNG, 0xD5, 0x14, 0xb6, 0x74}, 4096, 2048, 0x80000, 128, 1, 20, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH8_MODE)},
 	{"5 Generation NAND 2GiB K9GAG08X0D", {NAND_MFR_SAMSUNG, 0xD5, 0x94, 0x29, 0x34, 0x41}, 4096, 2048, 0x80000, 218, 1, 20, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
 	{"6 Generation NAND 2GiB K9GAG08U0E", {NAND_MFR_SAMSUNG, 0xD5, 0x84, 0x72, 0x50, 0x42}, 8192, 2048, 0x100000, 436, 1, 25, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE)},
@@ -254,7 +264,7 @@ uint8_t aml_nand_get_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf
 			aml_chip->aml_nand_command(aml_chip, NAND_CMD_GET_FEATURES, -1, -1, i);
 			chip->cmd_ctrl(mtd, addr, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);
 
-			NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 5);
+			NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 20);
 
 			for (j=0; j<4; j++)
 				buf[j] = chip->read_byte(mtd);
@@ -276,7 +286,7 @@ void aml_nand_set_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, i
 			aml_chip->aml_nand_select_chip(aml_chip, i);
 			aml_chip->aml_nand_command(aml_chip, NAND_CMD_SET_FEATURES, -1, -1, i);
 			chip->cmd_ctrl(mtd, addr, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);
-			NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 5);
+			NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 20);
 			for (j=0; j<4; j++)
 				aml_chip->aml_nand_write_byte(aml_chip, buf[j]);
 			aml_chip->aml_nand_wait_devready(aml_chip, i);
@@ -369,18 +379,121 @@ uint8_t aml_nand_set_reg_value_hynix(struct aml_nand_chip *aml_chip,  uint8_t *b
 	return 0;
 }
 
-uint8_t aml_nand_get_reg_value_formOTP_hynix(struct aml_nand_chip *aml_chip, int chipnr)
+int8_t aml_nand_get_20nm_OTP_value(struct aml_nand_chip *aml_chip, unsigned char *buf,int chipnr)
 {
 	struct nand_chip *chip = &aml_chip->chip;
 	struct mtd_info *mtd = &aml_chip->mtd;
 	int i, j, k, reg_cnt_otp, total_reg_cnt, check_flag = 0;
+	unsigned char  *tmp_buf;
+	total_reg_cnt = chip->read_byte(mtd);
+	reg_cnt_otp = chip->read_byte(mtd);
+	for(i=0; i<8; i++){
+		check_flag = 0;
+		memset(buf, 0, 128);
+		for(j=0;j<128;j++){
+			buf[j] = chip->read_byte(mtd);
+			ndelay(50);
+		}
+		for(j=0;j<64;j+=8){
+			for(k=0;k<7;k++){
+				if(((buf[k+j] < 0x80) && (buf[k+j+64] < 0x80)) ||
+				   ((buf[k+j] > 0x80) && (buf[k+j+64] > 0x80))  ||
+					((unsigned char)(buf[k+j]^buf[k+j+64]) != 0xFF)){
+					check_flag = 1;
+					break;
+				}
+				if(check_flag){
+					break;
+				}
+			}
+			if(check_flag){
+				break;
+			}
+		}
+		if(check_flag == 0){
+			break;
+		}
+	}
+	if(check_flag){
+		printk("%s %d 20 nm flashdefault vaule abnormal not safe !!!!!, chip[%d]\n", __func__, __LINE__, chipnr);
+		BUG();
+	}
+	else{
+		tmp_buf = buf;
+		memcpy(&aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][0], tmp_buf, aml_chip->new_nand_info.read_rety_info.reg_cnt);
+		tmp_buf += aml_chip->new_nand_info.read_rety_info.reg_cnt;
+		for(j=0;j<aml_chip->new_nand_info.read_rety_info.retry_cnt;j++){
+			for(k=0;k<aml_chip->new_nand_info.read_rety_info.reg_cnt;k++){
+				aml_chip->new_nand_info.read_rety_info.reg_offset_value[chipnr][j][k] = (char)tmp_buf[0];
+				tmp_buf++;
+			}
+		}
+	}
+	return check_flag ;
+}
+int8_t aml_nand_get_1ynm_OTP_value(struct aml_nand_chip *aml_chip, unsigned char *buf,int chipnr)
+{
+	struct nand_chip *chip = &aml_chip->chip;
+	struct mtd_info *mtd = &aml_chip->mtd;
+	int i, j=1, k,m, reg_cnt_otp, total_reg_cnt, check_flag = 0;
+	unsigned char  *tmp_buf,*p;
+	int read_otp_cnt =0;
+	unsigned char  retry_value_sta[32] ={0};
+	memset(buf, 0, 528);
+	for(i=0; i<528; i++){
+		buf[i] = chip->read_byte(mtd);
+		 NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+		 NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+	}
+	for(read_otp_cnt =0;read_otp_cnt<8;read_otp_cnt++) {
+		for(j=0;j<8;j++){
+			for(k=0;k<4;k++){
+				if(retry_value_sta[j*4+k] ==0) {
+					m = k+j*4+16+read_otp_cnt*64;
+						if((unsigned char)(buf[m]^buf[m+32]) == 0xFF){
+							if(j ==0)
+							aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][k] = buf[m];
+							else
+							aml_chip->new_nand_info.read_rety_info.reg_offset_value[chipnr][j-1][k] = buf[m];
+						retry_value_sta[j*4+k] =1;
+				}
+			}
+		}
+		}
+	}
+		for(i=0; i<aml_chip->chip_num; i++){
+			if(aml_chip->valid_chip[i]){
+				for(j=0;j<aml_chip->new_nand_info.read_rety_info.reg_cnt;j++)
+					printk("%s, REG(0x%x):	value:0x%2x, for chip[%d]\n", __func__, aml_chip->new_nand_info.read_rety_info.reg_addr[j], aml_chip->new_nand_info.read_rety_info.reg_default_value[i][j], i);
+			}
+		}
+		for(i=0; i<aml_chip->chip_num; i++){
+		if(aml_chip->valid_chip[i]){
+			for(j=0;j<aml_chip->new_nand_info.read_rety_info.retry_cnt;j++)
+				for(k=0;k<aml_chip->new_nand_info.read_rety_info.reg_cnt;k++)
+					printk("%s, Retry%dst, REG(0x%x): 	value:0x%2x, for chip[%d]\n", __func__, j, aml_chip->new_nand_info.read_rety_info.reg_addr[k], aml_chip->new_nand_info.read_rety_info.reg_offset_value[i][j][k], i);
+			printk("\n");
+			}
+		}
+	for(i=0;i<32;i++)
+		if(retry_value_sta[i] ==0) {
+			printk("  chip[%d] flash %d vaule abnormal not safe !!!!!\n",chipnr,i);
+			return 1;
+	}
+	return 0 ;
+}
+uint8_t aml_nand_get_reg_value_formOTP_hynix(struct aml_nand_chip *aml_chip, int chipnr)
+{
+	struct nand_chip *chip = &aml_chip->chip;
+	struct mtd_info *mtd = &aml_chip->mtd;
+	int  check_flag = 0;
 	unsigned char *one_copy_buf, *tmp_buf;
 
 	if((aml_chip->new_nand_info.type < 3) ||(aml_chip->new_nand_info.type > 10))
 		return 0;
 
 
-	one_copy_buf = (unsigned char *)kmalloc(256, GFP_KERNEL);
+	one_copy_buf = (unsigned char *)kmalloc(528, GFP_KERNEL);
 	if(one_copy_buf == NULL){
 		printk("%s %d no mem!!!!!\n", __func__, __LINE__);
 		BUG();
@@ -408,8 +521,14 @@ uint8_t aml_nand_get_reg_value_formOTP_hynix(struct aml_nand_chip *aml_chip, int
 		NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
 		chip->cmd_ctrl(mtd, 0xb0, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);			//send 0xcc add
 	}
-
+	else if(aml_chip->new_nand_info.type == HYNIX_1YNM_8GB){
+		chip->cmd_ctrl(mtd, 0x38, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);			//send 0xff add
+	        NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+		aml_chip->aml_nand_write_byte(aml_chip,0x52 );								//write 0x40 into 0xff add
+	        NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+	}
 	NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+	if((aml_chip->new_nand_info.type == HYNIX_20NM_4GB)&&(aml_chip->new_nand_info.type == HYNIX_20NM_8GB))
 	aml_chip->aml_nand_write_byte(aml_chip,0x4d );								//write 0x4d into 0xcc add
 	aml_chip->aml_nand_command(aml_chip, 0x16, -1, -1, chipnr);					//send cmd 0x16
 	aml_chip->aml_nand_command(aml_chip, 0x17, -1, -1, chipnr);					//send cmd 0x17
@@ -418,12 +537,15 @@ uint8_t aml_nand_get_reg_value_formOTP_hynix(struct aml_nand_chip *aml_chip, int
 	aml_chip->aml_nand_command(aml_chip, NAND_CMD_READ0, 0, 0x200, chipnr);
 
 
-
+#if 1
 	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 	if (aml_chip->ops_mode & AML_CHIP_NONE_RB)
 		chip->cmd_ctrl(mtd, NAND_CMD_READ0 & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+#else
+	udelay(500);
+#endif
 
-
+#if 0
 	total_reg_cnt = chip->read_byte(mtd);
 	reg_cnt_otp = chip->read_byte(mtd);
 
@@ -456,39 +578,39 @@ uint8_t aml_nand_get_reg_value_formOTP_hynix(struct aml_nand_chip *aml_chip, int
 			break;
 		}
 	}
-
+#else
+if((aml_chip->new_nand_info.type == HYNIX_20NM_4GB)||(aml_chip->new_nand_info.type == HYNIX_20NM_8GB))
+	check_flag  = aml_nand_get_20nm_OTP_value(aml_chip,one_copy_buf,chipnr);
+else if(aml_chip->new_nand_info.type == HYNIX_1YNM_8GB)
+	check_flag  = aml_nand_get_1ynm_OTP_value(aml_chip,one_copy_buf,chipnr);
+#endif
 
 	aml_chip->aml_nand_command(aml_chip, NAND_CMD_RESET, -1, -1, chipnr);
 
 	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 
+	if((aml_chip->new_nand_info.type == HYNIX_20NM_4GB)||(aml_chip->new_nand_info.type == HYNIX_20NM_8GB)) {
 	aml_chip->aml_nand_command(aml_chip, 0x38, -1, -1, chipnr);				//end read otp mode
 
-	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 
-	if(check_flag){
-		printk("%s %d 20 nm flashdefault vaule abnormal not safe !!!!!, chip[%d]\n", __func__, __LINE__, chipnr);
-		BUG();
 	}
-	else{
-		tmp_buf = one_copy_buf;
-
-		memcpy(&aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][0], tmp_buf, aml_chip->new_nand_info.read_rety_info.reg_cnt);
-
-		tmp_buf += aml_chip->new_nand_info.read_rety_info.reg_cnt;
 
 
-		for(j=0;j<aml_chip->new_nand_info.read_rety_info.retry_cnt;j++){
-			for(k=0;k<aml_chip->new_nand_info.read_rety_info.reg_cnt;k++){
-				aml_chip->new_nand_info.read_rety_info.reg_offset_value[chipnr][j][k] = (char)tmp_buf[0];
-				tmp_buf++;
+	else if(aml_chip->new_nand_info.type == HYNIX_1YNM_8GB) {
+			aml_chip->aml_nand_command(aml_chip, NAND_CMD_HYNIX_SET_VALUE_START, -1, -1, chipnr);	//send cmd 0x36
+			chip->cmd_ctrl(mtd, 0x38, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);
+			 NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+			 aml_chip->aml_nand_write_byte(aml_chip,0 );
+			  NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
+			  aml_chip->aml_nand_command(aml_chip, 0X16, -1, -1, chipnr);	//send cmd 0x16
 
 			}
 
-		}
-	}
+	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 
-	return 0;
+
+
+	return check_flag;
 }
 void aml_nand_set_readretry_default_value_hynix(struct mtd_info *mtd)
 {
@@ -510,6 +632,57 @@ void aml_nand_set_readretry_default_value_hynix(struct mtd_info *mtd)
 			aml_nand_set_reg_value_hynix(aml_chip, &aml_chip->new_nand_info.read_rety_info.reg_default_value[i][0], &aml_chip->new_nand_info.read_rety_info.reg_addr[0], i, aml_chip->new_nand_info.read_rety_info.reg_cnt);
 		}
 	}
+}
+int aml_nand_slcprog_1ynm_hynix(struct mtd_info *mtd,unsigned char *buf ,unsigned char *oob_buf,unsigned page_addr)
+{
+	size_t amount_saved = 0;
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	int pages_per_blk = mtd->erasesize / mtd->writesize;
+	int offset_in_blk =page_addr % pages_per_blk ;
+	int i,j,k=0,error =0;
+	struct mtd_oob_ops aml_oob_ops;
+	struct nand_chip * chip = mtd->priv;
+	unsigned char *data_buf;
+	loff_t op_add ;
+	unsigned op_page_add = (page_addr/pages_per_blk)*pages_per_blk+pagelist_1ynm_hynix256[offset_in_blk];
+	unsigned priv_slc_page,next_msb_page;
+	data_buf = kzalloc(mtd->writesize, GFP_KERNEL);
+	if (data_buf == NULL)
+		return -ENOMEM;
+	if(offset_in_blk >1)
+		priv_slc_page = (page_addr/pages_per_blk)*pages_per_blk+pagelist_1ynm_hynix256[offset_in_blk-1];
+	else
+		priv_slc_page = op_page_add;
+	next_msb_page = priv_slc_page +1;
+	memset(data_buf,0xff,mtd->writesize);
+	while(next_msb_page < op_page_add) {
+	aml_oob_ops.mode = MTD_OPS_RAW;
+	aml_oob_ops.len = mtd->writesize;
+	aml_oob_ops.ooblen = mtd->oobavail;
+	aml_oob_ops.ooboffs = chip->ecc.layout->oobfree[0].offset;
+	aml_oob_ops.datbuf = data_buf;
+	aml_oob_ops.oobbuf = oob_buf;
+	op_add = next_msb_page*mtd->writesize;
+	 mtd->_write_oob(mtd, op_add, &aml_oob_ops);
+	printk("Eneter 1y nm SLC mode ,must fill 0xff data into %d\n",next_msb_page);
+		next_msb_page++;
+	}
+	aml_oob_ops.mode = MTD_OPS_AUTO_OOB;
+	aml_oob_ops.len = mtd->writesize;
+	aml_oob_ops.ooblen = mtd->oobavail;
+	aml_oob_ops.ooboffs = chip->ecc.layout->oobfree[0].offset;
+	aml_oob_ops.datbuf = data_buf;
+	aml_oob_ops.oobbuf = oob_buf;
+	op_add = op_page_add*mtd->writesize;
+	error = mtd->_write_oob(mtd, op_add, &aml_oob_ops);
+	printk("Eneter 1y nm SLC mode ,write systerm data into %d\n",op_page_add);
+	if (error) {
+		printk("blk check good but write failed: %llx, %d\n", (uint64_t)page_addr, error);
+		goto err;
+	 }
+err:
+	kfree(data_buf);
+	return error;
 }
 
 void aml_nand_enter_enslc_mode_hynix(struct mtd_info *mtd)
@@ -588,7 +761,7 @@ void aml_nand_read_retry_handle_hynix(struct mtd_info *mtd, int chipnr)
 			else
 				hynix_reg_read_value[i] = aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][i]  + aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][cur_cnt][i];
 		}
-		else  if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)){
+		else  if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)|| (aml_chip->new_nand_info.type == HYNIX_1YNM_8GB)){
 			hynix_reg_read_value[i] = aml_chip->new_nand_info.read_rety_info.reg_offset_value[chipnr][cur_cnt][i];
 		}
 	}
@@ -645,8 +818,11 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 	unsigned char *data_buf;
 	char oob_buf[4];
 	unsigned char page_list[RETRY_NAND_COPY_NUM] = {0x07, 0x0B, 0x0F, 0x13};
-	int error = 0, err, i,  nand_type, total_blk, phys_erase_shift = fls(mtd->erasesize) - 1;
+	int error = 0, err, i, j, k,n, nand_type, total_blk, phys_erase_shift = fls(mtd->erasesize) - 1;
+	int save_cnt =20;
 
+	if(aml_chip->new_nand_info.read_rety_info.retry_cnt >20)
+		save_cnt = aml_chip->new_nand_info.read_rety_info.retry_cnt;
 	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
 	if (aml_oob_ops == NULL){
 		printk("%s %d no mem for aml_oob_ops\n", __func__, __LINE__);
@@ -669,6 +845,9 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 
 	total_blk = 0;
 	aml_chip->new_nand_info.read_rety_info.default_flag = 0;
+	if(aml_chip->new_nand_info.type ==HYNIX_1YNM_8GB) {
+		page_list[0] =0;page_list[1] =1;page_list[2] =3;page_list[3] =5;
+	}
 	while(total_blk < RETRY_NAND_BLK_NUM){
 		nand_type = aml_chip->new_nand_info.type;
 		aml_chip->new_nand_info.type = 0;
@@ -708,10 +887,18 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 				memcpy(&aml_chip->new_nand_info.read_rety_info.reg_default_value[0][0], (unsigned char *)aml_oob_ops->datbuf, MAX_CHIP_NUM*READ_RETRY_REG_NUM);
 				printk("%s %d get default reg value at blk:%d, page:%d\n", __func__, __LINE__, addr>> phys_erase_shift, (addr +  page_list[i]*mtd->writesize)/mtd->writesize);
 
-				if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)){
-					memcpy(&aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0], (unsigned char *)(aml_oob_ops->datbuf+MAX_CHIP_NUM*READ_RETRY_REG_NUM),
-															MAX_CHIP_NUM*READ_RETRY_CNT*READ_RETRY_REG_NUM);
-
+				if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)|| (aml_chip->new_nand_info.type == HYNIX_1YNM_8GB)){
+					//memcpy(&aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0], (unsigned char *)(aml_oob_ops->datbuf+MAX_CHIP_NUM*READ_RETRY_REG_NUM),
+					//										MAX_CHIP_NUM*READ_RETRY_CNT*READ_RETRY_REG_NUM);
+					for(n=0; n<aml_chip->chip_num; n++){
+						if(aml_chip->valid_chip[n]){
+							for(j=0;j<aml_chip->new_nand_info.read_rety_info.retry_cnt;j++) {
+								memcpy(&aml_chip->new_nand_info.read_rety_info.reg_offset_value[n][j][0], (unsigned char *)(aml_oob_ops->datbuf+MAX_CHIP_NUM*READ_RETRY_REG_NUM+j*READ_RETRY_REG_NUM+n*HYNIX_RETRY_CNT*READ_RETRY_REG_NUM), READ_RETRY_REG_NUM);
+								for(k=0;k<aml_chip->new_nand_info.read_rety_info.reg_cnt;k++)
+									printk("%s, Retry%dst, REG(0x%x): 	value:0x%2x, for chip[%d]\n", __func__, j, aml_chip->new_nand_info.read_rety_info.reg_addr[k], aml_chip->new_nand_info.read_rety_info.reg_offset_value[i][j][k], i);
+						}
+					    }
+					}
 
 				}
 				aml_chip->new_nand_info.read_rety_info.default_flag = 1;
@@ -732,7 +919,7 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 				aml_nand_get_reg_value_hynix(aml_chip, &aml_chip->new_nand_info.read_rety_info.reg_default_value[i][0],
 					&aml_chip->new_nand_info.read_rety_info.reg_addr[0], i, aml_chip->new_nand_info.read_rety_info.reg_cnt);
 			}
-			else  if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)){
+			else  if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)|| (aml_chip->new_nand_info.type == HYNIX_1YNM_8GB)){
 				aml_nand_get_reg_value_formOTP_hynix(aml_chip, i);
 			}
 		}
@@ -833,10 +1020,20 @@ void aml_nand_read_retry_exit_toshiba(struct mtd_info *mtd, int chipnr)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 
-	if(aml_chip->new_nand_info.type != TOSHIBA_24NM)
-		return;
-
-	aml_nand_debug("toshiba retry cnt :%d\n",aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]);
+	struct nand_chip *chip = &aml_chip->chip;
+	uint8_t buf[5] = {0};
+	int j;
+	//if(aml_chip->new_nand_info.type != TOSHIBA_24NM)
+	//	return;
+	if(aml_chip->new_nand_info.type == TOSHIBA_A19NM) {
+	for (j=0; j<aml_chip->new_nand_info.read_rety_info.reg_cnt; j++){
+		aml_chip->aml_nand_command(aml_chip, NAND_CMD_TOSHIBA_SET_VALUE, -1, -1, chipnr);
+		udelay(1);
+	        chip->cmd_ctrl(mtd, aml_chip->new_nand_info.read_rety_info.reg_addr[j], NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);
+		udelay(1);
+		aml_chip->aml_nand_write_byte(aml_chip, buf[j]);
+		}
+	}
 	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 	aml_chip->aml_nand_command(aml_chip, NAND_CMD_RESET, -1, -1, chipnr);
 	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
@@ -961,10 +1158,11 @@ void aml_nand_read_retry_exit_micron(struct mtd_info *mtd, int chipnr)
 {
 
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	int default_val = 0;
+
 	if(aml_chip->new_nand_info.type != MICRON_20NM)
 		return;
 
+	int default_val = 0;
 
 	aml_nand_debug("micron retry cnt :%d\n",aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]);
 	aml_nand_set_reg_value_micron(aml_chip, &default_val,
@@ -1146,7 +1344,60 @@ void aml_nand_dynamic_read_exit(struct mtd_info *mtd, int chipnr)
 	memset(&aml_chip->new_nand_info.read_rety_info.cur_cnt[0], 0, MAX_CHIP_NUM);
 	return ;
 }
+uint8_t aml_nand_set_featureReg_value_sandisk(struct aml_nand_chip *aml_chip,  uint8_t *buf, uint8_t addr, int chipnr, int cnt)
+{
+	struct nand_chip *chip = &aml_chip->chip;
+	struct mtd_info *mtd = &aml_chip->mtd;
+	int j;
 
+//	chip->select_chip(mtd, chipnr);
+	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
+	udelay(1);
+	chip->cmd_ctrl(mtd, NAND_CMD_SANDISK_SET_VALUE, NAND_CTRL_CHANGE | NAND_NCE | NAND_CLE);
+	udelay(1);
+	chip->cmd_ctrl(mtd, addr, NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE);
+	for (j=0; j<cnt; j++){
+		ndelay(200);
+		aml_chip->aml_nand_write_byte(aml_chip, buf[j]);
+	}
+	udelay(10);
+	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
+	return 0;
+}
+void aml_nand_read_retry_handleA19_sandisk(struct mtd_info *mtd, int chipnr)
+{
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	struct nand_chip *chip = &aml_chip->chip;
+	int cur_cnt;
+	unsigned	page = aml_chip->page_addr;
+	int pages_per_blk;
+	int page_info = 1;
+	pages_per_blk = (1 << (chip->phys_erase_shift - chip->page_shift));
+	page = page % pages_per_blk;
+	if(((page !=0) && (page % 2 ) == 0) || (page == (pages_per_blk -1)))
+		page_info =  0;
+	cur_cnt = aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr];
+	aml_nand_set_featureReg_value_sandisk(aml_chip, (uint8_t *)&aml_chip->new_nand_info.read_rety_info.reg_offset_value[page_info][cur_cnt][0],
+		&aml_chip->new_nand_info.read_rety_info.reg_addr[0], chipnr, aml_chip->new_nand_info.read_rety_info.reg_cnt);
+	aml_chip->aml_nand_command(aml_chip, NAND_CMD_SANDISK_RETRY_STA, -1, -1, chipnr);
+	aml_chip->aml_nand_command(aml_chip, NAND_CMD_SANDISK_DSP_ON, -1, -1, chipnr);
+	cur_cnt++;
+	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] =
+		(cur_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-1)) ? 0 : cur_cnt;
+	return ;
+}
+void aml_nand_read_retry_exit_A19_sandisk(struct mtd_info *mtd, int chipnr)
+{
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	struct nand_chip *chip = &aml_chip->chip;
+	uint8_t buf[4] = {0};
+	aml_nand_set_featureReg_value_sandisk(aml_chip, buf,
+		&aml_chip->new_nand_info.read_rety_info.reg_addr[0], chipnr, aml_chip->new_nand_info.read_rety_info.reg_cnt);
+	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
+	aml_chip->aml_nand_command(aml_chip, NAND_CMD_RESET, -1, -1, chipnr);
+	aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
+	memset(&aml_chip->new_nand_info.read_rety_info.cur_cnt[0], 0, MAX_CHIP_NUM);
+}
 void aml_nand_enter_slc_mode_sandisk(struct mtd_info *mtd)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
@@ -1397,7 +1648,102 @@ static void aml_platform_adjust_timing(struct aml_nand_chip *aml_chip)
 	dev_info(aml_chip->device, "time_mode=%d, bus_cycle=%d, adjust=%d, start_cycle=%d, end_cycle=%d,system=%d.%dns\n",
 		time_mode, bus_cycle, adjust, start_cycle, end_cycle, sys_time/10, sys_time%10);
 }
+static int aml_repair_bbt(struct aml_nand_chip *aml_chip,unsigned int *bad_blk_addr,int cnt)
+{
+	 int mini_part_blk_num ,i,j;
+	struct mtd_info *mtd = &aml_chip->mtd;
+	struct erase_info erase_info_test;
+	int error = 0;
+	struct mtd_oob_ops aml_oob_ops;
+	int *data_buf ;
+	int phys_erase_shift = fls(mtd->erasesize) - 1;
+	int pages_per_blk = mtd->erasesize / mtd->writesize;
+	int total_blk = (int)(mtd->size >> phys_erase_shift);
+	int test_flag = 0;
+	uint64_t start_blk;
+	  printk("enter repair bbt and total block =%d \n",total_blk);
+	 data_buf = kzalloc(mtd->writesize, GFP_KERNEL);
+	 if(!data_buf) {
+		printk("malloc test buf fail\n");
+		return -ENOMEM;
+	 }
+	  for(i = 0;i < cnt; i++) {
+	if(!((bad_blk_addr[i] > 0)&&(bad_blk_addr[i] < total_blk)))
+		continue;
+	  printk("enter test %d block \n",bad_blk_addr[i]);
+	 start_blk = bad_blk_addr[i];
+	start_blk = start_blk<<phys_erase_shift;
+	memset((unsigned char *)data_buf,bad_blk_addr[i],mtd->writesize);
+	test_flag = 0;
+		aml_chip->block_status[bad_blk_addr[i]] = NAND_BLOCK_GOOD;
+		memset(&erase_info_test, 0, sizeof(struct erase_info));
+		erase_info_test.mtd = mtd;
+		erase_info_test.addr = start_blk ;
+		erase_info_test.len = mtd->erasesize;
 
+		error = mtd->_erase(mtd, &erase_info_test);
+		if(error) {
+			printk("BBT REPAIR:erase %d fail \n",start_blk);
+			aml_chip->block_status[bad_blk_addr[i]] = NAND_BLOCK_BAD;
+			continue;
+		}
+		for(j=0;j<pages_per_blk;j++) {
+		aml_oob_ops.mode = MTD_OPS_AUTO_OOB;
+		aml_oob_ops.len = mtd->writesize;
+		aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
+		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops.datbuf = data_buf;
+		aml_oob_ops.oobbuf = NULL;
+		error = mtd->_write_oob(mtd, start_blk+j*mtd->writesize, &aml_oob_ops);
+		if (error) {
+			printk("blk check good but write failed: %llx, %d\n", (uint64_t)start_blk, error);
+			aml_chip->block_status[bad_blk_addr[i]] = NAND_BLOCK_BAD;
+			test_flag = 1;
+			break;
+		}
+	    }
+		if(!test_flag) {
+		  for(j=0;j<pages_per_blk;j++) {
+			aml_oob_ops.mode = MTD_OPS_AUTO_OOB;
+			aml_oob_ops.len = mtd->writesize;
+			aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
+			aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
+			aml_oob_ops.datbuf = data_buf;
+			aml_oob_ops.oobbuf = NULL;
+			error = mtd->_read_oob(mtd, start_blk+j*mtd->writesize, &aml_oob_ops);
+				if (error) {
+					printk("ecc failed: %llx, %d\n", (uint64_t)start_blk, error);
+					aml_chip->block_status[bad_blk_addr[i]] = NAND_BLOCK_BAD;
+					test_flag = 1;
+					break;
+				}
+		    }
+		}
+		if(!test_flag) {
+		memset(&erase_info_test, 0, sizeof(struct erase_info));
+		erase_info_test.mtd = mtd;
+		erase_info_test.addr = start_blk ;
+		erase_info_test.len = mtd->erasesize;
+		error = mtd->_erase(mtd, &erase_info_test);
+			if(error) {
+				printk("BBT REPAIR:erase %d fail \n",start_blk);
+				aml_chip->block_status[bad_blk_addr[i]] = NAND_BLOCK_BAD;
+				continue;
+			}
+			for (j=0; j<MAX_BAD_BLK_NUM; j++) {
+				if (aml_chip->aml_nandenv_info->nand_bbt_info.nand_bbt[j] == bad_blk_addr[i]) {
+					aml_chip->aml_nandenv_info->nand_bbt_info.nand_bbt[j] = 0;
+					printk("update %d bbt info for %d block in the ram\n",j,bad_blk_addr[i]);
+					break;
+				}
+			}
+		}
+	  }
+	 if(data_buf)
+		kfree(data_buf);
+	printk("###bbt write into nand flash\n");
+	return aml_nand_update_env(mtd);
+}
 static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 {
 	uint64_t adjust_offset = 0, mini_part_blk_num, start_blk = 0,key_block;
@@ -1413,6 +1759,9 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 	u8 part_num = 0;
 	uint64_t erase_length =0;
 	size_t offset;
+	unsigned int bad_blk_addr[128];
+	int bad_block_cnt =0;
+	uint64_t last_size =0;
 	uint64_t mini_part_size = ((mtd->erasesize > NAND_MINI_PART_SIZE) ? mtd->erasesize : NAND_MINI_PART_SIZE);
 
 
@@ -1476,6 +1825,8 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 		for (i=0; i<nr; i++) {
 
 			temp_parts = parts + i;
+			bad_block_cnt =0;
+			memset((unsigned char *)bad_blk_addr,0xff,128*sizeof(int));
 			if ((temp_parts->size >= mtd->erasesize) || (i == (nr - 1)))
 				mini_part_size = temp_parts->size;
 			temp_parts->offset = adjust_offset;
@@ -1517,10 +1868,40 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 						adjust_offset += mtd->erasesize;
 						continue;
 					}
+					else if(error){
+							if(bad_block_cnt < 128)
+								bad_blk_addr[bad_block_cnt] = offset>> phys_erase_shift;
+						printk("%s:%d find %d bad addr =%d\n",__func__,__LINE__,bad_block_cnt,bad_blk_addr[bad_block_cnt]);
+							bad_block_cnt++;
+						}
 					start_blk++;
 				} while (start_blk < (mini_part_size >> phys_erase_shift));
+				if(mini_part_size > NAND_SYS_PART_SIZE) {
+						if(((bad_block_cnt * 32) > (mini_part_size >> phys_erase_shift))||(bad_block_cnt >10)) {
+							aml_repair_bbt(aml_chip,bad_blk_addr,bad_block_cnt);
+						}
+				}
 			}
-
+			else{
+				last_size = mtd->size - adjust_offset;
+				start_blk = 0;
+				bad_block_cnt =0;
+				memset((unsigned char *)bad_blk_addr,0xff,128*sizeof(int));
+				do {
+					offset = adjust_offset + start_blk * mtd->erasesize;
+					error = mtd->_block_isbad(mtd, offset);
+					 if(error && (error != FACTORY_BAD_BLOCK_ERROR)){
+							if(bad_block_cnt < 128)
+							bad_blk_addr[bad_block_cnt] = offset>> phys_erase_shift;
+							printk("%s:%d find %d bad addr =%d\n",__func__,__LINE__,bad_block_cnt,bad_blk_addr[bad_block_cnt]);
+							bad_block_cnt++;
+						}
+					start_blk++;
+				} while (start_blk < (last_size >> phys_erase_shift));
+						if(bad_block_cnt >10) {
+							aml_repair_bbt(aml_chip,bad_blk_addr,bad_block_cnt);
+						}
+			}
 			if ((i == (nr - 1)) && (part_save_in_env == 0))
 				temp_parts->size = NAND_SYS_PART_SIZE;
 			else if (mini_part_size != MTDPART_SIZ_FULL)
@@ -1560,6 +1941,7 @@ static void aml_nand_select_chip(struct mtd_info *mtd, int chipnr)
 {
 	//int i;
 	int retry;
+	int ret=0;
 	DECLARE_WAITQUEUE(nand_wait, current);
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	if (((nand_erarly_suspend_flag == 1) && (!(READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))))
@@ -1571,7 +1953,6 @@ static void aml_nand_select_chip(struct mtd_info *mtd, int chipnr)
 		else if (nand_erarly_suspend_flag == 2)
 			nand_erarly_suspend_flag = 0;
 	}
-
 
 	switch (chipnr) {
 		case -1:
@@ -1590,9 +1971,9 @@ static void aml_nand_select_chip(struct mtd_info *mtd, int chipnr)
 		for (retry=0; retry<10; retry++) {
 			mutex_lock(&spi_nand_mutex);
 			if((aml_chip->ops_mode & AML_CHIP_NONE_RB) == 0)
-			aml_chip->nand_pinctrl = devm_pinctrl_get_select(aml_chip->device,"nand_rb_mod");
+				aml_chip->nand_pinctrl = devm_pinctrl_get_select(aml_chip->device,"nand_rb_mod");
 			else
-			aml_chip->nand_pinctrl = devm_pinctrl_get_select(aml_chip->device,"nand_norb_mod");
+				aml_chip->nand_pinctrl = devm_pinctrl_get_select(aml_chip->device,"nand_norb_mod");
 			if (IS_ERR(aml_chip->nand_pinctrl)){
 				aml_chip->nand_pinctrl = NULL;
 				mutex_unlock(&spi_nand_mutex);
@@ -1780,6 +2161,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int status[MAX_CHIP_NUM], state = chip->state, i = 0, time_cnt = 0, chip_nr = 1;
 	struct aml_nand_platform *plat = aml_chip->platform;
+	int read_status =0;
 
 	/* Apply this short delay always to ensure that we do wait tWB in
 	 * any case on any machine. */
@@ -1804,6 +2186,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 			while(NFC_CMDFIFO_SIZE()>0);
 
 			time_cnt = 0;
+retry_status:
 			while (time_cnt++ < 0x40000) {
 				if (chip->dev_ready) {
 					if (chip->dev_ready(mtd))
@@ -1818,7 +2201,10 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 				}
 			}
 			status[i] = (int)chip->read_byte(mtd);
-
+		if((read_status++ < 3)&&(status[i] != 0xe0)){
+			printk("after wirte,read %d status =%d fail\n",read_status,status[i]);
+				goto retry_status;
+		}
 			status[0] |= status[i];
 		}
 	}
@@ -1940,8 +2326,6 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					plane_page_addr |= ((plane_blk_addr + 1) << pages_per_blk_shift);
 					command_temp = command;
-					chip->cmd_ctrl(mtd, 0x32, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
-					aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
 					chip->cmd_ctrl(mtd, command_temp & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 				}
 				else {
@@ -2136,9 +2520,9 @@ static void aml_nand_command(struct mtd_info *mtd, unsigned command, int column,
 
 		aml_chip->page_addr = page_addr / valid_page_num;
 		if (unlikely(aml_chip->page_addr >= aml_chip->internal_page_nums)) {
-			internal_chip = aml_chip->page_addr / aml_chip->internal_page_nums;
+			//internal_chip = aml_chip->page_addr / aml_chip->internal_page_nums;
 			aml_chip->page_addr -= aml_chip->internal_page_nums;
-			aml_chip->page_addr |= (1 << aml_chip->internal_chip_shift) * internal_chip;
+			aml_chip->page_addr |= (1 << aml_chip->internal_chip_shift) * aml_chip->internal_chipnr;
 		}
 	}
 
@@ -2187,9 +2571,9 @@ static void aml_nand_erase_cmd(struct mtd_info *mtd, int page)
 
 	aml_chip->page_addr = page / valid_page_num;
 	if (unlikely(aml_chip->page_addr >= aml_chip->internal_page_nums)) {
-		internal_chipnr = aml_chip->page_addr / aml_chip->internal_page_nums;
+		//internal_chipnr = aml_chip->page_addr / aml_chip->internal_page_nums;
 		aml_chip->page_addr -= aml_chip->internal_page_nums;
-		aml_chip->page_addr |= (1 << aml_chip->internal_chip_shift) * internal_chipnr;
+		aml_chip->page_addr |= (1 << aml_chip->internal_chip_shift) * aml_chip->internal_chipnr;
 	}
 
 	if (unlikely(aml_chip->ops_mode & AML_INTERLEAVING_MODE))
@@ -2505,7 +2889,7 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 	int ran_mode = aml_chip->ran_mode;
 #endif
 	int retry_cnt =aml_chip->new_nand_info.read_rety_info.retry_cnt;
-	if ((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB))
+	if ((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)|| (aml_chip->new_nand_info.type == HYNIX_1YNM_8GB))
 		retry_cnt = aml_chip->new_nand_info.read_rety_info.retry_cnt *aml_chip->new_nand_info.read_rety_info.retry_cnt;
 
 	if (aml_chip->ops_mode & AML_INTERLEAVING_MODE)
@@ -2574,14 +2958,14 @@ dma_retry_plane0:
 							aml_chip->ran_mode = 0;
 							ndelay(300);
 							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
-							ndelay(500);
+				ndelay(500);
 							goto dma_retry_plane0;
 						 }
 #endif
-						memset(buf, 0xff, nand_page_size);
+					//	memset(buf, 0xff, nand_page_size);
 						memset(oob_buf, 0x22, user_byte_num);
 
-						mtd->ecc_stats.failed++;
+					mtd->ecc_stats.failed++;
 						printk("aml nand read data ecc plane0 failed at page %d chip %d \n", page_addr, i);
 					}
 					else{
@@ -2631,14 +3015,14 @@ dma_retry_plane1:
 							aml_chip->ran_mode = 0;
 							ndelay(300);
 							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
-							ndelay(500);
+				ndelay(500);
 							goto dma_retry_plane1;
 						 }
 #endif
-						memset(buf, 0xff, nand_page_size);
+					//	memset(buf, 0xff, nand_page_size);
 						memset(oob_buf, 0x22, user_byte_num);
 
-						mtd->ecc_stats.failed++;
+					mtd->ecc_stats.failed++;
 						printk("aml nand read data ecc plane1 failed at page %d chip %d \n", page_addr, i);
 					}
 					else{
@@ -2724,6 +3108,14 @@ dma_retry_plane1:
 						memset(oob_buf, 0x22, user_byte_num);
 						printk("########%s %d read ecc failed here at at page:%d, blk:%d chip[%d]\n", __func__, __LINE__, page_addr, (page_addr >> pages_per_blk_shift), i);
 						mtd->ecc_stats.failed++;
+						if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)) {
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RESET, -1, -1, i);
+							if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) {
+								printk ("read couldn`t found selected chip: %d ready\n", i);
+								error = -EBUSY;
+								goto exit;
+							}
+						}
 					}
 					else{
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -2752,7 +3144,7 @@ dma_retry_plane1:
 								}
 						}
 						else if(aml_chip->new_nand_info.type){
-								if(readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2)){
+								if(readretry_failed_cnt > (retry_cnt-2)){
 									printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d], readretry_failed_cnt:%d\n",
 													__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 
@@ -2944,8 +3336,7 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 	int ran_mode = aml_chip->ran_mode;
 #endif
 	int retry_cnt =aml_chip->new_nand_info.read_rety_info.retry_cnt;
-//	printk("nand_read_size =%d,read_chip_num=%d\n",nand_read_size,read_chip_num);
-	if ((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB))
+	if ((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)|| (aml_chip->new_nand_info.type == HYNIX_1YNM_8GB))
 		retry_cnt = aml_chip->new_nand_info.read_rety_info.retry_cnt *aml_chip->new_nand_info.read_rety_info.retry_cnt;
 
 	if (nand_read_size >= nand_page_size)
@@ -3040,13 +3431,13 @@ dma_retry_plane0:
 							aml_chip->ran_mode = 0;
 							ndelay(300);
 							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
-							ndelay(500);
+				ndelay(500);
 							goto dma_retry_plane0;
 						 }
 #endif
 						memset(oob_buffer, 0x22, user_byte_num);
 
-						mtd->ecc_stats.failed++;
+					mtd->ecc_stats.failed++;
 						printk("aml nand read oob plane0 failed at page %d chip %d \n", page_addr, i);
 
 					}
@@ -3193,6 +3584,14 @@ dma_retry_plane1:
 
 						memset(oob_buffer, 0x22, user_byte_num);
 						mtd->ecc_stats.failed++;
+						if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)) {
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RESET, -1, -1, i);
+							if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) {
+								printk ("read couldn`t found selected chip: %d ready\n", i);
+								error = -EBUSY;
+								goto exit;
+							}
+						}
 					}
 					else{
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON3
@@ -3220,7 +3619,7 @@ dma_retry_plane1:
 								}
 						}
 						else if(aml_chip->new_nand_info.type){
-								if(readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2)){
+								if(readretry_failed_cnt > (retry_cnt-2)){
 									printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d], readretry_failed_cnt:%d\n",
 													__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 
@@ -3496,15 +3895,19 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	u8 dev_id_hynix_20nm_4g[MAX_ID_LEN] = {NAND_MFR_HYNIX, 0xd7, 0x94, 0x91, 0x60, 0x44};
 	u8 dev_id_hynix_20nm_8g[MAX_ID_LEN] = {NAND_MFR_HYNIX, 0xde, 0x94, 0xda, 0x74, 0xc4};
 	u8 dev_id_hynix_20nm_lga_8g[MAX_ID_LEN] = {NAND_MFR_HYNIX, 0xde, 0x94, 0xeb, 0x74, 0x44};
+	u8 dev_id_hynix_1ynm_8g[MAX_ID_LEN] = {NAND_MFR_HYNIX, 0xde, 0x14, 0xa7, 0x42, 0x4a};
 	u8 dev_id_toshiba_24nm_4g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x56};
 	u8 dev_id_toshiba_24nm_8g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xDE, 0x94, 0x82, 0x76, 0x56};
 	u8 dev_id_toshiba_19nm_8g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xDE, 0x84, 0x93, 0x72, 0x57};
 	u8 dev_id_toshiba_19nm_4g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xD7, 0x84, 0x93, 0x72, 0x57};
+	u8 dev_id_toshiba_a19nm_8g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xDe, 0x94, 0x93, 0x76, 0x50};
+	u8 dev_id_toshiba_19nm_16g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xa3, 0x85, 0x93, 0x76, 0x57};
 	u8 dev_id_samsung_2xnm_8g[MAX_ID_LEN] = {NAND_MFR_SAMSUNG, 0xDE, 0xD5, 0x7E, 0x68, 0x44};
 	u8 dev_id_samsung_2xnm_4g[MAX_ID_LEN] = {NAND_MFR_SAMSUNG, 0xD7, 0x94, 0x7e, 0x64, 0x44};
 	u8 dev_id_sandisk_19nm_8g[MAX_ID_LEN] = {NAND_MFR_SANDISK, 0xDE, 0x94, 0x93, 0x76, 0x57};
 	u8 dev_id_sandisk_19nm_4g[MAX_ID_LEN] =  {NAND_MFR_SANDISK, 0xD7, 0x84, 0x93, 0x72, 0x57};
 	u8 dev_id_sandisk_24nm_8g[MAX_ID_LEN] =  {NAND_MFR_SANDISK, 0xDE, 0xA4, 0x82, 0x76, 0x56};
+	u8 dev_id_sandisk_a19nm_8g[MAX_ID_LEN] = {NAND_MFR_SANDISK, 0xDE, 0x94, 0x93, 0x76, 0x50};
 	u8 dev_id_micron_20nm_8g[MAX_ID_LEN] = {NAND_MFR_MICRON, 0x64, 0x44, 0x4B, 0xA9};
 	u8 dev_id_micron_20nm_4g[MAX_ID_LEN] = {NAND_MFR_MICRON, 0x44, 0x44, 0x4B, 0xA9};
 #endif
@@ -3885,9 +4288,24 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 		aml_chip->new_nand_info.slc_program_info.get_default_value = aml_nand_get_slc_default_value_hynix;
 
 	}
+	else  if(!strncmp((char*)type->id, (char*)dev_id_hynix_1ynm_8g, strlen((const char*)aml_nand_flash_ids[i].id))){
+		aml_chip->new_nand_info.type = HYNIX_1YNM_8GB;
+		aml_chip->ran_mode = 1;
+		printk("aml_chip->hynix_new_nand_type =: %d \n", aml_chip->new_nand_info.type);
+		aml_chip->new_nand_info.read_rety_info.reg_cnt = 4;
+		aml_chip->new_nand_info.read_rety_info.retry_cnt = 7;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[0] = 0x38;	//not same
+		aml_chip->new_nand_info.read_rety_info.reg_addr[1] = 0x39;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[2] = 0x3a;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[3] = 0x3b;
+		aml_chip->new_nand_info.read_rety_info.get_default_value = aml_nand_get_read_default_value_hynix;
+		aml_chip->new_nand_info.read_rety_info.read_retry_handle = aml_nand_read_retry_handle_hynix;
+		aml_chip->new_nand_info.read_rety_info.read_retry_exit = aml_nand_read_retry_exit_hynix;
+	}
 	else  if((!strncmp((char*)type->id, (char*)dev_id_toshiba_24nm_4g, strlen((const char*)aml_nand_flash_ids[i].id)))
 	            ||(!strncmp((char*)type->id, (char*)dev_id_toshiba_24nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))
 	            || (!strncmp((char*)type->id, (char*)dev_id_toshiba_19nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))
+		      || (!strncmp((char*)type->id, (char*)dev_id_toshiba_19nm_16g, strlen((const char*)aml_nand_flash_ids[i].id)))
 	            || (!strncmp((char*)type->id, (char*)dev_id_toshiba_19nm_4g, strlen((const char*)aml_nand_flash_ids[i].id)))){
 		aml_chip->new_nand_info.type =  TOSHIBA_24NM;
 		aml_chip->ran_mode = 1;
@@ -3933,6 +4351,54 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 		aml_chip->new_nand_info.read_rety_info.read_retry_handle = aml_nand_read_retry_handle_toshiba;
 		aml_chip->new_nand_info.read_rety_info.read_retry_exit = aml_nand_read_retry_exit_toshiba;
 
+	}
+	else  if(!strncmp((char*)type->id, (char*)dev_id_toshiba_a19nm_8g, strlen((const char*)aml_nand_flash_ids[i].id))){
+		aml_chip->new_nand_info.type =  TOSHIBA_A19NM;
+		aml_chip->ran_mode = 1;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[0] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[1] = 0x05;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[2] = 0x06;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[3] = 0x07;
+		aml_chip->new_nand_info.read_rety_info.reg_addr[4] = 0x0d;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0] = 0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][1] = 0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][2] = 0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][3] = 0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][4] = 0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][0] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][1] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][2] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][3] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][0] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][3] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][1] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][3] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][0] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][1] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][3] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][0] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][1] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][2] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][3] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][1] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][3] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][4] = 0x0;
+		aml_chip->new_nand_info.read_rety_info.reg_cnt = 5;
+		aml_chip->new_nand_info.read_rety_info.retry_cnt = 7;
+		aml_chip->new_nand_info.read_rety_info.read_retry_handle = aml_nand_read_retry_handle_toshiba;
+		aml_chip->new_nand_info.read_rety_info.read_retry_exit = aml_nand_read_retry_exit_toshiba;
 	}
 	else  if((!strncmp((char*)type->id, (char*)dev_id_samsung_2xnm_4g, strlen((const char*)aml_nand_flash_ids[i].id)))||
 		(!strncmp((char*)type->id, (char*)dev_id_samsung_2xnm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))){
@@ -4261,6 +4727,248 @@ else  if(!strncmp((char*)type->id, (char*)dev_id_sandisk_24nm_8g, strlen((const 
 		aml_chip->new_nand_info.dynamic_read_info.dynamic_read_exit = aml_nand_dynamic_read_exit;
 		aml_chip->new_nand_info.dynamic_read_info.enter_slc_mode = aml_nand_enter_slc_mode_sandisk;
 		aml_chip->new_nand_info.dynamic_read_info.exit_slc_mode= aml_nand_exit_slc_mode_sandisk;
+	}
+	else  if(!strncmp((char*)type->id, (char*)dev_id_sandisk_a19nm_8g, strlen((const char*)aml_nand_flash_ids[i].id))) {
+		aml_chip->new_nand_info.type =  SANDISK_A19NM;
+		aml_chip->ran_mode = 1;
+		aml_chip->new_nand_info.dynamic_read_info.dynamic_read_flag = 0; //DRF
+		aml_chip->new_nand_info.read_rety_info.reg_addr[0] = 0x11;
+		aml_chip->new_nand_info.read_rety_info.reg_cnt = 1;
+		aml_chip->new_nand_info.read_rety_info.retry_cnt = 29;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][0] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][2] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][1][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][0] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][2] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][4][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][0] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][5][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][0] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][2] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][6][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][7][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][7][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][7][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][7][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][8][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][8][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][8][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][8][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][9][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][9][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][9][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][9][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][10][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][10][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][10][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][10][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][11][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][11][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][11][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][11][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][12][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][12][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][12][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][12][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][13][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][13][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][13][2] = 0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][13][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][14][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][14][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][14][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][14][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][15][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][15][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][15][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][15][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][16][0] = 0x10;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][16][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][16][2] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][16][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][17][0] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][17][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][17][2] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][17][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][18][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][18][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][18][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][18][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][19][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][19][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][19][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][19][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][20][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][20][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][20][2] = 0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][20][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][21][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][21][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][21][2] = 0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][21][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][22][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][22][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][22][2] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][22][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][23][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][23][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][23][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][23][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][24][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][24][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][24][2] = 0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][24][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][25][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][25][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][25][2] = 0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][25][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][26][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][26][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][26][2] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][26][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][27][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][27][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][27][2] = 0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][27][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][28][0] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][28][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][28][2] = 0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][28][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0][3] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1][3] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2][3] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3][1] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3][3] = 0x08;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][4][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][4][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][4][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][4][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][5][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][5][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][5][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][5][3] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][6][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][6][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][6][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][6][3] = 0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][7][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][7][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][7][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][7][3] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][8][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][8][1] = 0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][8][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][8][3] = 0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][9][0] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][9][1] = 0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][9][2] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][9][3] = 0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][10][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][10][1] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][10][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][10][3] =0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][11][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][11][1] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][11][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][11][3] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][12][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][12][1] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][12][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][12][3] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][13][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][13][1] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][13][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][13][3] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][14][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][14][1] =0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][14][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][14][3] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][15][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][15][1] =0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][15][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][15][3] =0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][16][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][16][1] =0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][16][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][16][3] =0x04;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][17][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][17][1] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][17][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][17][3] =0x7c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][18][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][18][1] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][18][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][18][3] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][19][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][19][1] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][19][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][19][3] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][20][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][20][1] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][20][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][20][3] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][21][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][21][1] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][21][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][21][3] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][22][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][22][1] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][22][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][22][3] =0x78;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][23][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][23][1] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][23][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][23][3] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][24][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][24][1] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][24][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][24][3] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][25][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][25][1] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][25][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][25][3] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][26][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][26][1] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][26][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][26][3] =0x74;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][27][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][27][1] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][27][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][27][3] =0x70;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][28][0] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][28][1] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][28][2] =0x00;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][28][3] =0x6c;
+		aml_chip->new_nand_info.read_rety_info.read_retry_handle = aml_nand_read_retry_handleA19_sandisk;
+		aml_chip->new_nand_info.read_rety_info.read_retry_exit = aml_nand_read_retry_exit_A19_sandisk;
 	}
 	else  if((!strncmp((char*)type->id, (char*)dev_id_micron_20nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))
 		||(!strncmp((char*)type->id, (char*)dev_id_micron_20nm_4g, strlen((const char*)aml_nand_flash_ids[i].id)))){
@@ -4933,7 +5641,7 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	struct nand_chip *chip = &aml_chip->chip;
 	struct env_oobinfo_t *env_oobinfo;
-	struct env_free_node_t *env_free_node, *env_tmp_node, *env_prev_node;
+	struct env_free_node_t *env_free_node, *env_tmp_node = NULL, *env_prev_node = NULL;
 	int error = 0, err, start_blk, total_blk, env_blk, i, j, pages_per_blk, bad_blk_cnt = 0, max_env_blk, phys_erase_shift;
 	loff_t offset;
 	unsigned char *data_buf =NULL;
@@ -5990,7 +6698,6 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	chip->dev_ready = aml_nand_dev_ready;
 	//chip->verify_buf = aml_nand_verify_buf;
 	chip->read_byte = aml_platform_read_byte;
-
 	aml_chip->chip_num = plat->platform_nand_data.chip.nr_chips;
 	//aml_chip->chip_num = 1;
 	printk("###plat->platform_nand_data.chip.nr_chips =%d\n",plat->platform_nand_data.chip.nr_chips);
@@ -6183,6 +6890,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 				case 1280:
 					chip->ecc.layout = &aml_nand_oob_1280;
 					break;
+				case 1664:
+					chip->ecc.layout = &aml_nand_oob_1664;
+					break;
 				default:
 					printk("havn`t found any oob layout use nand base oob layout " "oobsize %d\n", mtd->oobsize);
 					chip->ecc.layout = kzalloc(sizeof(struct nand_ecclayout), GFP_KERNEL);
@@ -6240,13 +6950,14 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	chip->options |= NAND_OWN_BUFFERS;
 #ifdef NEW_NAND_SUPPORT
 	if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
+		if(aml_chip->new_nand_info.slc_program_info.get_default_value)
 		aml_chip->new_nand_info.slc_program_info.get_default_value(mtd);
 	}
 #endif
 	if (strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME))) {
 #ifdef NEW_NAND_SUPPORT
 		if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
-
+			if(aml_chip->new_nand_info.read_rety_info.get_default_value)
 			aml_chip->new_nand_info.read_rety_info.get_default_value(mtd);
 		}
 		if((aml_chip->new_nand_info.type)
@@ -6261,7 +6972,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 			err = -ENOMEM;
 			goto exit_error;
 		}
-		memset(aml_chip->block_status, 0xff, (mtd->size >> phys_erase_shift));
+		memset(aml_chip->block_status, 0, (mtd->size >> phys_erase_shift));
 
 		err = aml_nand_env_check(mtd);
 		if (err)

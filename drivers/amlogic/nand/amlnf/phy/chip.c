@@ -148,6 +148,8 @@ static int amlnand_chip_scan(struct amlnand_chip *aml_chip)
 	controller->option |= NAND_CTRL_NONE_RB;
 	chip_num = 1;
 
+	/*ce0 is always valid.*/
+	aml_chip->ce_bit_mask |= 0x01;
 		/* Check for a chip array */
 	for (i = 1; i < MAX_CHIP_NUM; i++) {
 		memset(&dev_id[0], 0, MAX_ID_LEN);
@@ -164,9 +166,10 @@ static int amlnand_chip_scan(struct amlnand_chip *aml_chip)
 			controller->ce_enable[chip_num] = (((CE_PAD_DEFAULT >> i*4) & 0xf) << 10);
 			controller->rb_enable[chip_num] = (((RB_PAD_DEFAULT>> i*4) & 0xf) << 10);
 			chip_num++;
-
+			aml_chip->ce_bit_mask |= (1 << i);
 		}
 	}
+	//aml_nand_msg("nand chip ce mask %0x", aml_chip->ce_bit_mask);
 
 	controller->chip_num = chip_num;
 
@@ -613,3 +616,4 @@ error_exit0:
 	return ret;
 
 }
+

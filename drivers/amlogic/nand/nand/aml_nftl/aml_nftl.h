@@ -335,3 +335,5 @@ extern int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t
 extern int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t logic_blk_addr, addr_blk_t phy_blk_addr);
 extern int aml_nftl_badblock_handle(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk_addr, addr_blk_t logic_blk_addr);
 #endif
+
+

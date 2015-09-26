@@ -131,7 +131,7 @@ static int controller_queue_rb_irq(struct hw_controller *controller, unsigned ch
     NFC_SEND_CMD_RB_IRQ(18);
     //NFC_SEND_CMD_IDLE(controller->chip_selected, NAND_TWB_TIME_CYCLE);
 
-    timeout = wait_for_completion_timeout(&controller_rb_completion, 50);
+    timeout = wait_for_completion_timeout(&controller_rb_completion, 200);
     if(timeout == 0){
         aml_nand_msg("***nand irq timeout here");
 		ret = -NAND_BUSY_FAILURE;
@@ -232,7 +232,7 @@ static int controller_hwecc_correct(struct hw_controller *controller, unsigned s
 		cur_ecc = NAND_ECC_CNT(usr_info);
 		//aml_nand_dbg("uncorrected for cur_ecc:%d, usr_buf[%d]:%x", cur_ecc, ecc_step_num, usr_info);
 		if(cur_ecc == 0x3f){
-			controller->zero_cnt = NAND_ZERO_CNT(usr_info);
+		controller->zero_cnt = NAND_ZERO_CNT(usr_info);
 			if(max_ecc < controller->zero_cnt) {
 				max_ecc =  controller->zero_cnt;
 			}
@@ -550,7 +550,7 @@ static int controller_adjust_timing(struct hw_controller *controller)
 
 	bus_timing = (start_cycle + end_cycle) / 2;
 	#else
-	bus_cycle  = 5;
+	bus_cycle  = 6;
 	bus_timing = bus_cycle +2;
 	#endif
 	NFC_SET_CFG(0);
@@ -874,3 +874,4 @@ static void controller_set_user_byte(struct hw_controller *controller, unsigned 
 	//controller->max_bch = sizeof(bch_list) / sizeof(bch_list[0]);
 	return ret;
 }
+

@@ -12,7 +12,8 @@
 **
 *****************************************************************/
 #include "../include/phynand.h"
-
+//int test_flag = 0;
+//EXPORT_SYMBOL(test_flag);
 #ifdef AML_NAND_UBOOT
 	//extern struct amlnf_partition amlnand_config;
 	extern struct amlnf_partition * amlnand_config;
@@ -647,39 +648,39 @@ exit:
     return ret;
 
 }
-static int aml_repair_bbt(struct amlnand_phydev *phydev,uint64_t *bad_blk_addr,int cnt)
-{
-	int i;
-	int error = 0;
-	//int flag = 0;
-	struct phydev_ops *devops = &(phydev->ops);
-	unsigned char * buffer = NULL;
-	buffer = aml_nand_malloc(2 * phydev->writesize);
-	if(!buffer){
-		aml_nand_msg("nand malloc failed");
-		return -1;
-	}
-    memset(buffer, 0xff, 2*phydev->writesize);
-
-    memset(devops, 0x0, sizeof(struct phydev_ops));
-    devops->len = phydev->erasesize;
-    devops->datbuf = buffer;
-    devops->oobbuf = NULL;
-    devops->mode = NAND_HW_ECC;
-	for(i = 0; i < cnt;i++) {
-        devops->addr = bad_blk_addr[i];
-        aml_nand_msg("devops->addr = %lld,bad_blk_addr[i]=%lld",devops->addr,bad_blk_addr[i]);
-		block_modifybbt(phydev,0);
-		error = nand_test_block(phydev);
-		if(error) {
-            devops->addr = bad_blk_addr[i];
-			block_modifybbt(phydev,1);
-		}
-	}
-
-
-	return update_bbt(phydev);
-}
+//static int aml_repair_bbt(struct amlnand_phydev *phydev,uint64_t *bad_blk_addr,int cnt)
+//{
+//	int i;
+//	int error = 0;
+//	//int flag = 0;
+//	struct phydev_ops *devops = &(phydev->ops);
+//	unsigned char * buffer = NULL;
+//	buffer = aml_nand_malloc(2 * phydev->writesize);
+//	if(!buffer){
+//		aml_nand_msg("nand malloc failed");
+//		return -1;
+//	}
+//    memset(buffer, 0xff, 2*phydev->writesize);
+//
+//    memset(devops, 0x0, sizeof(struct phydev_ops));
+//    devops->len = phydev->erasesize;
+//    devops->datbuf = buffer;
+//    devops->oobbuf = NULL;
+//    devops->mode = NAND_HW_ECC;
+//	for(i = 0; i < cnt;i++) {
+//        devops->addr = bad_blk_addr[i];
+//        aml_nand_msg("devops->addr = %lld,bad_blk_addr[i]=%lld",devops->addr,bad_blk_addr[i]);
+//		block_modifybbt(phydev,0);
+//		error = nand_test_block(phydev);
+//		if(error) {
+//            devops->addr = bad_blk_addr[i];
+//			block_modifybbt(phydev,1);
+//		}
+//	}
+//
+//
+//	return update_bbt(phydev);
+//}
 
 
 void amldev_dumpinfo(struct amlnand_phydev *phydev)
@@ -1005,6 +1006,15 @@ ssize_t show_bbt_table(struct class *class, struct class_attribute *attr, const 
 
 	return count;
 }
+ssize_t change_test_sync_flag(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
+{
+    int num;
+	sscanf(buf, "%x", &num);
+//    printk("---------------------------------------------test_flag=%d\n",num);
+//    test_flag = num;
+	return count;
+}
+
 ssize_t show_amlnf_version_info(struct class *class, struct class_attribute *attr, char *buf)
 {
 	aml_nand_dbg("show_nand_version_info v0.01");
@@ -1381,7 +1391,7 @@ int amlnand_phydev_init(struct amlnand_chip *aml_chip)
 	list_for_each_entry(phydev,&nphy_dev_list,list){
 		if(phydev!=NULL){
             aml_nand_dbg("----------------------------------------------------------------------------------------------------\n");
-		aml_nand_dbg("name:%s, offset:%llx, size:%llx, option:%x", \
+	aml_nand_dbg("name:%s, offset:%llx, size:%llx, option:%x", \
 		phydev->name, phydev->offset, phydev->size, phydev->option);
             aml_nand_dbg("erasesize:%x, writesize:%x, oobavail:%x, erasesize_shift:%x, writesize_shift:%d", \
 		phydev->erasesize, phydev->writesize, phydev->oobavail, phydev->erasesize_shift, phydev->writesize_shift);
@@ -1409,10 +1419,10 @@ int amlnand_phydev_init(struct amlnand_chip *aml_chip)
                 relative_offset += phydev->erasesize;
             }while(relative_offset < phydev->size);
             aml_nand_msg("bad block count = %d\n",bad_blk_cnt);
-		if((bad_blk_cnt *32 > (phydev->size >> phydev->erasesize_shift))||(bad_blk_cnt>10)){
+	if((bad_blk_cnt *32 > (phydev->size >> phydev->erasesize_shift))||(bad_blk_cnt>10)){
                 aml_nand_dbg("Too many new bad blocks,try to repair...\n");
-			ret = aml_repair_bbt(phydev,bad_blk,bad_blk_cnt);
-		}
+		//ret = aml_repair_bbt(phydev,bad_blk,bad_blk_cnt);
+	}
 	}
 	}
 
@@ -1474,3 +1484,4 @@ void amlnf_phy_exit()
 
 }
 #endif
+

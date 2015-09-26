@@ -494,6 +494,7 @@ void get_sys_clk_rate(int * rate)
 	aml_nand_msg("chip_num %d controller->chip_num %d",chip_num,controller->chip_num);
 	nand_read_info = chip_num;	// chip_num occupy the lowest 2 bit
 
+	info->ce_mask = aml_chip->ce_bit_mask;
 	info->nand_read_info = nand_read_info;
 	info->pages_in_block = pages_per_blk;
 	info->new_nand_type = new_nand_type;

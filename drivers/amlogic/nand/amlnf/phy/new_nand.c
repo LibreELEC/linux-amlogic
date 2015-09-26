@@ -200,7 +200,7 @@ static int aml_nand_get_20nm_OTP_value(struct hw_controller *controller,  unsign
 			break;
 		}
 	}
-		if(check_flag){
+	if(check_flag){
 		aml_nand_msg(" 20 nm flashdefault vaule abnormal not safe !!!!!, chip[%d]", chipnr);
 		BUG();
 	}
@@ -244,18 +244,18 @@ static int aml_nand_get_1ynm_OTP_value(struct hw_controller *controller,  unsign
 				if(retry_value_sta[j*4+k] ==0) {
 					m = k+j*4+16+i*64;
 					if((unsigned char)(buf[m]^buf[m+32]) == 0xFF){
-					aml_nand_dbg("find %d group %d retry %d value ok,buf =0x%02x\n",i,j,k,buf[m]);
+						aml_nand_dbg("find %d group %d retry %d value ok,buf =0x%02x\n",i,j,k,buf[m]);
 						if(j ==0)
 							retry_info->reg_def_val[chipnr][k] = buf[m];
 						else
-							 retry_info->reg_offs_val_lp[chipnr][j-1][k] = buf[m];
+							retry_info->reg_offs_val_lp[chipnr][j-1][k] = buf[m];
 						retry_value_sta[j*4+k] = 1;
+					}
 				}
 			}
 		}
 	}
-	}
-		for(j=0;j<retry_info->reg_cnt_lp;j++)
+	for(j=0;j<retry_info->reg_cnt_lp;j++)
 			aml_nand_dbg("REG(0x%x):   value:0x%2x, for chip[%d]", retry_info->reg_addr_lp[j],
 			                   retry_info->reg_def_val[chipnr][j], chipnr);
 		for(j=0;j<retry_info->retry_cnt_lp;j++){
@@ -265,11 +265,11 @@ static int aml_nand_get_1ynm_OTP_value(struct hw_controller *controller,  unsign
 			}
 			aml_nand_dbg("retry_info->retry_cnt_lp:%d", retry_info->retry_cnt_lp);
 		}
-	for(i=0;i<32;i++)
-		if(retry_value_sta[i] ==0) {
-			aml_nand_msg("  chip[%d] flash %d vaule abnormal not safe !!!!!\n",chipnr,i);
-			return 1;
-	}
+		for(i=0;i<32;i++)
+			if(retry_value_sta[i] ==0) {
+				aml_nand_msg("  chip[%d] flash %d vaule abnormal not safe !!!!!\n",chipnr,i);
+				return 1;
+			}
 	return 0;
 }
 #endif
@@ -425,28 +425,35 @@ static int get_reg_value_formOTP_hynix(struct hw_controller *controller, unsigne
 		ret = -NAND_BUSY_FAILURE;
 		goto error_exit1;
 	}
-if((flash->new_type == HYNIX_20NM_4GB) || (flash->new_type == HYNIX_20NM_8GB)) {
-	controller->cmd_ctrl(controller, 0x38, NAND_CTRL_CLE);			//end read otp mode
+	if((flash->new_type == HYNIX_20NM_4GB) || (flash->new_type == HYNIX_20NM_8GB)) {
+		controller->cmd_ctrl(controller, 0x38, NAND_CTRL_CLE);			//end read otp mode
 
 	}
-else if(flash->new_type == HYNIX_1YNM_8GB) {
-	controller->cmd_ctrl(controller, 0x36, NAND_CTRL_CLE);
-	controller->cmd_ctrl(controller, 0x38, NAND_CTRL_ALE);
-	NFC_SEND_CMD_IDLE(controller->chip_selected, 0);
-	controller->writebyte(controller, 0);
-	NFC_SEND_CMD_IDLE(controller->chip_selected, 0);
-	controller->cmd_ctrl(controller, 0x16, NAND_CTRL_CLE);
-}
+	else if(flash->new_type == HYNIX_1YNM_8GB) {
+		controller->cmd_ctrl(controller, 0x36, NAND_CTRL_CLE);
+		controller->cmd_ctrl(controller, 0x38, NAND_CTRL_ALE);
+		NFC_SEND_CMD_IDLE(controller->chip_selected, 0);
+		controller->writebyte(controller, 0);
+		NFC_SEND_CMD_IDLE(controller->chip_selected, 0);
+		controller->cmd_ctrl(controller, 0x16, NAND_CTRL_CLE);
+
+		/*
+		hynix read otp data cmd sequence for dump read ,don't care address
+		*/
+		controller->cmd_ctrl(controller, NAND_CMD_READ0, NAND_CTRL_CLE);
+		controller->cmd_ctrl(controller, 0, NAND_CTRL_ALE);
+		controller->cmd_ctrl(controller, 0, NAND_CTRL_ALE);
+		controller->cmd_ctrl(controller, 0, NAND_CTRL_ALE);
+		controller->cmd_ctrl(controller, 0, NAND_CTRL_ALE);
+		controller->cmd_ctrl(controller, 0, NAND_CTRL_ALE);
+		controller->cmd_ctrl(controller, NAND_CMD_READSTART, NAND_CTRL_CLE);
+	}
 	ret = controller->quene_rb(controller, chipnr);
 	if(ret){
 		aml_nand_msg("quene rb failed chipnr:%d", chipnr);
 		ret = -NAND_BUSY_FAILURE;
 		goto error_exit1;
 	}
-
-
-
-
 
 	aml_nand_free(one_copy_buf);
 
@@ -601,12 +608,14 @@ static int readretry_set_def_val_hynix(struct hw_controller *controller, unsigne
 		}
 		//for en-slc
 		udelay(2);
-		ret = set_reg_value_hynix(controller, &slc_info->reg_def_val[i][0], \
+
+		if(flash->new_type != HYNIX_1YNM_8GB){
+			ret = set_reg_value_hynix(controller, &slc_info->reg_def_val[i][0], \
 								&slc_info->reg_addr[0], i, slc_info->reg_cnt);
-		if(ret < 0){
-			aml_nand_msg("set slc_info reg value failed for chip[%d]", i);
+			if(ret < 0){
+				aml_nand_msg("set slc_info reg value failed for chip[%d]", i);
+			}
 		}
-	//}
 
 	return ret;
 }
@@ -619,6 +628,9 @@ static int enslc_init_hynix(struct hw_controller *controller)
 	int i, ret = 0;
 
 	if((flash->new_type == 0) ||(flash->new_type > HYNIX_20NM_8GB))
+		return NAND_SUCCESS;
+
+	if(flash->new_type == HYNIX_1YNM_8GB)
 		return NAND_SUCCESS;
 
 	//aml_nand_dbg("flash->new_type:%d", flash->new_type);
@@ -654,6 +666,8 @@ static int enslc_enter_hynix(struct hw_controller *controller)
 	if((flash->new_type == 0) ||(flash->new_type > HYNIX_20NM_8GB))
 		return NAND_SUCCESS;
 
+	if(flash->new_type == HYNIX_1YNM_8GB)
+		return NAND_SUCCESS;
 	//aml_nand_dbg("flash->new_type:%d", flash->new_type);
 
 	memset(&reg_value_tmp[0], 0, EN_SLC_REG_NUM);
@@ -685,6 +699,8 @@ static int enslc_exit_hynix(struct hw_controller *controller)
 	if((flash->new_type == 0) ||(flash->new_type > HYNIX_20NM_8GB))
 		return NAND_SUCCESS;
 
+	if(flash->new_type == HYNIX_1YNM_8GB)
+		return NAND_SUCCESS;
 	//aml_nand_dbg("flash->new_type:%d", flash->new_type);
 
 	for (i=0; i<controller->chip_num; i++) {
@@ -2602,3 +2618,4 @@ static int enslc_enter_sandisk(struct hw_controller *controller)
 
 	return NAND_SUCCESS;
 }
+

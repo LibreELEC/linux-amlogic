@@ -33,3 +33,4 @@ extern void* aml_nftl_get_part_priv(void * _part);
 extern void aml_nftl_add_part_total_write(void * _part);
 extern void aml_nftl_add_part_total_read(void * _part);
 extern uint16 aml_nftl_get_part_write_cache_nums(void * _part);
+

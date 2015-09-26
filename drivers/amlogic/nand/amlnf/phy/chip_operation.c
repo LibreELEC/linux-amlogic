@@ -2382,3 +2382,4 @@ int amlnand_init_operation(struct amlnand_chip *aml_chip)
 	return NAND_SUCCESS;
 
 }
+

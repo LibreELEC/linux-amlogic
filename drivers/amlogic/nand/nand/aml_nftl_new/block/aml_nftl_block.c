@@ -58,6 +58,7 @@ uint32 _nand_read(struct aml_nftl_blk_t *aml_nftl_blk,uint32 start_sector,uint32
 uint32 _nand_write(struct aml_nftl_blk_t *aml_nftl_blk,uint32 start_sector,uint32 len,unsigned char *buf);
 extern uint32 __nand_read(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf);
 extern uint32 __nand_write(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf);
+extern int aml_nftl_set_status(struct aml_nftl_part_t *part,unsigned char status);
 static int nftl_num;
 
 #if 0
@@ -250,6 +251,8 @@ static int do_nftltrans_request(struct mtd_blktrans_ops *tr,struct mtd_blktrans_
 	char *buf;
 
 	//when notifer coming,nftl didnot respond to request.
+	if(aml_nftl_blk->reboot_flag)
+		return 0;
 
 	memset((unsigned char *)buf_addr, 0, (max_segm+1)*4);
 	memset((unsigned char *)offset_addr, 0, (max_segm+1)*4);
@@ -457,6 +460,17 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 
 	return error;
 }
+static void aml_nftl_wipe_part(struct mtd_blktrans_dev *mbd)
+{
+	int error = 0;
+	struct aml_nftl_blk_t *aml_nftl_blk = (void *)mbd;
+	struct aml_nftl_part_t* aml_nftl_part = aml_nftl_blk->aml_nftl_part;
+	error = aml_nftl_reinit_part(aml_nftl_blk);
+	if(error){
+		PRINT("aml_nftl_reinit_part: failed\n");
+	}
+	return;
+}
 
 /*****************************************************************************
 *Name         :
@@ -485,7 +499,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
     if(mtd->size < part_size)
         return;
 
-    PRINT("mtd->name: %s\n",mtd->name);
+    PRINT("mtd->name: %s,mtd->size = 0x%llx\n",mtd->name,mtd->size);
 
 	aml_nftl_blk = aml_nftl_malloc(sizeof(struct aml_nftl_blk_t));
 	if (!aml_nftl_blk)
@@ -502,6 +516,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	aml_nftl_blk->mbd.tr = tr;
 	aml_nftl_blk->nb.notifier_call = aml_nftl_reboot_notifier;
     aml_nftl_blk->reboot_flag = 0;
+    aml_nftl_blk->init_flag = 0;
 
 	register_reboot_notifier(&aml_nftl_blk->nb);
 
@@ -509,7 +524,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	    aml_nftl_dbg("aml_nftl_initialize failed\n");
 		return;
 	}
-
+    aml_nftl_blk->init_flag = 1;
 	aml_nftl_blk->nftl_thread = kthread_run(aml_nftl_thread, aml_nftl_blk, "%sd", "aml_nftl");
 	if (IS_ERR(aml_nftl_blk->nftl_thread))
 		return;
@@ -668,6 +683,7 @@ static struct mtd_blktrans_ops aml_nftl_tr = {
 	.writesect	= aml_nftl_writesect,
 	.add_mtd	= aml_nftl_add_mtd,
 	.remove_dev	= aml_nftl_remove_dev,
+	.wipe_part  = aml_nftl_wipe_part,
 	.owner		= THIS_MODULE,
 };
 
@@ -713,3 +729,4 @@ module_exit(cleanup_aml_nftl);
 MODULE_LICENSE("Proprietary");
 MODULE_AUTHOR("AML xiaojun_yoyo and rongrong_zhou");
 MODULE_DESCRIPTION("aml nftl block interface");
+

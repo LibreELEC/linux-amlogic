@@ -13,7 +13,7 @@
 #define NAND_COMPATIBLE_REGION     1
 #define NAND_RESERVED_REGION	       1
 #define NAND_ADDNEW_REGION	       1
-#define NAND_BUG_FIX_REGION	       5
+#define NAND_BUG_FIX_REGION	       6
 
 #define DRV_PHY_VERSION	   ((NAND_COMPATIBLE_REGION << 24)+(NAND_RESERVED_REGION << 16) \
 							+(NAND_ADDNEW_REGION << 8)+(NAND_BUG_FIX_REGION))
@@ -55,7 +55,8 @@ struct nand_page0_info_t{
 	unsigned new_nand_type;
 	unsigned pages_in_block;
 	unsigned secure_block;
-	unsigned reserved[4];
+	unsigned ce_mask;
+	unsigned reserved[3];
 } ;
 
 typedef union nand_core_clk {
@@ -712,6 +713,7 @@ struct amlnand_chip {
 	unsigned char key_protect;
 	unsigned char secure_protect;
 	unsigned char fbbt_protect;
+	unsigned char ce_bit_mask;
 	struct hw_controller controller;
 
 	//current operation parameter, should clear before used.

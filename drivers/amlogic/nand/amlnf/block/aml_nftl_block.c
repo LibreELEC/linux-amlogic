@@ -77,7 +77,7 @@ extern int aml_nftl_set_status(struct aml_nftl_part_t *part,unsigned char status
 //static struct mutex aml_nftl_lock;
 static int nftl_num;
 static int dev_num;
-
+//extern int test_flag;
 
 int aml_ntd_nftl_flush(struct ntd_info *ntd);
 
@@ -196,11 +196,16 @@ static int aml_nftl_calculate_sg(struct aml_nftl_blk *nftl_blk, size_t buflen, u
 
 uint32 write_sync_flag(struct aml_nftl_blk *aml_nftl_blk)
 {
+	struct aml_nftl_dev *nftl_dev = aml_nftl_blk->nftl_dev;
+//    if(test_flag)
+//    {
+//        return 0;
+//    }
 #if NFTL_CACHE_FLUSH_SYNC
 #ifdef CONFIG_SUPPORT_USB_BURNING
         return 0;
 #endif
-	struct aml_nftl_dev *nftl_dev = aml_nftl_blk->nftl_dev;
+
 
 	nftl_dev->sync_flag = 0;
 	if(memcmp(aml_nftl_blk->name, "media", 5)==0)
@@ -462,17 +467,21 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
         kthread_stop(nftl_dev->nftl_thread); //add stop thread to ensure nftl quit safely
         nftl_dev->nftl_thread=NULL;
     }
-
+    mutex_lock(nftl_dev->aml_nftl_lock);
+    error |= nftl_dev->write_pair_page(nftl_dev);
+    mutex_unlock(nftl_dev->aml_nftl_lock);
     nftl_dev->reboot_flag = 1;
 
     return error;
 }
 
-int aml_nftl_reinit_part(struct aml_nftl_dev * nftl_dev)
+int aml_nftl_reinit_part(struct aml_nftl_blk *nftl_blk)
 {
-       struct aml_nftl_part_t * part = NULL;
-       int ret =0;
-
+       struct aml_nftl_part_t *part = NULL;
+       struct ntd_partition *logic_partition = NULL;
+       int ret =0,i=0;
+       uint64_t tmp_offset = 0;
+       struct aml_nftl_dev * nftl_dev = nftl_blk->nftl_dev;
        part = nftl_dev->aml_nftl_part;
 
        aml_nftl_set_status(part,0);
@@ -480,15 +489,63 @@ int aml_nftl_reinit_part(struct aml_nftl_dev * nftl_dev)
             kthread_stop(nftl_dev->nftl_thread); //add stop thread to ensure nftl quit safely
         }
       mutex_lock(nftl_dev->aml_nftl_lock);
+        // do not erase this part because this phy partition has more than 1 logic partition.
+       if(nftl_dev->ntd->nr_partitions > 1)
+       {
+            // discard logic partition
+            for(i=0;i<nftl_dev->ntd->nr_partitions;i++)
+            {
+                logic_partition = nftl_dev->ntd->parts+i;
+                PRINT("show logic_partition name:%s,size:%llx,tmp_offset:%llx\n",logic_partition->name,logic_partition->size,tmp_offset);
+                if(memcmp(logic_partition->name,nftl_blk->name, strlen(nftl_blk->name))==0)
+                {
+                    PRINT("logic_partition name:%s,size:%llx,tmp_offset:%llx\n",logic_partition->name,logic_partition->size,tmp_offset);
+                    if((logic_partition->offset != 0xffffffffffffffff)&&(logic_partition->size != 0xffffffffffffffff))
+                    {
+                        // first check if this logic partition has valid mapping.
+                        if(nftl_dev->check_mapping(nftl_dev,tmp_offset,logic_partition->size))
+                        {
+                            //discard all pages of this partition
+                            PRINT("this partition has valid mapping\n");
+                            nftl_dev->discard_partition(nftl_dev,tmp_offset,logic_partition->size);
+                        }else{
+                            // do no thing
+						PRINT("this partition has no valid mapping\n");
+                        }
+                    }
+                    else
+                    {
+                        //the last partition
+                        PRINT("last logic partition name:%s,size:%llx,offset:%llx,tmp_offset:%llx\n",logic_partition->name,logic_partition->size,logic_partition->offset,tmp_offset);
+                        // first check if this logic partition has valid mapping.
+                        if(nftl_dev->check_mapping(nftl_dev,tmp_offset,0xffffffffffffffff))
+                        {
+                            //discard all pages of this partition
+                            PRINT("this partition has valid mapping\n");
+                            nftl_dev->discard_partition(nftl_dev,tmp_offset,0xffffffffffffffff);
+                        }else{
+                            // do no thing
+						PRINT("this partition has no valid mapping\n");
+                        }
+                    }
+                }
 
-
-       ret = aml_nftl_erase_part(part);
-       if(ret){
-               PRINT("aml_nftl_erase_part : failed\n");
+                if(logic_partition->size != 0xffffffffffffffff)
+                {
+                    tmp_offset = tmp_offset+logic_partition->size;
+                }
+            }
        }
+       else
+       {
+           ret = aml_nftl_erase_part(part);
+           if(ret){
+                   PRINT("aml_nftl_erase_part : failed\n");
+           }
 
        if(aml_nftl_initialize(nftl_dev,-1)){
           PRINT("aml_nftl_reinit_part : aml_nftl_initialize failed\n");
+       }
        }
       mutex_unlock(nftl_dev->aml_nftl_lock);
       if(nftl_dev->nftl_thread!=NULL){
@@ -500,9 +557,11 @@ int aml_nftl_reinit_part(struct aml_nftl_dev * nftl_dev)
 static int aml_nftl_wipe_part(struct ntd_blktrans_dev *dev)
 {
 	struct aml_nftl_blk *nftl_blk = (void *)dev;
-	struct aml_nftl_dev * nftl_dev = nftl_blk->nftl_dev;
 	int error = 0;
-	error = aml_nftl_reinit_part(nftl_dev);
+    printk("%s,%d nftl_blk->name:%s,nftl_blk->offset:%llx,nftl_blk->size:%llx\n",__func__,__LINE__,nftl_blk->name,nftl_blk->offset,nftl_blk->size);
+	//struct aml_nftl_dev * nftl_dev = nftl_blk->nftl_dev;
+
+	error = aml_nftl_reinit_part(nftl_blk);
 	if(error){
 		PRINT("aml_nftl_reinit_part: failed\n");
 	}
@@ -741,3 +800,4 @@ module_exit(cleanup_aml_nftl);
 MODULE_LICENSE("Proprietary");
 MODULE_AUTHOR("AML nand team");
 MODULE_DESCRIPTION("aml nftl block interface");
+

@@ -267,3 +267,4 @@ extern int deregister_ntd_blktrans(struct ntd_blktrans_ops *tr);
 void *ntd_kmalloc_up_to(const struct ntd_info *ntd, size_t *size);
 
 #endif /* __NTD_NTD_H__ */
+

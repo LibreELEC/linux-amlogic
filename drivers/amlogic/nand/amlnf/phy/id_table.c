@@ -115,3 +115,4 @@ struct nand_flash flash_ids_mlc[] = {
 	{NULL,}
 };
 #endif
+

@@ -2,21 +2,24 @@
 # Makefile for the Amlogic NAND drivers.
 #
 #obj-$(CONFIG_AML_NEXT_GEN_NAND)		+= phy/
-KBUILD_CFLAGS += -Werror=declaration-after-statement \
-		 -Werror=parentheses \
-		 -Werror=return-type \
-		 -Werror=strict-prototypes \
-		 -Werror=uninitialized \
-		 -Werror=unused-value \
-		 -Werror=array-bounds \
-		 -Werror=comment \
-		 -Werror=format \
-		 -Werror=missing-braces \
-		 -Werror=declaration-after-statement \
-		 -Werror=unused-label \
-		 -Werror=unused-result \
-		 -Werror=unused-value \
-		 -Werror=builtin-macro-redefined
+#KBUILD_CFLAGS += -Werror=declaration-after-statement \
+#		 -Werror=maybe-uninitialized \
+#		 -Werror=parentheses \
+#		 -Werror=return-type \
+#		 -Werror=strict-prototypes \
+#		 -Werror=uninitialized \
+#		 -Werror=unused-function \
+#		 -Werror=unused-value \
+#		 -Werror=array-bounds \
+#		 -Werror=comment \
+#		 -Werror=format \
+#		 -Werror=missing-braces \
+#		 -Werror=declaration-after-statement \
+#		 -Werror=unused-label \
+#		 -Werror=unused-result \
+#		 -Werror=unused-value \
+#		 -Werror=unused-variable \
+#		 -Werror=builtin-macro-redefined
 
 
 
@@ -32,7 +35,9 @@ aml_nftl_dev-objs =
 aml_nftl_dev-objs += block/aml_nftl_block.o
 aml_nftl_dev-objs += block/aml_nftl_init.o
 aml_nftl_dev-objs += block/aml_nftl_hw_interface.o
-aml_nftl_dev-objs += nftl/aml_nftl_core_20141024.z
+#aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core_20141024.o
+#aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core.o
+aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core_20141222.o_shipped
 
 #aml_nftl_dev-objs += nftl/aml_nftl_phy.o
 #aml_nftl_dev-objs  += nftl/aml_nftl_list.o
@@ -43,3 +48,5 @@ aml_nftl_dev-objs += nftl/aml_nftl_core_20141024.z
 #aml_nftl_dev-objs  += nftl/aml_nftl_create_list.o
 #aml_nftl_dev-objs  += nftl/aml_nftl_start.o
 #aml_nftl_dev-objs  += nftl/aml_nftl_interface.o
+
+

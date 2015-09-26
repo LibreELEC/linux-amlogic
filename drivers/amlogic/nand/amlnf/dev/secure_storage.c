@@ -46,7 +46,8 @@ exit:
  int32_t nand_secure_read(struct amlnand_chip * aml_chip, char *buf,int len)
 {
 	//struct amlnand_chip * aml_chip = provider->priv;
-	secure_t *secure_ptr = NULL;
+	//secure_t *secure_ptr = NULL;
+	unsigned char *secure_ptr = NULL;
 	int error = 0;
 	if(len > CONFIG_SECURE_SIZE)
 	{
@@ -66,8 +67,8 @@ exit:
 		error = -EFAULT;
 		goto exit;
 	}
-	memcpy(buf, secure_ptr->data, len);
-
+	//memcpy(buf, secure_ptr->data, len);
+	memcpy(buf, secure_ptr, len);
 exit:
 	amlnand_release_device(aml_chip);
 	kfree(secure_ptr);
@@ -76,7 +77,8 @@ exit:
 
 int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 {
-	secure_t *secure_ptr = NULL;
+	//secure_t *secure_ptr = NULL;
+	unsigned char *secure_ptr = NULL;
 	int error = 0;
 
 	if(len > CONFIG_SECURE_SIZE)
@@ -90,7 +92,8 @@ int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 		return -ENOMEM;
 
 	memset(secure_ptr,0,CONFIG_SECURE_SIZE);
-	memcpy(secure_ptr->data + 0, buf, len);
+	//memcpy(secure_ptr->data + 0, buf, len);
+	memcpy(secure_ptr, buf, len);
 	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	error = amlnand_save_info_by_name(aml_chip, (unsigned char *)&(aml_chip->nand_secure),(unsigned char *)secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
@@ -172,3 +175,5 @@ int secure_storage_nand_write(char *buf,unsigned int len)
 	return ret;
 }
 #endif
+
+

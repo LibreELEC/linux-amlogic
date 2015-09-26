@@ -31,3 +31,7 @@ int amlnand_get_partition_table()
 
 	return ret;
 }
+
+
+
+

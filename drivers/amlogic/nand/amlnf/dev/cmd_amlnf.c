@@ -776,3 +776,5 @@ U_BOOT_CMD(amlnf, CONFIG_SYS_MAXARGS, 1, do_amlnfphy,
 	"markbad addr -mark block bad at addr\n"
 	"device name -get nftl device by name\n"
 );
+
+

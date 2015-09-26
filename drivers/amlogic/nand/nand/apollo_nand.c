@@ -325,14 +325,14 @@ static int Nand_Ecc_Check(void * dest,uint32_t page_size){
 	        // Point to the error list in the FIFO/memory
 
 			if(err_count){
-			if( bch15 ) { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*15); }
+		if( bch15 ) { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*15); }
 			else        { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*9);  }
 			}
 
 
 	        for(j = 0; j < err_count; j++ ) {
 
-			 byte    = READ_PERIPHS_REG(PNAND_ERR_LOC); // Read byte/bit location
+		 byte    = READ_PERIPHS_REG(PNAND_ERR_LOC); // Read byte/bit location
 			 bit     = byte & 0x7;
 
 				//ASSERT((err_count!=0)&is_printf,err_count,nf_address,page,(byte >> 4),bit)
@@ -613,7 +613,7 @@ static int am8218_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	}
 
 	if(getchip) {
-		nand_release_chip();
+	 	nand_release_chip();
 	}
 
 	return ret;
@@ -833,7 +833,7 @@ static int am8218_nand_probe(struct platform_device *pdev){
 		chip->read_buf      = am8218_nand_dma_read_buf;
 		chip->write_buf     = am8218_nand_dma_write_buf;
 	chip->ecc.read_page = am8218_nand_read_page;
-		chip->ecc.write_page = am8218_nand_write_page;
+	 	chip->ecc.write_page = am8218_nand_write_page;
 	chip->ecc.read_oob  = am8218_nand_read_oob;
 	chip->ecc.write_oob = am8218_nand_write_oob;
 	chip->ecc.calculate = am8218_nand_calculate_ecc;

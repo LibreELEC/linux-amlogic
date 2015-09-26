@@ -61,7 +61,7 @@ struct aml_nftl_blk_t{
 	spinlock_t 				thread_lock;
 
 	struct class            debug;
-
+    int                     init_flag;
 	struct _nftl_cfg        nftl_cfg;
 
 	uint32 (*read_data)(struct aml_nftl_blk_t *aml_nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
@@ -70,6 +70,7 @@ struct aml_nftl_blk_t{
 	uint32 (*shutdown_op)(struct aml_nftl_blk_t *aml_nftl_blk);
 
 };
+extern int aml_nftl_reinit_part(struct aml_nftl_blk_t *aml_nftl_blk);
 
 #pragma pack()
 

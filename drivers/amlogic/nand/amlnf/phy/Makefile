@@ -9,3 +9,4 @@ amlnf_phy-objs  += hw_controller.o
 amlnf_phy-objs  += id_table.o
 amlnf_phy-objs  += new_nand.o
 amlnf_phy-objs  += boot_operation.o
+

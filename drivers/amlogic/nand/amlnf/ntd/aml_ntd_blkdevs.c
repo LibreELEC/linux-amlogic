@@ -344,7 +344,7 @@ int blktrans_ioctl(struct block_device *bdev, fmode_t mode,unsigned int cmd, uns
 
 		//printk("blktrans_ioctl BLKWIPEPART \n");
 		if(tr->wipe_part){
-			 printk("blktrans_ioctl tr->wipe_part : \n");
+		 printk("blktrans_ioctl tr->wipe_part : \n");
 			ret = tr->wipe_part(dev);
 		}
 		break;

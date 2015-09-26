@@ -65,6 +65,7 @@ int uboot_env_open (struct inode *node, struct file *file)
 ssize_t uboot_env_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	unsigned char *env_ptr = NULL;
+	struct nand_flash *flash = &aml_chip_env->flash;
 	ssize_t read_size=0;
 	int ret=0;
 	if(*ppos == CONFIG_ENV_SIZE){
@@ -76,7 +77,8 @@ ssize_t uboot_env_read(struct file *file, char __user *buf, size_t count, loff_t
 		return -EFAULT;
 	}
 
-	env_ptr = kzalloc(CONFIG_ENV_SIZE, GFP_KERNEL);
+	//env_ptr = kzalloc(CONFIG_ENV_SIZE, GFP_KERNEL);
+	env_ptr = vmalloc(CONFIG_ENV_SIZE + flash->pagesize);
 	if (env_ptr == NULL){
 		aml_nand_msg("nand_env_read: nand env malloc buf failed ");
 		return -ENOMEM;
@@ -104,7 +106,8 @@ ssize_t uboot_env_read(struct file *file, char __user *buf, size_t count, loff_t
 
 exit:
 	amlnand_release_device(aml_chip_env);
-	kfree(env_ptr);
+	//kfree(env_ptr);
+	vfree(env_ptr);
 	return read_size;
 }
 
@@ -112,6 +115,7 @@ ssize_t uboot_env_write(struct file *file, const char __user * buf, size_t count
 {
 	unsigned char *env_ptr = NULL;
 	ssize_t write_size=0;
+	struct nand_flash *flash = &aml_chip_env->flash;
 	int ret = 0;
 	if(*ppos == CONFIG_ENV_SIZE){
 		return 0;
@@ -122,7 +126,8 @@ ssize_t uboot_env_write(struct file *file, const char __user * buf, size_t count
 		return -EFAULT;
 	}
 
-	env_ptr = kzalloc(CONFIG_ENV_SIZE, GFP_KERNEL);
+	//env_ptr = kzalloc(CONFIG_ENV_SIZE, GFP_KERNEL);
+	env_ptr = vmalloc(CONFIG_ENV_SIZE + flash->pagesize);
 	if (env_ptr == NULL){
 		aml_nand_msg("nand_env_read: nand env malloc buf failed ");
 		return -ENOMEM;
@@ -157,7 +162,8 @@ ssize_t uboot_env_write(struct file *file, const char __user * buf, size_t count
 
 exit:
 	amlnand_release_device(aml_chip_env);
-	kfree(env_ptr);
+	//kfree(env_ptr);
+	vfree(env_ptr);
 	return write_size;
 }
 
@@ -218,6 +224,7 @@ static CLASS_ATTR(env, S_IWUSR | S_IRUGO, env_show, env_store);
 int amlnf_env_save(unsigned char *buf,int len)
 {
 	unsigned char *env_buf = NULL;
+	struct nand_flash *flash = &aml_chip_env->flash;
 	int ret=0;
 	aml_nand_msg("uboot env amlnf_env_save : ####");
 
@@ -226,7 +233,8 @@ int amlnf_env_save(unsigned char *buf,int len)
 		aml_nand_msg("uboot env data len too much,%s",__func__);
 		return -EFAULT;
 	}
-	env_buf = aml_nand_malloc(CONFIG_ENV_SIZE);
+	//env_buf = aml_nand_malloc(CONFIG_ENV_SIZE);
+	env_buf = vmalloc(CONFIG_ENV_SIZE + flash->pagesize);
 	if (env_buf == NULL){
 		aml_nand_msg("nand malloc for uboot env failed");
 		ret = -1;
@@ -244,7 +252,8 @@ int amlnf_env_save(unsigned char *buf,int len)
 
 exit_err:
 	if(env_buf){
-		kfree(env_buf);
+		//kfree(env_buf);
+		vfree(env_buf);
 		env_buf= NULL;
 	}
 	return ret;
@@ -255,6 +264,7 @@ int amlnf_env_read(unsigned char *buf,int len)
 {
 	unsigned char*env_buf = NULL;
 	int ret=0;
+	struct nand_flash *flash = &aml_chip_env->flash;
 
 	aml_nand_msg("uboot env amlnf_env_read : ####");
 
@@ -270,7 +280,8 @@ int amlnf_env_read(unsigned char *buf,int len)
 		return 0;
 	}
 
-	env_buf = aml_nand_malloc(CONFIG_ENV_SIZE);
+	//env_buf = aml_nand_malloc(CONFIG_ENV_SIZE);
+	env_buf = vmalloc(CONFIG_ENV_SIZE + flash->pagesize);
 	if (env_buf == NULL){
 		aml_nand_msg("nand malloc for uboot env failed");
 		ret = -1;
@@ -288,7 +299,8 @@ int amlnf_env_read(unsigned char *buf,int len)
 
 exit_err:
 	if(env_buf){
-		kfree(env_buf);
+		//kfree(env_buf);
+		vfree(env_buf);
 		env_buf= NULL;
 	}
 	return ret;
@@ -389,3 +401,4 @@ exit_err:
 	}
 	return ret;
 }
+

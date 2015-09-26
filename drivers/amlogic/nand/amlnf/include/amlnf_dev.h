@@ -390,6 +390,7 @@ extern ssize_t verify_nand_page(struct class *class, struct class_attribute *att
 extern ssize_t dump_nand_page(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t show_nand_info(struct class *class, struct class_attribute *attr, char *buf);
 extern ssize_t show_bbt_table(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
+extern ssize_t change_test_sync_flag(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t show_amlnf_version_info(struct class *class, struct class_attribute *attr, char *buf);
 extern ssize_t nand_page_read(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t nand_page_write(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
