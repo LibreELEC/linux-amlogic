@@ -938,7 +938,8 @@ static int aml_mac_init(struct net_device *ndev)
 
 	data_dump(ndev->dev_addr, 6);
 #if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY)
-	read_mac_from_nand(ndev);
+        if (!g_mac_addr_setup)
+		read_mac_from_nand(ndev);
 #endif
 	printk("--2--write mac add to:");
 	data_dump(ndev->dev_addr, 6);
