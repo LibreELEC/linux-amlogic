@@ -260,21 +260,15 @@ static void set_tvmode_misc(tvmode_t mode)
  */
 static int uboot_display_already(tvmode_t mode)
 {
-    tvmode_t source = vmode_to_tvmode(get_resolution_vmode());
-    if(source == mode)
-        return 1;
-    else
-        return 0;
-    /*
-    const  reg_t *s = tvregsTab[mode];
+    const  reg_t *s = tvregsTab[mode].reg_setting;
     unsigned int pxcnt_tab = 0;
     unsigned int lncnt_tab = 0;
 
     while(s->reg != MREG_END_MARKER) {
-        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT) {
+        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT || s->reg == ENCP_VIDEO_MAX_PXCNT) {
             pxcnt_tab = s->val;
         }
-        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT) {
+        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT || s->reg == ENCP_VIDEO_MAX_LNCNT) {
             lncnt_tab = s->val;
         }
         s++;
@@ -286,7 +280,6 @@ static int uboot_display_already(tvmode_t mode)
     } else {
         return 0;
     }
-    */
 }
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
