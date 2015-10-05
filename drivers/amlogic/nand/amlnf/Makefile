@@ -37,7 +37,7 @@ aml_nftl_dev-objs += block/aml_nftl_init.o
 aml_nftl_dev-objs += block/aml_nftl_hw_interface.o
 #aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core_20141024.o
 #aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core.o
-aml_nftl_dev-objs += ../../../../../../../../../hardware/amlogic/nand/amlnf/nftl/aml_nftl_core_20141222.o_shipped
+aml_nftl_dev-objs += nftl/aml_nftl_core_20141222.o_shipped
 
 #aml_nftl_dev-objs += nftl/aml_nftl_phy.o
 #aml_nftl_dev-objs  += nftl/aml_nftl_list.o
