@@ -103,6 +103,11 @@ int codec_power=1;
 unsigned int flag=0;
 //static int num=0;
 
+int output_volume = 100;  // volume control
+audio_tone_control_t audio_tone_control;
+
+#define VOL_CTL(s) ((unsigned int)(((signed short)(s))*(vol)) >> 15) // volume scaling from 0~100
+
 //static int codec_power_switch(struct snd_pcm_substream *substream, unsigned int status);
 
 EXPORT_SYMBOL(aml_i2s_playback_start_addr);
@@ -1108,7 +1113,9 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
     struct aml_runtime_data *prtd = runtime->private_data;
     void *ubuf = prtd->buf;
-	aml_i2s_alsa_write_addr = frames_to_bytes(runtime, pos);
+    unsigned int vol;
+
+    aml_i2s_alsa_write_addr = frames_to_bytes(runtime, pos);
     n = frames_to_bytes(runtime, count);
     if(aml_i2s_playback_enable == 0)
       return res;
@@ -1129,10 +1136,13 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
 		if (pos % align) {
 		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
 		}
+
+                vol = (output_volume * 0x8000) / 100;
+
 		for (j = 0; j < n; j += 64) {
 		    for (i = 0; i < 16; i++) {
-	          *left++ = (*tfrom++) ;
-	          *right++ = (*tfrom++);
+	          *left++ = (int16_t)(VOL_CTL(*tfrom++));
+	          *right++ = (int16_t)(VOL_CTL(*tfrom++));
 		    }
 		    left += 16;
 		    right += 16;
@@ -1651,6 +1661,17 @@ static void aml_pcm_cleanup_debugfs(void)
 {
 }
 #endif
+
+
+int get_mixer_output_volume(void)
+{
+	return output_volume;
+}
+
+int set_mixer_output_volume(int volume)
+{
+	output_volume = volume;
+}
 
 struct aml_audio_interface aml_i2s_interface = {
     .id = AML_AUDIO_I2S,

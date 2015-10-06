@@ -33,6 +33,7 @@
 #include "aml_dai.h"
 #include "aml_pcm.h"
 #include "aml_audio_hw.h"
+#include "aml_alsa_common.h"
 
 #ifdef CONFIG_USE_OF
 #include <linux/of.h>
@@ -269,6 +270,7 @@ static int dummy_codec_audio_probe(struct platform_device *pdev)
         goto err_device_add;
     }
 
+    aml_alsa_create_ctrl(snd_soc_dummy_codec.snd_card, NULL);
 
     dummy_codec_dev_init();
 
