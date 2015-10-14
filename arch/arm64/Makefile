@@ -35,6 +35,10 @@ comma = ,
 
 CHECKFLAGS	+= -D__aarch64__
 
+ifeq ($(CONFIG_ARM64_ERRATUM_843419), y)
+CFLAGS_MODULE	+= -mcmodel=large
+endif
+
 # Default value
 head-y		:= arch/arm64/kernel/head.o
 
