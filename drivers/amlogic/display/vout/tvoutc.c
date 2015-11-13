@@ -252,6 +252,16 @@ static void set_tvmode_misc(tvmode_t mode)
     set_vmode_clk(mode);
 }
 
+static const reg_t * tvregs_setting_mode(tvmode_t mode)
+{
+    int i = 0;
+    for(i = 0; i < ARRAY_SIZE(tvregsTab); i++) {
+        if(mode == tvregsTab[i].tvmode)
+            return tvregsTab[i].reg_setting;
+    }
+    return NULL;
+}
+
 /*
  * uboot_display_already() uses to judge whether display has already
  * be set in uboot.
@@ -260,7 +270,7 @@ static void set_tvmode_misc(tvmode_t mode)
  */
 static int uboot_display_already(tvmode_t mode)
 {
-    const  reg_t *s = tvregsTab[mode].reg_setting;
+    const  reg_t *s = tvregs_setting_mode(mode);
     unsigned int pxcnt_tab = 0;
     unsigned int lncnt_tab = 0;
 
@@ -401,16 +411,6 @@ static void cvbs_performance_enhancement(tvmode_t mode)
 #endif// end of CVBS_PERFORMANCE_COMPATIBLITY_SUPPORT
 
 static DEFINE_MUTEX(setmode_mutex);
-
-static const reg_t * tvregs_setting_mode(tvmode_t mode)
-{
-    int i = 0;
-    for(i = 0; i < ARRAY_SIZE(tvregsTab); i++) {
-        if(mode == tvregsTab[i].tvmode)
-            return tvregsTab[i].reg_setting;
-    }
-    return NULL;
-}
 
 const static tvinfo_t * tvinfo_mode(tvmode_t mode)
 {
