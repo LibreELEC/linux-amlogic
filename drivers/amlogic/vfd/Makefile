@@ -1,0 +1,1 @@
+obj-$(CONFIG_VFD) += venus_vfd.o 

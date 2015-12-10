@@ -129,3 +129,5 @@ obj-$(CONFIG_MESON_TRUSTZONE) += secure_monitor/
 obj-y += spi/
 
 obj-y += defendkey/
+
+obj-$(CONFIG_VFD) += vfd/

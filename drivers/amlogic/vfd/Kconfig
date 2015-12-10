@@ -1,0 +1,5 @@
+config VFD
+tristate "Venus VFD Driver"
+default n
+help
+This is the Venus VFD driver.

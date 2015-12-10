@@ -95,4 +95,5 @@ source "drivers/amlogic/mhl/Kconfig"
 source "drivers/amlogic/pmu/Kconfig"
 source "drivers/amlogic/touch/Kconfig"
 source "drivers/amlogic/cpufreq/Kconfig"
+source "drivers/amlogic/vfd/Kconfig"
 endmenu
