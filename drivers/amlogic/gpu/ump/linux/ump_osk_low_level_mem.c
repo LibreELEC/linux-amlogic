@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2015 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -277,15 +277,15 @@ void _ump_osk_msync(ump_dd_mem *mem, void *virt, u32 offset, u32 size, ump_uk_ms
 		}
 
 		if (size < block->size - offset) {
-			end_p = start_p + size - 1;
+			end_p = start_p + size;
 			size = 0;
 		} else {
 			if (offset) {
-				end_p = start_p + (block->size - offset - 1);
+				end_p = start_p + (block->size - offset);
 				size -= block->size - offset;
 				offset = 0;
 			} else {
-				end_p = start_p + block->size - 1;
+				end_p = start_p + block->size;
 				size -= block->size;
 			}
 		}

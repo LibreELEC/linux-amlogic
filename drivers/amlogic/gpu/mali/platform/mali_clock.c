@@ -97,7 +97,11 @@ void enable_clock(void)
 
 u32 get_mali_freq(u32 idx)
 {
+    if (!mali_pm_statue) {
 	return pmali_plat->clk_sample[idx];
+    } else {
+        return 0;
+    }
 }
 
 void set_str_src(u32 data)

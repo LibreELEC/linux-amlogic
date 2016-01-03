@@ -106,6 +106,7 @@ void set_mali_schel_mode(u32 mode);
 
 /* for frequency reporter in DS-5 streamline. */
 u32 get_current_frequency(void);
+void mali_dev_restore(void);
 
 extern int mali_pm_statue;
 #endif /* __ARM_CORE_SCALING_H__ */

@@ -348,3 +348,4 @@ void  mpgpu_class_exit(void)
 	class_unregister(&mpgpu_class);
 #endif
 }
+

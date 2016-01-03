@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2015 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -31,17 +31,17 @@ void _mali_osk_write_mem_barrier(void)
 	wmb();
 }
 
-mali_io_address _mali_osk_mem_mapioregion(u32 phys, u32 size, const char *description)
+mali_io_address _mali_osk_mem_mapioregion(uintptr_t phys, u32 size, const char *description)
 {
 	return (mali_io_address)ioremap_nocache(phys, size);
 }
 
-void _mali_osk_mem_unmapioregion(u32 phys, u32 size, mali_io_address virt)
+void _mali_osk_mem_unmapioregion(uintptr_t phys, u32 size, mali_io_address virt)
 {
 	iounmap((void *)virt);
 }
 
-_mali_osk_errcode_t inline _mali_osk_mem_reqregion(u32 phys, u32 size, const char *description)
+_mali_osk_errcode_t inline _mali_osk_mem_reqregion(uintptr_t phys, u32 size, const char *description)
 {
 #if MALI_LICENSE_IS_GPL
 	return _MALI_OSK_ERR_OK; /* GPL driver gets the mem region for the resources registered automatically */
@@ -50,7 +50,7 @@ _mali_osk_errcode_t inline _mali_osk_mem_reqregion(u32 phys, u32 size, const cha
 #endif
 }
 
-void inline _mali_osk_mem_unreqregion(u32 phys, u32 size)
+void inline _mali_osk_mem_unreqregion(uintptr_t phys, u32 size)
 {
 #if !MALI_LICENSE_IS_GPL
 	release_mem_region(phys, size);

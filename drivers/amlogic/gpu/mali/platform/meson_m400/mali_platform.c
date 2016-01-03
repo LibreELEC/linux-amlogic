@@ -261,7 +261,7 @@ _mali_osk_errcode_t mali_platform_init(void)
 
 	if (mali_clk ) {
 		if (!mali_init_flag) {
-			clk_set_rate(mali_clk, 400000000);
+			clk_set_rate(mali_clk, 333000000);
 			mali_clk->enable(mali_clk);
 			malifix_init();
 			mali_meson_poweron(1);
@@ -308,3 +308,4 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 	last_power_mode = power_mode;
 	MALI_SUCCESS;
 }
+

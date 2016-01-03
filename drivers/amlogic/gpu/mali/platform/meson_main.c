@@ -28,13 +28,27 @@
 #include "common/mali_osk_profiling.h"
 
 int mali_pm_statue = 0;
+u32 mali_gp_reset_fail = 0;
+module_param(mali_gp_reset_fail, int, S_IRUSR | S_IWUSR | S_IWGRP | S_IRGRP | S_IROTH); /* rw-rw-r-- */
+MODULE_PARM_DESC(mali_gp_reset_fail, "times of failed to reset GP");
+u32 mali_core_timeout = 0;
+module_param(mali_core_timeout, int, S_IRUSR | S_IWUSR | S_IWGRP | S_IRGRP | S_IROTH); /* rw-rw-r-- */
+MODULE_PARM_DESC(mali_core_timeout, "times of failed to reset GP");
 
 static struct mali_gpu_device_data mali_gpu_data =
 {
 	.shared_mem_size = 1024 * 1024 * 1024,
 	.max_job_runtime = 60000, /* 60 seconds */
 	.pmu_switch_delay = 0xFFFF, /* do not have to be this high on FPGA, but it is good for testing to have a delay */
-	.pmu_domain_config = {0x1, 0x2, 0x4, 0x4, 0x4, 0x8, 0x8, 0x8, 0x8, 0x1, 0x2, 0x8},
+#if defined(CONFIG_ARCH_MESON8B)||defined(CONFIG_ARCH_MESONG9BB)
+	.pmu_domain_config = {0x1, 0x2, 0x4, 0x0,
+						  0x0, 0x0, 0x0, 0x0,
+						  0x0, 0x1, 0x2, 0x0},
+#else
+	.pmu_domain_config = {0x1, 0x2, 0x4, 0x4,
+                          0x0, 0x8, 0x8, 0x8,
+                          0x0, 0x1, 0x2, 0x8},
+#endif
 };
 
 static void mali_platform_device_release(struct device *device);
@@ -60,6 +74,8 @@ int mali_pdev_pre_init(struct platform_device* ptr_plt_dev)
 
 void mali_pdev_post_init(struct platform_device* pdev)
 {
+	mali_gp_reset_fail = 0;
+	mali_core_timeout = 0;
 #ifdef CONFIG_PM_RUNTIME
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
 	pm_runtime_set_autosuspend_delay(&(pdev->dev), 1000);
@@ -115,3 +131,5 @@ static void mali_platform_device_release(struct device *device)
 {
 	MALI_DEBUG_PRINT(4, ("mali_platform_device_release() called\n"));
 }
+
+

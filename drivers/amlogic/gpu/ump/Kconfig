@@ -1,6 +1,7 @@
 menu "Mali 400 UMP device driver"
 config UMP
 	tristate "UMP support"
+	depends on ARM
 	default n
 	---help---
 	  This enables support for the UMP memory allocation and sharing API.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 ARM Limited. All rights reserved.
+ * Copyright (C) 2013-2015 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -10,12 +10,12 @@
 
 #include "mali_soft_job.h"
 #include "mali_osk.h"
-#include "mali_osk_mali.h"
 #include "mali_timeline.h"
 #include "mali_session.h"
 #include "mali_kernel_common.h"
 #include "mali_uk_types.h"
 #include "mali_scheduler.h"
+#include "mali_executor.h"
 
 MALI_STATIC_INLINE void mali_soft_job_system_lock(struct mali_soft_job_system *system)
 {
@@ -272,7 +272,7 @@ _mali_osk_errcode_t mali_soft_job_system_signal_job(struct mali_soft_job_system 
 	MALI_DEBUG_PRINT(4, ("Mali Soft Job: signaling soft job %u (0x%08X)\n", job->id, job));
 
 	schedule_mask = mali_timeline_tracker_release(&job->tracker);
-	mali_scheduler_schedule_from_mask(schedule_mask, MALI_FALSE);
+	mali_executor_schedule_from_mask(schedule_mask, MALI_FALSE);
 
 	mali_soft_job_destroy(job);
 
@@ -289,8 +289,10 @@ static void mali_soft_job_send_activated_notification(struct mali_soft_job *job)
 	job->activated_notification = NULL;
 }
 
-void mali_soft_job_system_activate_job(struct mali_soft_job *job)
+mali_scheduler_mask mali_soft_job_system_activate_job(struct mali_soft_job *job)
 {
+	mali_scheduler_mask schedule_mask = MALI_SCHEDULER_MASK_EMPTY;
+
 	MALI_DEBUG_ASSERT_POINTER(job);
 	MALI_DEBUG_ASSERT_POINTER(job->system);
 	MALI_DEBUG_ASSERT_POINTER(job->system->session);
@@ -307,7 +309,7 @@ void mali_soft_job_system_activate_job(struct mali_soft_job *job)
 		/* Since we are in shutdown, we can ignore the scheduling bitmask. */
 		mali_timeline_tracker_release(&job->tracker);
 		mali_soft_job_destroy(job);
-		return;
+		return schedule_mask;
 	}
 
 	/* Send activated notification. */
@@ -318,15 +320,12 @@ void mali_soft_job_system_activate_job(struct mali_soft_job *job)
 
 	/* If job type is self signaled, release tracker, move soft job to free list, and scheduler at once */
 	if (MALI_SOFT_JOB_TYPE_SELF_SIGNALED == job->type) {
-		mali_scheduler_mask schedule_mask;
-
 		MALI_DEBUG_ASSERT(MALI_SOFT_JOB_STATE_STARTED == job->state);
 
 		job->state = MALI_SOFT_JOB_STATE_SIGNALED;
 		mali_soft_job_system_unlock(job->system);
 
-		schedule_mask = mali_timeline_tracker_release(&job->tracker);
-		mali_scheduler_schedule_from_mask(schedule_mask, MALI_FALSE);
+		schedule_mask |= mali_timeline_tracker_release(&job->tracker);
 
 		mali_soft_job_destroy(job);
 	} else {
@@ -334,6 +333,8 @@ void mali_soft_job_system_activate_job(struct mali_soft_job *job)
 
 		mali_soft_job_system_unlock(job->system);
 	}
+
+	return schedule_mask;
 }
 
 mali_scheduler_mask mali_soft_job_system_timeout_job(struct mali_soft_job *job)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 ARM Limited. All rights reserved.
+ * Copyright (C) 2012-2015 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -81,11 +81,12 @@ struct mali_dlbu_core {
 
 _mali_osk_errcode_t mali_dlbu_initialize(void)
 {
-
 	MALI_DEBUG_PRINT(2, ("Mali DLBU: Initializing\n"));
 
-	if (_MALI_OSK_ERR_OK == mali_mmu_get_table_page(&mali_dlbu_phys_addr, &mali_dlbu_cpu_addr)) {
-		MALI_SUCCESS;
+	if (_MALI_OSK_ERR_OK ==
+	    mali_mmu_get_table_page(&mali_dlbu_phys_addr,
+				    &mali_dlbu_cpu_addr)) {
+		return _MALI_OSK_ERR_OK;
 	}
 
 	return _MALI_OSK_ERR_FAULT;
@@ -95,7 +96,12 @@ void mali_dlbu_terminate(void)
 {
 	MALI_DEBUG_PRINT(3, ("Mali DLBU: terminating\n"));
 
-	mali_mmu_release_table_page(mali_dlbu_phys_addr, mali_dlbu_cpu_addr);
+	if (0 != mali_dlbu_phys_addr && 0 != mali_dlbu_cpu_addr) {
+		mali_mmu_release_table_page(mali_dlbu_phys_addr,
+					    mali_dlbu_cpu_addr);
+		mali_dlbu_phys_addr = 0;
+		mali_dlbu_cpu_addr = 0;
+	}
 }
 
 struct mali_dlbu_core *mali_dlbu_create(const _mali_osk_resource_t *resource)
@@ -126,8 +132,6 @@ struct mali_dlbu_core *mali_dlbu_create(const _mali_osk_resource_t *resource)
 void mali_dlbu_delete(struct mali_dlbu_core *dlbu)
 {
 	MALI_DEBUG_ASSERT_POINTER(dlbu);
-
-	mali_dlbu_reset(dlbu);
 	mali_hw_core_delete(&dlbu->hw_core);
 	_mali_osk_free(dlbu);
 }
