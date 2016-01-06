@@ -51,7 +51,7 @@ static DEFINE_SPINLOCK(mali_clk_lock);
 static DEFINE_SPINLOCK(clockfw_lock);
 static DEFINE_MUTEX(clock_ops_lock);
 
-static unsigned int mali_max = 333000;
+static unsigned int mali_max = 400000;
 static unsigned int freq_limit = 1;
 
 static int set_sys_pll(struct clk *clk,  unsigned long dst);
