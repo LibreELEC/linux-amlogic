@@ -258,7 +258,7 @@ void aml_atvdemod_set_params(struct dvb_frontend *fe,struct analog_parameters *p
 			atv_dmd_set_std();
 			pr_info("[amlatvdemod..]%s set std color %s, audio type %s.\n",__func__,\
 			v4l2_std_to_str(0xff000000&amlatvdemod_devp->parm.std), v4l2_std_to_str(0xffffff&amlatvdemod_devp->parm.std));
-			pr_info("[amlatvdemod..]%s set if_freq %d, if_inv %d.\n",__func__,\
+			pr_info("[amlatvdemod..]%s set if_freq 0x%x, if_inv 0x%x.\n",__func__,\
 			amlatvdemod_devp->parm.if_freq,amlatvdemod_devp->parm.if_inv );
 		}
 	}

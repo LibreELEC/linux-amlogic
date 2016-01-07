@@ -234,15 +234,24 @@ static pm_callback_t pm_op(const struct dev_pm_ops *ops, pm_message_t state)
 #ifdef CONFIG_HIBERNATE_CALLBACKS
 	case PM_EVENT_FREEZE:
 	case PM_EVENT_QUIESCE:
-		return ops->freeze;
+		if (ops->freeze)
+			return ops->freeze;
+		else
+			return ops->suspend;
 	case PM_EVENT_HIBERNATE:
 		return ops->poweroff;
 	case PM_EVENT_THAW:
 	case PM_EVENT_RECOVER:
-		return ops->thaw;
+		if (ops->thaw)
+			return ops->thaw;
+		else
+			return ops->resume;
 		break;
 	case PM_EVENT_RESTORE:
-		return ops->restore;
+		if (ops->restore)
+			return ops->restore;
+		else
+			return ops->resume;
 #endif /* CONFIG_HIBERNATE_CALLBACKS */
 	}
 
@@ -1190,6 +1199,7 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 	pr_info("suspend %s+ @ %i, parent: %s\n",
 				dev_name(dev), task_pid_nr(current),
 				dev->parent ? dev_name(dev->parent) : "none");
+
 	error = dpm_run_callback(callback, dev, state, info);
 
  End:

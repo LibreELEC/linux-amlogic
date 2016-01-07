@@ -384,3 +384,21 @@ void osddev_resume(void)
 {
 	osd_resume_hw();
 }
+#ifdef CONFIG_HIBERNATION
+extern void  osd_freeze_hw(void);
+extern void  osd_thaw_hw(void);
+extern void  osd_restore_hw(void);
+
+void  osddev_freeze(void)
+{
+	osd_freeze_hw();
+}
+void osddev_thaw(void)
+{
+	osd_thaw_hw();
+}
+void osddev_restore(void)
+{
+	osd_restore_hw();
+}
+#endif

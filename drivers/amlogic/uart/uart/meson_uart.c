@@ -129,8 +129,13 @@ struct meson_uart_port {
 
 	wait_queue_head_t	open_wait;
 	wait_queue_head_t	close_wait;
-    /* bt wake control ops */
-    struct bt_wake_ops *bt_ops;
+	/* bt wake control ops */
+	struct bt_wake_ops *bt_ops;
+
+	/* hibernation reg saving */
+#ifdef CONFIG_HIBERNATION
+	am_uart_t regv;
+#endif
 
 	spinlock_t rd_lock;
 	spinlock_t wr_lock;
@@ -1159,6 +1164,41 @@ static int meson_uart_suspend(struct platform_device *pdev, pm_message_t state)
     return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int meson_uart_freeze(struct device *dev)
+{
+    struct platform_device *pdev;
+    struct meson_uart_port *mup;
+
+    pdev = to_platform_device(dev);
+    mup = (struct meson_uart_port *)platform_get_drvdata(pdev);
+
+    mup->regv.mode = readl(&(mup->uart->mode));
+
+    printk("%s freeze, mode: %lx\n", mup->name, mup->regv.mode);
+
+    return 0;
+}
+
+static int meson_uart_thaw(struct device *dev)
+{
+    return 0;
+}
+
+static int meson_uart_restore(struct device *dev)
+{
+    struct platform_device *pdev;
+    struct meson_uart_port *mup;
+
+    pdev = to_platform_device(dev);
+    mup = (struct meson_uart_port *)platform_get_drvdata(pdev);
+
+    writel(mup->regv.mode, &(mup->uart->mode));
+    printk("%s restore, mode: %x\n", mup->name, readl(&(mup->uart->mode)));
+    return 0;
+}
+#endif
+
 struct console meson_serial_console = {
 	.name		= MESON_SERIAL_NAME,
 	.write		= meson_serial_console_write,
@@ -1232,6 +1272,14 @@ static struct uart_driver meson_uart_driver = {
 	.minor		= MESON_SERIAL_MINOR,
 };
 
+#ifdef CONFIG_HIBERNATION
+struct dev_pm_ops meson_uart_pm = {
+	.freeze		= meson_uart_freeze,
+	.thaw		= meson_uart_thaw,
+	.restore	= meson_uart_restore,
+};
+#endif
+
 static  struct platform_driver meson_uart_platform_driver = {
 	.probe		= meson_uart_probe,
 	.remove		= meson_uart_remove,
@@ -1242,6 +1290,9 @@ static  struct platform_driver meson_uart_platform_driver = {
 		.name	= "mesonuart",
 		.owner	= THIS_MODULE,
 		.of_match_table=meson_uart_dt_match,
+#ifdef CONFIG_HIBERNATION
+		.pm	= &meson_uart_pm,
+#endif
 	},
 };
 void get_next_node(struct meson_uart_list *cur_col, struct meson_uart_struct *co_struct,

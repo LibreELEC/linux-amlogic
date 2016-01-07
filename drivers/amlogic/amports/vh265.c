@@ -873,9 +873,8 @@ typedef struct hevc_state_{
     int last_pts;
     u64 last_lookup_pts_us64;
     u64 last_pts_us64;
-    u64 shift_byte_count;
     u32 shift_byte_count_lo;
-	u32 shift_byte_count_hi;
+    u32 shift_byte_count_hi;
     int pts_mode_switching_count;
     int pts_mode_recovery_count;
     
@@ -928,7 +927,6 @@ static void hevc_init_stru(hevc_stru_t* hevc, BuffInfo_t* buf_spec_i, buff_t* mc
     hevc->last_lookup_pts = 0;
     hevc->last_pts_us64 = 0;
     hevc->last_lookup_pts_us64 = 0;
-    hevc->shift_byte_count = 0;
     hevc->shift_byte_count_lo = 0;
     hevc->shift_byte_count_hi = 0;
     hevc->pts_mode_switching_count = 0;
@@ -3472,6 +3470,7 @@ static void hevc_recover(hevc_stru_t* hevc)
 {
 
         u32 rem;
+        u64 shift_byte_count64;
         unsigned hevc_shift_byte_count ;
         unsigned hevc_stream_start_addr;
         unsigned hevc_stream_end_addr ;
@@ -3510,15 +3509,19 @@ static void hevc_recover(hevc_stru_t* hevc)
         // calculate HEVC_SHIFT_BYTE_COUNT value with the new position.
         hevc_shift_byte_count = READ_VREG(HEVC_SHIFT_BYTE_COUNT);
         if ((hevc->shift_byte_count_lo & (1<<31)) && ((hevc_shift_byte_count & (1<<31)) == 0)) {
-            hevc->shift_byte_count += 0x100000000ULL;
+            hevc->shift_byte_count_hi++;
         }
-        div_u64_rem(hevc->shift_byte_count, hevc_stream_buf_size, &rem);
-        hevc->shift_byte_count -= rem;
-        hevc->shift_byte_count += hevc_stream_rd_ptr - hevc_stream_start_addr;
+        hevc->shift_byte_count_lo = hevc_shift_byte_count;
+
+        shift_byte_count64 = ((u64)(hevc->shift_byte_count_hi) << 32) | hevc->shift_byte_count_lo;
+        div_u64_rem(shift_byte_count64, hevc_stream_buf_size, &rem);
+        shift_byte_count64 -= rem;
+        shift_byte_count64 += hevc_stream_rd_ptr - hevc_stream_start_addr;
         if (rem > (hevc_stream_rd_ptr - hevc_stream_start_addr)) {
-            hevc->shift_byte_count += hevc_stream_buf_size;
+            shift_byte_count64 += hevc_stream_buf_size;
         }
-        hevc->shift_byte_count_lo = (u32)hevc->shift_byte_count;
+        hevc->shift_byte_count_lo = (u32)shift_byte_count64;
+        hevc->shift_byte_count_hi = (u32)(shift_byte_count64 >> 32);
 
         WRITE_VREG(DOS_SW_RESET3,
             //(1<<2)|
@@ -4416,8 +4419,8 @@ static struct platform_driver amvdec_h265_driver = {
     .probe   = amvdec_h265_probe,
     .remove  = amvdec_h265_remove,
 #ifdef CONFIG_PM
-    .suspend = amvdec_suspend,
-    .resume  = amvdec_resume,
+    .suspend = amhevc_suspend,
+    .resume  = amhevc_resume,
 #endif
     .driver  = {
         .name = DRIVER_NAME,

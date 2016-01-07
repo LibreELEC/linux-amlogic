@@ -970,6 +970,7 @@ afunc_bind(struct usb_configuration *cfg, struct usb_function *fn)
 	}
 	agdev->in_ep->driver_data = agdev;
 
+	fs_epout_desc.wMaxPacketSize = (num_channels(c_chmask))*(c_srate/1000)*c_ssize;
 	hs_epout_desc.bEndpointAddress = fs_epout_desc.bEndpointAddress;
 	hs_epout_desc.wMaxPacketSize = fs_epout_desc.wMaxPacketSize;
 	hs_epin_desc.bEndpointAddress = fs_epin_desc.bEndpointAddress;

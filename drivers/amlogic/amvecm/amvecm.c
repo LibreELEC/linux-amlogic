@@ -168,18 +168,24 @@ extern struct tcon_rgb_ogo_s     video_rgb_ogo;
 static void amvecm_size_patch(void)
 {
 	unsigned int hs, he, vs, ve;
+	#if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV)
+	hs = READ_VPP_REG_BITS(VPP_HSC_REGION12_STARTP,16,12);
+	he = READ_VPP_REG_BITS(VPP_HSC_REGION4_ENDP,0,12);
+
+	vs = READ_VPP_REG_BITS(VPP_VSC_REGION12_STARTP,16,12);
+	ve = READ_VPP_REG_BITS(VPP_VSC_REGION4_ENDP,0,12);
+	#else
 	hs = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_H_START_END,16,12);
 	he = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_H_START_END,0,12);
 
 	vs = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_V_START_END,16,12);
 	ve = READ_VPP_REG_BITS(VPP_POSTBLEND_VD1_V_START_END,0,12);
+	#endif
 #if ((MESON_CPU_TYPE==MESON_CPU_TYPE_MESON8)||(MESON_CPU_TYPE==MESON_CPU_TYPE_MESON8B))
 	if(cm_en)
 #endif
 	cm2_frame_size_patch(he-hs+1,ve-vs+1);
-#if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV)
-	ve_frame_size_patch(he-hs+1,ve-vs+2);//hardware issue
-#elif (MESON_CPU_TYPE>=MESON_CPU_TYPE_MESON6TVD)
+#if (MESON_CPU_TYPE>=MESON_CPU_TYPE_MESON6TVD)
 	ve_frame_size_patch(he-hs+1,ve-vs+1);
 #endif
 

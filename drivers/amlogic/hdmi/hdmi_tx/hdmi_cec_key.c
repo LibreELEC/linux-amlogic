@@ -51,7 +51,7 @@ __u16 cec_key_map[160] = {
     0 , 0, 0, 0, 0, 0, 0, 0,//0x50
     0 , 0, 0, 0, 0, 0, 0, 0,
     KEY_PLAYCD, KEY_PLAYPAUSE, KEY_RECORD, KEY_PAUSECD, KEY_STOPCD, KEY_MUTE, 0, KEY_TUNER,//0x60
-    0 , KEY_MEDIA, 0, 0, KEY_POWER, 0, 0, 0,
+    0 , KEY_MEDIA, 0, 0, KEY_POWER, KEY_POWER, 0, 0,
     0 , KEY_BLUE, KEY_RED, KEY_GREEN, KEY_YELLOW, 0, 0, 0,//0x70
     0 , 0, 0, 0, 0, 0, 0, 0x2fd,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x80
@@ -104,6 +104,10 @@ void cec_send_event_irq(void)
     int i;
     unsigned char   operand_num_irq;
     unsigned char operands_irq[14];
+    static unsigned int last_key = -1;
+    static s64 last_key_report = 0;
+    s64 cur_time;
+    ktime_t now = ktime_get();
 
     operand_num_irq = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].operand_num;
     for (i = 0; i < operand_num_irq; i++ )
@@ -124,11 +128,31 @@ void cec_send_event_irq(void)
             break;
     }
 
+    cur_time = ktime_to_us(now);
+    if (last_key == -1) {
+        last_key = operands_irq[0];
+    } else {
+        /*
+         * filter for 2 key power function nearby
+         */
+        if ((cec_key_map[last_key] == cec_key_map[operands_irq[0]]) &&
+            (cec_key_map[operands_irq[0]] == KEY_POWER)) {
+            if (cur_time - last_key_report < (s64)(600 * 1000)) {  // small than 600ms
+                printk("same key function too quick, last key:%x, cur key:%x, lsat:%lld, cur:%lld, diff:%lld\n",
+                       last_key, operands_irq[0], cur_time, last_key_report, cur_time - last_key_report);
+                printk("ignore this key\n");
+                return ;
+            }
+        }
+    }
+
     input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 1);
     input_sync(cec_global_info.remote_cec_dev);
     input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 0);
     input_sync(cec_global_info.remote_cec_dev);
     hdmi_print(INF, CEC  ":key map:%d\n",cec_key_map[operands_irq[0]]);
+    last_key_report = cur_time;
+    last_key = operands_irq[0];
 }
 
 void cec_user_control_pressed_irq(void)
@@ -163,7 +187,17 @@ void cec_user_control_released(cec_rx_message_t* pcec_message)
 void cec_standby(cec_rx_message_t* pcec_message)
 {
     unsigned int mask;
+    static s64 last_standby = 0;
+    s64 cur_time;
 
+    ktime_t now = ktime_get();
+    cur_time = ktime_to_us(now);
+    printk("cur time:%lld, last standby:%lld, diff:%lld\n",
+           cur_time, last_standby, cur_time - last_standby);
+    if (cur_time - last_standby < (s64)(600 * 1000)) {  // small than 600ms
+        printk("standby recieved too much\n");
+        return ;
+    }
     mask = (1 << CEC_FUNC_MSAK) | (1 << ONE_TOUCH_STANDBY_MASK);
     if ((hdmitx_device->cec_func_config & mask) == mask) {
         hdmi_print(INF, CEC  ": System will be in standby mode\n");
@@ -171,8 +205,9 @@ void cec_standby(cec_rx_message_t* pcec_message)
         input_sync(cec_global_info.remote_cec_dev);
         input_event(cec_global_info.remote_cec_dev, EV_KEY, KEY_POWER, 0);
         input_sync(cec_global_info.remote_cec_dev);
-        cec_disable_irq();
+        //cec_disable_irq();
     }
+    last_standby = cur_time;
 }
 
 void cec_key_init(void)

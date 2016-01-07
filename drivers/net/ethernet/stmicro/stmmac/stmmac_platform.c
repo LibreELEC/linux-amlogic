@@ -471,26 +471,18 @@ static int stmmac_pltfr_resume(struct device *dev)
 int stmmac_pltfr_freeze(struct device *dev)
 {
         int ret;
-        struct plat_stmmacenet_data *plat_dat = dev_get_platdata(dev);
         struct net_device *ndev = dev_get_drvdata(dev);
-        struct platform_device *pdev = to_platform_device(dev);
 
         ret = stmmac_freeze(ndev);
-        if (plat_dat->exit)
-		plat_dat->exit(pdev, plat_dat->bsp_priv);
 
         return ret;
 }
 
 int stmmac_pltfr_restore(struct device *dev)
 {
-        struct plat_stmmacenet_data *plat_dat = dev_get_platdata(dev);
         struct net_device *ndev = dev_get_drvdata(dev);
-        struct platform_device *pdev = to_platform_device(dev);
-
-        if (plat_dat->init)
-                plat_dat->init(pdev,plat_dat->bsp_priv);
-
+        printk("ethernet--------------------->restore ethernet\n");
+        //return stmmac_resume(ndev);
         return stmmac_restore(ndev);
 }
 

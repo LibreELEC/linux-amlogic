@@ -2379,11 +2379,13 @@ static int ppmgr_task(void *data)
                 || ppmgr_device.receiver
 #endif
                 ) {
-                    ppmgr_device.use_prot = 0;
-                    set_video_angle(0);
-                    //ppmgr_device.angle = ppmgr_device.global_angle;
-                    ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
-                    set_property_change(1);
+                    if (ppmgr_device.use_prot != 0) {
+                        ppmgr_device.use_prot = 0;
+                        set_video_angle(0);
+                        //ppmgr_device.angle = ppmgr_device.global_angle;
+                        ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
+                        set_property_change(1);
+                    }
                 } else {
                     ppmgr_device.use_prot = 1;
                     //ppmgr_device.angle = 0;
@@ -2427,11 +2429,13 @@ static int ppmgr_task(void *data)
                 || ppmgr_device.receiver
 #endif
                 ) {
-                    ppmgr_device.use_prot = 0;
-                    set_video_angle(0);
-                    //ppmgr_device.angle = ppmgr_device.global_angle;
-                    ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
-                    set_property_change(1);
+                    if (ppmgr_device.use_prot != 0) {
+                        ppmgr_device.use_prot = 0;
+                        set_video_angle(0);
+                        //ppmgr_device.angle = ppmgr_device.global_angle;
+                        ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
+                        set_property_change(1);
+                    }
                 } else {
                     ppmgr_device.use_prot = 1;
                     set_video_angle(ppmgr_device.global_angle);

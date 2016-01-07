@@ -576,6 +576,7 @@ struct dwc_otg_hcd {
 #endif
 	uint8_t  ssplit_lock;
 	uint8_t  auto_pm_suspend_flag;
+	uint8_t  pm_freeze_flag;
 };
 
 /** @name Transaction Execution Functions */

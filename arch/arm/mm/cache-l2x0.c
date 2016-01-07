@@ -730,7 +730,7 @@ static void aurora_save(void)
 	l2x0_saved_regs.aux_ctrl = readl_relaxed(l2x0_base + L2X0_AUX_CTRL);
 }
 
-static void l2x0_resume(void)
+void l2x0_resume(void)
 {
 	if (!(readl_relaxed(l2x0_base + L2X0_CTRL) & L2X0_CTRL_EN)) {
 		/* restore aux ctrl and enable l2 */

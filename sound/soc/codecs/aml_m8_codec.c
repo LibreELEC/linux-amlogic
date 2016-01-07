@@ -807,15 +807,35 @@ static int aml_m8_soc_remove(struct snd_soc_codec *codec){
 	aml_m8_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
+
+static int aml_m8_codec_sleep_mode(struct snd_soc_codec *codec)
+{
+	snd_soc_update_bits(codec, AMLM8_STDBY_SLEEP, 0xfc, 0xfc);
+	snd_soc_update_bits(codec, AMLM8_STDBY_SLEEP, 0x1, 0x1);
+
+	return 0;
+}
+
+static int aml_m8_codec_wake_up(struct snd_soc_codec *codec)
+{
+	snd_soc_update_bits(codec, AMLM8_STDBY_SLEEP, 0x1, 0);
+	snd_soc_write(codec, AMLM8_RESET, 0);
+	snd_soc_write(codec, AMLM8_RESET, 0x3);
+
+	return 0;
+}
+
 static int aml_m8_soc_suspend(struct snd_soc_codec *codec){
 	printk("aml_m8_codec_suspend\n");
 	aml_m8_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	aml_m8_codec_sleep_mode(codec);
     return 0;
 }
 
 static int aml_m8_soc_resume(struct snd_soc_codec *codec){
 	printk("aml_m8_codec resume\n");
 
+	aml_m8_codec_wake_up(codec);
 	aml_m8_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
     return 0;

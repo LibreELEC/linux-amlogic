@@ -54,7 +54,7 @@ static DEFINE_MUTEX(clock_ops_lock);
 #define SYS_PLL_TABLE_MIN		24000000
 #define SYS_PLL_TABLE_MAX		2112000000
 
-#define CPU_FREQ_LIMIT			1608000000
+#define CPU_FREQ_LIMIT			1800000000
 
 struct sys_pll_s {
 	unsigned int freq;

@@ -232,7 +232,7 @@ int dtmb_set_ch(struct aml_demod_sta *demod_sta,
 
 void dtmb_reset(void);
 
-int dtmb_read_snr(void);
+int dtmb_read_snr(struct dvb_frontend *fe);
 
 void dtmb_write_reg(int reg_addr, int reg_data);
 long dtmb_read_reg(int reg_addr);
@@ -4335,6 +4335,7 @@ void demod_set_adc_core_clk_fix(int clk_adc, int clk_dem);
 void calculate_cordic_para(void);
 void ofdm_read_all_regs(void);
 void demod_set_adc_core_clk_quick(int clk_adc_cfg, int clk_dem_cfg);
+extern int aml_fe_analog_set_frontend(struct dvb_frontend* fe);
 
 
 #endif

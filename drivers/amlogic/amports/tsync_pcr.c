@@ -36,9 +36,10 @@ typedef enum {
 } play_mode_t;
 
 typedef enum {
-    INIT_MODE_VIDEO=0,
-    INIT_MODE_AUDIO,
-} pcr_init_mode_t;
+    INIT_PRIORITY_PCR=0,
+    INIT_PRIORITY_AUDIO=1,
+    INIT_PRIORITY_VIDEO=2,
+} pcr_init_priority_t;
 
 #define PCR_DISCONTINUE		0x01
 #define VIDEO_DISCONTINUE	0x02
@@ -135,12 +136,12 @@ static int tsync_pcr_apause_flag = 0;
 static int tsync_pcr_vstart_flag = 0;
 static int tsync_pcr_astart_flag = 0;
 static u8 tsync_pcr_inited_flag = 0;
-static u8 tsync_pcr_inited_mode = INIT_MODE_VIDEO;
+static u8 tsync_pcr_inited_mode = INIT_PRIORITY_PCR;
 static u32 tsync_pcr_freerun_mode=0;
 
 // pause handle paramter
-static int tsync_pcr_lastcheckin_vpts=0;
-static int tsync_pcr_lastcheckin_apts=0;
+static int64_t tsync_pcr_lastcheckin_vpts=0;
+static int64_t tsync_pcr_lastcheckin_apts=0;
 static int tsync_pcr_pausecheck_cnt=0;
 static int64_t tsync_pcr_stream_delta=0;
 
@@ -250,10 +251,12 @@ int get_stream_buffer_size(int type){
     return 0;
 }
 
+// 90k HZ
 int get_min_cache_delay(void){
-    int video_cache_time = calculation_vcached_delayed();
-    int audio_cache_time = calculation_acached_delayed();
-
+    //int video_cache_time = calculation_vcached_delayed();
+    //int audio_cache_time = calculation_acached_delayed();
+    int audio_cache_time = 90 * calculation_stream_delayed_ms(PTS_TYPE_AUDIO,NULL,NULL);
+    int video_cache_time = 90 * calculation_stream_delayed_ms(PTS_TYPE_VIDEO,NULL,NULL);
     if (video_cache_time>0 && audio_cache_time>0) {
         return min(video_cache_time,audio_cache_time);
     }
@@ -359,20 +362,7 @@ void tsync_pcr_pcrscr_set(void)
         printk("[%d]init by pcr. pcr=%x usepcr=%d \n", __LINE__,ref_pcr,tsync_pcr_usepcr);
     }
 
-    if (first_vpts && !(tsync_pcr_inited_flag&complete_init_flag) && first_vpts<min_checkinpts) {
-        tsync_pcr_inited_flag|=TSYNC_PCR_INITCHECK_VPTS;
-        ref_pcr = first_vpts - tsync_pcr_ref_latency * 2;
-        timestamp_pcrscr_set(ref_pcr);
-        if (cur_pcr>0)
-            tsync_pcr_usepcr=1;
-
-        timestamp_pcrscr_enable(1);
-        printk("check init.first_pcr=0x%x, first_apts=0x%x, first_vpts=0x%x, cur_pcr = 0x%x, checkin_vpts=0x%x, checkin_apts=0x%x alevel=%d vlevel=%d \n",
-            first_pcr, first_apts, first_vpts, cur_pcr, cur_checkin_vpts, cur_checkin_apts,abuf_level, vbuf_level);
-        printk("[%d]init by vpts. pcr=%x usepcr=%d \n", __LINE__,ref_pcr,tsync_pcr_usepcr);
-    }
-
-    if (first_apts && !(tsync_pcr_inited_flag&complete_init_flag) && first_apts<min_checkinpts && tsync_pcr_inited_mode >= INIT_MODE_AUDIO) {
+    if (first_apts && !(tsync_pcr_inited_flag&complete_init_flag) && (first_apts<min_checkinpts && tsync_pcr_inited_mode >= INIT_PRIORITY_AUDIO)) {
         tsync_pcr_inited_flag|=TSYNC_PCR_INITCHECK_APTS;
         ref_pcr=first_apts;
         timestamp_pcrscr_set(ref_pcr);
@@ -383,6 +373,19 @@ void tsync_pcr_pcrscr_set(void)
         printk("check init.first_pcr=0x%x, first_apts=0x%x, first_vpts=0x%x, cur_pcr = 0x%x, checkin_vpts=0x%x, checkin_apts=0x%x alevel=%d vlevel=%d \n",
             first_pcr, first_apts, first_vpts, cur_pcr, cur_checkin_vpts, cur_checkin_apts,abuf_level, vbuf_level);
         printk("[%d]init by apts. pcr=%x usepcr=%d \n", __LINE__,ref_pcr,tsync_pcr_usepcr);
+    }
+
+    if (first_vpts && !(tsync_pcr_inited_flag&complete_init_flag) && (first_vpts<min_checkinpts && tsync_pcr_inited_mode >= INIT_PRIORITY_VIDEO)) {
+        tsync_pcr_inited_flag|=TSYNC_PCR_INITCHECK_VPTS;
+        ref_pcr = first_vpts - tsync_pcr_ref_latency * 2;
+        timestamp_pcrscr_set(ref_pcr);
+        if (cur_pcr > 0)
+            tsync_pcr_usepcr=1;
+
+        timestamp_pcrscr_enable(1);
+        printk("check init.first_pcr=0x%x, first_apts=0x%x, first_vpts=0x%x, cur_pcr = 0x%x, checkin_vpts=0x%x, checkin_apts=0x%x alevel=%d vlevel=%d \n",
+            first_pcr, first_apts, first_vpts, cur_pcr, cur_checkin_vpts, cur_checkin_apts,abuf_level, vbuf_level);
+        printk("[%d]init by vpts. pcr=%x usepcr=%d \n", __LINE__,ref_pcr,tsync_pcr_usepcr);
     }
 }
 
@@ -399,7 +402,6 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
             printk("video start! param=%x cur_pcr=%x\n",param,timestamp_pcrscr_get());
         }
 
-        tsync_pcr_inited_mode=INIT_MODE_VIDEO;
         tsync_pcr_pcrscr_set();
 
         tsync_pcr_vstart_flag=1;
@@ -433,20 +435,22 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
 
     case VIDEO_TSTAMP_DISCONTINUITY:
         {
-            //unsigned oldpts=timestamp_vpts_get();
             u32 tsdemux_pcr = tsdemux_pcrscr_get();
+
+            printk("[%s]video discontinue happen.discontinue=%d oldpts=%x new=%x cur_pcr=%x\n",__FUNCTION__,
+                tsync_pcr_tsdemuxpcr_discontinue,timestamp_vpts_get(), param, timestamp_pcrscr_get());
             //if((abs(param-oldpts)>AV_DISCONTINUE_THREDHOLD_MIN) && (!get_vsync_pts_inc_mode())){
             if (!get_vsync_pts_inc_mode()) {
                 u32 last_checkin_minpts=tsync_pcr_get_min_checkinpts();
                 u32 ref_pcr = 0;
-                if (last_checkin_minpts<param && last_checkin_minpts) {
-                    ref_pcr= last_checkin_minpts-tsync_pcr_ref_latency;
-                    printk("[%s]Use checkin minpts. minpts=%x param=%x ref_pcr=%x\n",__FUNCTION__,last_checkin_minpts,param,ref_pcr);
-                }
-                else{
-                    ref_pcr = param-tsync_pcr_ref_latency;
-                    printk("[%s]Use param. minpts=%x param=%x ref_pcr=%x\n",__FUNCTION__,last_checkin_minpts,param,ref_pcr);
-                }
+                //if (last_checkin_minpts<param && last_checkin_minpts) {
+                    //ref_pcr= last_checkin_minpts-tsync_pcr_ref_latency;
+                    //printk("[%s]Use checkin minpts. minpts=%x param=%x ref_pcr=%x\n",__FUNCTION__,last_checkin_minpts,param, oldpts,ref_pcr);
+                //}
+                //else{
+                ref_pcr = param-tsync_pcr_ref_latency;
+                printk("[%s]Use param. minpts=%x ref_pcr=%x\n",__FUNCTION__,last_checkin_minpts, ref_pcr);
+                //}
                 //if(ref_pcr == 0)
                 //ref_pcr=tsdemux_pcr-tsync_pcr_vstream_delayed();
 
@@ -455,7 +459,6 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
                 tsync_pcr_tsdemux_startpcr = tsdemux_pcr;
                 tsync_pcr_system_startpcr = ref_pcr;
                 //play_mode=PLAY_MODE_FORCE_SLOW;
-                printk("[%s]video discontinue happen and slow play.discontinue=%d\n",__FUNCTION__,tsync_pcr_tsdemuxpcr_discontinue);
 
                 /* to resume the pcr check*/
                 tsync_pcr_tsdemuxpcr_discontinue|=VIDEO_DISCONTINUE;
@@ -488,7 +491,6 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
         tsync_pcr_astart_flag=1;
         tsync_pcr_apause_flag=0;
 
-        tsync_pcr_inited_mode=INIT_MODE_AUDIO;
         tsync_pcr_pcrscr_set();
 
         printk("audio start!timestamp_apts_set =%x. \n",param);
@@ -616,11 +618,10 @@ static unsigned long tsync_pcr_check(void)
     if ((!(tsync_pcr_inited_flag&TSYNC_PCR_INITCHECK_VPTS)) && (!(tsync_pcr_inited_flag&TSYNC_PCR_INITCHECK_PCR)) && (!(tsync_pcr_inited_flag&TSYNC_PCR_INITCHECK_APTS))){
         u64 cur_system_time=(jiffies * TIME_UNIT90K) / HZ;
         if (cur_system_time - first_time_record < 270000) {
-            tsync_pcr_inited_mode=INIT_MODE_VIDEO;
             tsync_pcr_pcrscr_set();
         }
         else {
-            tsync_pcr_inited_mode=INIT_MODE_AUDIO;
+            tsync_pcr_inited_mode=INIT_PRIORITY_VIDEO;
             tsync_pcr_pcrscr_set();
         }
 
@@ -642,65 +643,60 @@ static unsigned long tsync_pcr_check(void)
     cur_apts=timestamp_apts_get();
     cur_vpts=timestamp_vpts_get();
 
-    // check whether it need reset
-    if (last_checkin_minpts > 0 && last_checkin_minpts - last_cur_pcr < PAUSE_CHECK_TIME) {
+    if (tsync_pcr_reset_flag == 0) {
+        // check whether it need reset
         if (tsync_pcr_lastcheckin_apts == last_checkin_apts && tsync_pcr_lastcheckin_vpts == last_checkin_vpts) {
             ++tsync_pcr_pausecheck_cnt;
-            if (tsync_pcr_pausecheck_cnt > 250 && tsync_pcr_reset_flag == 0) {
+            if (tsync_pcr_pausecheck_cnt > 50) {
                 printk("[tsync_pcr_check]reset abuf_level=%x vbuf_level=%x stream_delta=%lld apts=%llx vpts=%llx\n",
                     abuf_level,vbuf_level,tsync_pcr_stream_delta, last_checkin_apts,last_checkin_vpts);
                 tsync_pcr_reset_flag=1;
                 return res;
             }
-            else if (240 < tsync_pcr_pausecheck_cnt && tsync_pcr_pausecheck_cnt < 250) {
+            //else if (290 < tsync_pcr_pausecheck_cnt && tsync_pcr_pausecheck_cnt < 300) {
                 //printk("[tsync_pcr_check] abuf_level=%x vbuf_level=%x apts=%llx vpts=%llx cnt=%d\n",
                     //abuf_level,vbuf_level, last_checkin_apts,last_checkin_vpts,tsync_pcr_pausecheck_cnt);
-            }
+            //}
         }
         else{
             tsync_pcr_lastcheckin_apts = last_checkin_apts;
             tsync_pcr_lastcheckin_vpts= last_checkin_vpts;
             tsync_pcr_pausecheck_cnt=0;
         }
-    }
-    else{
-        tsync_pcr_lastcheckin_apts = last_checkin_apts;
-        tsync_pcr_lastcheckin_vpts= last_checkin_vpts;
-        tsync_pcr_pausecheck_cnt=0;
-   }
 
-    // check whether audio and video can sync
-    if (last_cur_pcr-cur_apts > MAX_SYNC_AGAP_TIME &&
-        abs(cur_apts-cur_vpts) > MAX_SYNC_AGAP_TIME &&
-        last_checkin_apts > 0 && last_checkin_apts - last_cur_pcr < MIN_SYNC_ACHACH_TIME &&
-        !(tsync_pcr_tsdemuxpcr_discontinue & PCR_DISCONTINUE)) {
-        tsync_pcr_asynccheck_cnt++;
-    }
-    else
-        tsync_pcr_asynccheck_cnt=0;
+        // check whether audio and video can sync
+        if (last_cur_pcr-cur_apts > MAX_SYNC_AGAP_TIME &&
+            abs(cur_apts-cur_vpts) > MAX_SYNC_AGAP_TIME &&
+            last_checkin_apts > 0 && last_checkin_apts - last_cur_pcr < MIN_SYNC_ACHACH_TIME &&
+            !(tsync_pcr_tsdemuxpcr_discontinue & PCR_DISCONTINUE)) {
+            tsync_pcr_asynccheck_cnt++;
+        }
+        else
+            tsync_pcr_asynccheck_cnt=0;
 
-    if (last_cur_pcr - cur_vpts > MAX_SYNC_VGAP_TIME &&
-        abs(cur_apts - cur_vpts) > MAX_SYNC_VGAP_TIME &&
-        last_checkin_vpts > 0 && last_checkin_vpts - last_cur_pcr < MIN_SYNC_VCHACH_TIME &&
-        !(tsync_pcr_tsdemuxpcr_discontinue & PCR_DISCONTINUE)) {
-        tsync_pcr_vsynccheck_cnt++;
-    }
-    else
-        tsync_pcr_vsynccheck_cnt=0;
+        if (last_cur_pcr - cur_vpts > MAX_SYNC_VGAP_TIME &&
+            abs(cur_apts - cur_vpts) > MAX_SYNC_VGAP_TIME &&
+            last_checkin_vpts > 0 && last_checkin_vpts - last_cur_pcr < MIN_SYNC_VCHACH_TIME &&
+            !(tsync_pcr_tsdemuxpcr_discontinue & PCR_DISCONTINUE)) {
+            tsync_pcr_vsynccheck_cnt++;
+        }
+        else
+            tsync_pcr_vsynccheck_cnt=0;
 
-    if (tsync_pcr_vsynccheck_cnt > 100 && last_checkin_minpts > 0) {
-        int64_t  new_pcr =  last_checkin_minpts-tsync_pcr_ref_latency*2;
-        int64_t  old_pcr=timestamp_pcrscr_get();
-        timestamp_pcrscr_set(new_pcr);
-        printk("[tsync_pcr_check] video stream underrun,force slow play. apts=%d vpts=%d pcr=%lld new_pcr=%lld checkin_apts=%lld checkin_vpts=%lld\n",
-            cur_apts,cur_vpts,old_pcr,new_pcr,last_checkin_apts,last_checkin_vpts);
-    }
-    else if (tsync_pcr_asynccheck_cnt > 100 && last_checkin_minpts > 0) {
-        int64_t  new_pcr =  last_checkin_minpts-tsync_pcr_ref_latency*2;
-        int64_t  old_pcr=timestamp_pcrscr_get();
-        timestamp_pcrscr_set(new_pcr);
-        printk("[tsync_pcr_check] audio stream underrun,force slow play. apts=%d vpts=%d pcr=%lld new_pcr=%lld checkin_apts=%lld checkin_vpts=%lld\n",
-            cur_apts,cur_vpts,old_pcr,new_pcr,last_checkin_apts,last_checkin_vpts);
+        if (tsync_pcr_vsynccheck_cnt > 100 && last_checkin_minpts > 0) {
+            int64_t  new_pcr =  last_checkin_minpts-tsync_pcr_ref_latency*2;
+            int64_t  old_pcr=timestamp_pcrscr_get();
+            timestamp_pcrscr_set(new_pcr);
+            printk("[tsync_pcr_check] video stream underrun,force slow play. apts=%d vpts=%d pcr=%lld new_pcr=%lld checkin_apts=%lld checkin_vpts=%lld\n",
+                cur_apts,cur_vpts,old_pcr,new_pcr,last_checkin_apts,last_checkin_vpts);
+        }
+        else if (tsync_pcr_asynccheck_cnt > 100 && last_checkin_minpts > 0) {
+            int64_t  new_pcr =  last_checkin_minpts-tsync_pcr_ref_latency*2;
+            int64_t  old_pcr=timestamp_pcrscr_get();
+            timestamp_pcrscr_set(new_pcr);
+            printk("[tsync_pcr_check] audio stream underrun,force slow play. apts=%d vpts=%d pcr=%lld new_pcr=%lld checkin_apts=%lld checkin_vpts=%lld\n",
+                cur_apts,cur_vpts,old_pcr,new_pcr,last_checkin_apts,last_checkin_vpts);
+        }
     }
 
     if (((vbuf_level * 3 > vbuf_size * 2 && vbuf_size > 0) || (abuf_level * 3 > abuf_size * 2 && abuf_size > 0)) && play_mode != PLAY_MODE_FORCE_SPEED) {
@@ -862,7 +858,6 @@ static void tsync_pcr_param_reset(void){
     vbuf_size=0;
     play_mode=PLAY_MODE_NORMAL;
     tsync_pcr_started=0;
-    tsync_pcr_inited_mode = INIT_MODE_VIDEO;
     tsync_pcr_stream_delta=0;
 }
 int tsync_pcr_set_apts(unsigned pts)
@@ -886,9 +881,16 @@ int tsync_pcr_start(void)
 
         first_time_record = (jiffies * TIME_UNIT90K) / HZ;
         tsync_pcr_started=1;
-        tsync_pcr_usepcr=tsdemux_pcrscr_valid();
+        if (tsdemux_pcrscr_valid() == 0) {
+            tsync_pcr_usepcr = 0;
+            tsync_pcr_inited_mode = INIT_PRIORITY_AUDIO;
+        }
+        else {
+            tsync_pcr_usepcr = 1;
+            tsync_pcr_inited_mode = INIT_PRIORITY_PCR;
+        }
         tsync_pcr_read_cnt=0;
-        printk("[tsync_pcr_start]usepcr=%d\n",tsync_pcr_usepcr);
+        printk("[tsync_pcr_start]usepcr=%d tsync_pcr_inited_mode=%d\n", tsync_pcr_usepcr, tsync_pcr_inited_mode);
         add_timer(&tsync_pcr_check_timer);
     }
     return 0;

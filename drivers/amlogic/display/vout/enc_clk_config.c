@@ -53,6 +53,19 @@
             printk(KERN_CRIT "pll[0x%x] reset %d times\n", reg, 9 - cnt);\
     }while(0);
 
+static int (*hdmi_is_special_tv_func)(void)= NULL;
+void register_hdmi_is_special_tv_func( int (*pfunc)(void) )
+{
+    hdmi_is_special_tv_func = pfunc;
+}
+int hdmitx_is_special_tv_process(void)
+{
+    if (hdmi_is_special_tv_func)
+        return hdmi_is_special_tv_func();
+    else
+        return 0;
+}
+
 static void set_hpll_clk_out(unsigned clk)
 {
     check_clk_config(clk);
@@ -74,27 +87,46 @@ static void set_hpll_clk_out(unsigned clk)
     switch(clk){
         case 2971:      // only for 4k mode
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-		case 2976:		// only for 4k mode with clock*0.999
+        case 2976:		// only for 4k mode with clock*0.999
 #endif
-            aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x0000043d);
+            //aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x0000043d);
+            if (IS_MESON_M8_CPU && hdmitx_is_special_tv_process()) {//SAMSUNG future TV, M8, in 4K2K mode
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-            if( clk == 2976 )
-                aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84d04); // lower div_frac to get clk*0.999
-            else
-                aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84e00);
+                if ( clk == 2976 )
+                    aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84d04); // lower div_frac to get clk*0.999
+                else
+                    aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84e00);
 #else
-            aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84e00);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84e00);
 #endif
-            aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xca46c023);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x4123b100);
-            aml_set_reg32_bits(P_HHI_VID2_PLL_CNTL2, 1, 16, 1);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x6000043d);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x4000043d);
-            WAIT_FOR_PLL_LOCKED(P_HHI_VID_PLL_CNTL);
-            h_delay();
-            aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00016385);   // optimise HPLL VCO 2.97GHz performance
-
+                aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce49c822);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x4123b100);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x6000043d);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x4000043d);
+                WAIT_FOR_PLL_LOCKED(P_HHI_VID_PLL_CNTL);
+                h_delay();
+                aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00016385);   // optimise HPLL VCO 2.97GHz performance
+            }
+            else {
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+                if ( clk == 2976 )
+                    aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84d04); // lower div_frac to get clk*0.999
+                else
+                    aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84e00);
+#else
+                aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69d84e00);
+#endif
+                aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xca46c023);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x4123b100);
+                aml_set_reg32_bits(P_HHI_VID2_PLL_CNTL2, 1, 16, 1);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x6000043d);
+                aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x4000043d);
+                WAIT_FOR_PLL_LOCKED(P_HHI_VID_PLL_CNTL);
+                h_delay();
+                aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00016385);   // optimise HPLL VCO 2.97GHz performance
+            }
             break;
         case 2970:      // for 1080p/i 720p mode
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
@@ -415,17 +447,26 @@ static void set_hdmi_tx_pixel_div(unsigned div)
 {
     check_div();
     WRITE_CBUS_REG_BITS(HHI_HDMI_CLK_CNTL, div, 16, 4);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_CBUS_REG_BITS(HHI_VID_CLK_CNTL2, 1, 5, 1);
+#endif
 }
 static void set_encp_div(unsigned div)
 {
     check_div();
     WRITE_CBUS_REG_BITS(HHI_VID_CLK_DIV, div, 24, 4);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_CBUS_REG_BITS(HHI_VID_CLK_CNTL2, 1, 2, 1);
+#endif
 }
 
 static void set_enci_div(unsigned div)
 {
     check_div();
     WRITE_CBUS_REG_BITS(HHI_VID_CLK_DIV, div, 28, 4);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_CBUS_REG_BITS(HHI_VID_CLK_CNTL2, 1, 0, 1);
+#endif
 }
 
 static void set_enct_div(unsigned div)
@@ -438,12 +479,18 @@ static void set_encl_div(unsigned div)
 {
     check_div();
     WRITE_CBUS_REG_BITS(HHI_VIID_CLK_DIV, div, 12, 4);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_CBUS_REG_BITS(HHI_VID_CLK_CNTL2, 1, 3, 1);
+#endif
 }
 
 static void set_vdac0_div(unsigned div)
 {
     check_div();
     WRITE_CBUS_REG_BITS(HHI_VIID_CLK_DIV, div, 28, 4);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    WRITE_CBUS_REG_BITS(HHI_VID_CLK_CNTL2, 1, 4, 1);
+#endif
 }
 
 static void set_vdac1_div(unsigned div)
@@ -737,3 +784,14 @@ void set_vmode_clk(vmode_t mode)
 #endif
 }
  
+unsigned int reset_hpll(void)
+{
+    aml_set_reg32_bits(P_HHI_VID_PLL_CNTL, 0x0, 29, 2);
+    msleep(1);
+    aml_set_reg32_bits(P_HHI_VID_PLL_CNTL, 0x3, 29, 2);
+    msleep(1);
+    aml_set_reg32_bits(P_HHI_VID_PLL_CNTL, 0x2, 29, 2);
+    msleep(20);
+    printk("%s[%d]\n", __func__, __LINE__);
+    return !!(aml_read_reg32(P_HHI_VID_PLL_CNTL) & (1 << 31));
+}

@@ -122,6 +122,8 @@ obj-$(CONFIG_MALI400) += gpu/mali/
 
 obj-$(CONFIG_AMLOGIC_ION) += ion_dev/
 
+obj-y += instaboot/
+
 obj-y += crypto/
 
 #obj-$(CONFIG_MESON_TRUSTZONE) += trustzone/

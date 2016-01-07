@@ -442,7 +442,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
         hdmitx_device->cur_VIC = vic;
         return 1;;
     }
-
+    hdmitx_special_handler_video(hdmitx_device);
     param = hdmi_get_video_param(VideoCode);
     hdmitx_device->cur_video_param = param;
     if(param){
@@ -516,7 +516,6 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
         }
     }
     hdmitx_set_spd_info(hdmitx_device);
-    hdmitx_special_handler_video(hdmitx_device);
     return ret;
 }
 

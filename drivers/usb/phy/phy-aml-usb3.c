@@ -198,6 +198,7 @@ static int amlogic_usb3_init(struct usb_phy *x)
 		udelay(2);
 
 		r0.b.p30_phy_reset = 0;
+		r0.b.p30_tx_vboost_lvl = 0x4;
 		usb_aml_regs->usb_r0 = r0.d32;
 
 		/*
@@ -276,7 +277,6 @@ static int amlogic_usb3_init(struct usb_phy *x)
 		r3.b.p30_ssc_en = 1;
 		r3.b.p30_ssc_range = 2;
 		usb_aml_regs->usb_r3 = r3.d32;
-
 	}
 	return 0;
 }

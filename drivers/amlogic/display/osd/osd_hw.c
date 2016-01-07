@@ -3226,7 +3226,9 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h,
 
 void  osd_suspend_hw(void)
 {
-	osd_hw.reg_status_save = aml_read_reg32(P_VPP_MISC) & OSD_RELATIVE_BITS;
+	osd_rdma_enable(0);
+	osd_hw.reg_status_save[0] =
+		aml_read_reg32(P_VPP_MISC) & OSD_RELATIVE_BITS;
 
 	//aml_clr_reg32_mask(P_VPP_MISC, OSD_RELATIVE_BITS);
 	VSYNCOSD_CLR_MPEG_REG_MASK(VPP_MISC, OSD_RELATIVE_BITS);
@@ -3239,12 +3241,36 @@ void  osd_suspend_hw(void)
 void osd_resume_hw(void)
 {
 	//aml_set_reg32_mask(P_VPP_MISC, osd_hw.reg_status_save);
-	VSYNCOSD_SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save);
+	VSYNCOSD_SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save[0]);
+	osd_rdma_enable(1);
 
 	printk("osd_resumed\n");
 
 	return ;
 }
+
+#ifdef CONFIG_HIBERNATION
+void  osd_freeze_hw(void)
+{
+	osd_rdma_enable(0);
+	printk("osd_freezed\n");
+
+	return ;
+}
+void osd_thaw_hw(void)
+{
+	printk("osd_thawed\n");
+	osd_rdma_enable(1);
+	return;
+}
+void osd_restore_hw(void)
+{
+	osd_rdma_enable(1);
+	printk("osd_restored\n");
+
+	return;
+}
+#endif
 
 MODULE_PARM_DESC(osd_h_filter_mode, "\n osd_h_filter_mode \n");
 module_param(osd_h_filter_mode, int, 0664);

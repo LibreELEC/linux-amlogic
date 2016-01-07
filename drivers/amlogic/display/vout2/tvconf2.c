@@ -613,12 +613,12 @@ static int tv_module_disable(vmode_t cur_vmod)
 	return 0;
 }
 #ifdef  CONFIG_PM
-static int tv_suspend(void)
+static int tv_suspend(int pm_event)
 {
 	video_dac_disable();
 	return 0;
 }
-static int tv_resume(void)
+static int tv_resume(int pm_event)
 {
 	video_dac_enable(0xff);
 	tv_set_current_vmode(info->vinfo->mode);

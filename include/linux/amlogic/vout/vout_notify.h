@@ -31,15 +31,15 @@
 
 typedef struct
 {
-    const vinfo_t* (*get_vinfo)(void);
-    int	           (*set_vmode)(vmode_t);
-    vmode_t        (*validate_vmode)(char *);
-    int            (*vmode_is_supported)(vmode_t);
-    int            (*disable)(vmode_t );
-    int            (*set_vframe_rate_hint)(int);
-    int            (*set_vframe_rate_end_hint)(void);
-    int            (*vout_suspend)(void);
-    int            (*vout_resume)(void);
+	const vinfo_t*	(*get_vinfo)(void);
+	int		(*set_vmode)(vmode_t);
+	vmode_t		(*validate_vmode)(char *);
+	int		(*vmode_is_supported)(vmode_t);
+	int		(*disable)(vmode_t );
+	int		(*set_vframe_rate_hint)(int);
+	int		(*set_vframe_rate_end_hint)(void);
+	int		(*vout_suspend)(int);
+	int		(*vout_resume)(int);
 }vout_op_t ;
 
 
@@ -48,9 +48,9 @@ typedef  struct list_head  list_head_T;
 
 typedef struct
 {
-	list_head_T  list;
-	char  	  *name;
-	vout_op_t  op;
+	list_head_T	list;
+	char		*name;
+	vout_op_t	op;
 } vout_server_t;
 
 typedef struct {
@@ -71,15 +71,15 @@ extern vmode_t validate_vmode(char *);
 extern int set_vframe_rate_hint(int);
 extern int set_vframe_rate_end_hint(void);
 
-extern int vout_suspend(void);
-extern int vout_resume(void);
+extern int vout_suspend(int);
+extern int vout_resume(int);
 
 extern int get_power_level(void);
 
 
-#define VOUT_EVENT_MODE_CHANGE		0x00010000
+#define VOUT_EVENT_MODE_CHANGE			0x00010000
 #define VOUT_EVENT_OSD_BLANK			0x00020000
-#define VOUT_EVENT_OSD_DISP_AXIS			0x00030000
+#define VOUT_EVENT_OSD_DISP_AXIS		0x00030000
 #define  VOUT_EVENT_OSD_PREBLEND_ENABLE		0x00040000
 
 /* vout2 */
@@ -95,8 +95,8 @@ extern int set_current_vmode2(vmode_t);
 extern vmode_t validate_vmode2(char *);
 extern void  set_vout2_mode_internal(char * name);
 
-extern int vout2_suspend(void);
-extern int vout2_resume(void);
+extern int vout2_suspend(int pm_event);
+extern int vout2_resume(int pm_event);
 /**/
 
 #endif /* VOUT_NOTIFY_H */

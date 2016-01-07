@@ -34,6 +34,11 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
+#ifdef CONFIG_HIBERNATION
+#include <linux/suspend.h>
+#include <asm/xen/page.h>
+#endif
+
 #include "mm.h"
 
 static unsigned long phys_initrd_start __initdata = 0;
@@ -698,6 +703,11 @@ void __init mem_init(void)
 #undef MLK
 #undef MLM
 #undef MLK_ROUNDUP
+
+#ifdef CONFIG_HIBERNATION
+	register_nosave_region((unsigned long)virt_to_pfn(_text),
+		 (unsigned long)virt_to_pfn(_etext));
+#endif
 
 	/*
 	 * Check boundaries twice: Some fundamental inconsistencies can

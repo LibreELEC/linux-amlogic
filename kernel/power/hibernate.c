@@ -28,10 +28,11 @@
 #include <linux/syscore_ops.h>
 #include <linux/ctype.h>
 #include <linux/genhd.h>
+#include <linux/amlogic/instaboot/instaboot.h>
 
 #include "power.h"
 
-
+static int wipeinstaboot;
 static int nocompress;
 static int noresume;
 static int resume_wait;
@@ -40,6 +41,18 @@ static char resume_file[256] = CONFIG_PM_STD_PARTITION;
 dev_t swsusp_resume_device;
 sector_t swsusp_resume_block;
 int in_suspend __nosavedata;
+
+#ifndef CONFIG_MK_SNAPSHOT_ONLY
+extern int osd_show_progress_bar(u32 percent);
+extern int osd_init_progress_bar(void);
+#endif
+
+extern void l2x0_resume(void);
+
+#define BOOT_TYPE_NORMAL	0
+#define BOOT_TYPE_FAST		1
+
+static int boot_type __nosavedata;
 
 enum {
 	HIBERNATION_INVALID,
@@ -291,6 +304,7 @@ static int create_image(int platform_mode)
 	if (error)
 		printk(KERN_ERR "PM: Error %d creating hibernation image\n",
 			error);
+	l2x0_resume();
 	/* Restore control flow magically appears here */
 	restore_processor_state();
 	if (!in_suspend) {
@@ -315,6 +329,9 @@ static int create_image(int platform_mode)
 
 	return error;
 }
+
+extern void platform_reg_save(void);
+extern void platform_reg_restore(void);
 
 /**
  * hibernation_snapshot - Quiesce devices and create a hibernation image.
@@ -355,6 +372,7 @@ int hibernation_snapshot(int platform_mode)
 		dpm_complete(PMSG_RECOVER);
 		goto Thaw;
 	}
+	platform_reg_save();
 
 	suspend_console();
 	ftrace_stop();
@@ -366,6 +384,9 @@ int hibernation_snapshot(int platform_mode)
 		platform_recover(platform_mode);
 	else
 		error = create_image(platform_mode);
+
+	if (!in_suspend)
+		platform_reg_restore();
 
 	/*
 	 * In the case that we call create_image() above, the control
@@ -580,6 +601,7 @@ int hibernation_platform_enter(void)
 	return error;
 }
 
+#ifndef CONFIG_MK_SNAPSHOT_ONLY
 /**
  * power_down - Shut the machine down for hibernation.
  *
@@ -630,6 +652,7 @@ static void power_down(void)
 	printk(KERN_CRIT "PM: Please power down manually\n");
 	while(1);
 }
+#endif /* CONFIG_MK_SNAPSHOT_ONLY */
 
 /**
  * hibernate - Carry out system hibernation, including saving the image.
@@ -670,6 +693,11 @@ int hibernate(void)
 	if (in_suspend) {
 		unsigned int flags = 0;
 
+#ifndef CONFIG_MK_SNAPSHOT_ONLY
+		osd_init_progress_bar();
+		osd_show_progress_bar(1);
+#endif
+
 		if (hibernation_mode == HIBERNATION_PLATFORM)
 			flags |= SF_PLATFORM_MODE;
 		if (nocompress)
@@ -677,11 +705,19 @@ int hibernate(void)
 		else
 		        flags |= SF_CRC32_MODE;
 
+		if (!swsusp_resume_device)
+			swsusp_resume_device = name_to_dev_t(resume_file);
+
 		pr_debug("PM: writing image.\n");
+#ifndef CONFIG_MK_SNAPSHOT_ONLY
+		osd_show_progress_bar(5);
+#endif
 		error = swsusp_write(flags);
 		swsusp_free();
+#ifndef CONFIG_MK_SNAPSHOT_ONLY
 		if (!error)
 			power_down();
+#endif
 		in_suspend = 0;
 		pm_restore_gfp_mask();
 	} else {
@@ -705,7 +741,6 @@ int hibernate(void)
 	return error;
 }
 
-
 /**
  * software_resume - Resume from a saved hibernation image.
  *
@@ -721,15 +756,20 @@ int hibernate(void)
  * attempts to recover gracefully and make the kernel return to the normal mode
  * of operation.
  */
-static int software_resume(void)
+int software_resume(void)
 {
 	int error;
 	unsigned int flags;
+
+	boot_type = BOOT_TYPE_NORMAL;
 
 	/*
 	 * If the user said "noresume".. bail out early.
 	 */
 	if (noresume)
+		return 0;
+
+	if (aml_istbt_dev_ready() < 0)
 		return 0;
 
 	/*
@@ -752,13 +792,12 @@ static int software_resume(void)
 		goto Unlock;
 	}
 
-	pr_debug("PM: Checking hibernation image partition %s\n", resume_file);
-
 	if (resume_delay) {
 		printk(KERN_INFO "Waiting %dsec before reading resume device...\n",
 			resume_delay);
 		ssleep(resume_delay);
 	}
+
 
 	/* Check if the device is there */
 	swsusp_resume_device = name_to_dev_t(resume_file);
@@ -798,7 +837,7 @@ static int software_resume(void)
 		MAJOR(swsusp_resume_device), MINOR(swsusp_resume_device));
 
 	pr_debug("PM: Looking for hibernation image.\n");
-	error = swsusp_check();
+	error = swsusp_check(wipeinstaboot);
 	if (error)
 		goto Unlock;
 
@@ -829,10 +868,13 @@ static int software_resume(void)
 
 	error = swsusp_read(&flags);
 	swsusp_close(FMODE_READ);
-	if (!error)
+	if (!error) {
+		boot_type = BOOT_TYPE_FAST;
 		hibernation_restore(flags & SF_PLATFORM_MODE);
+	}
 
 	printk(KERN_ERR "PM: Failed to load hibernation image, recovering.\n");
+	boot_type = BOOT_TYPE_NORMAL;
 	swsusp_free();
 	thaw_processes();
  Done:
@@ -850,6 +892,7 @@ close_finish:
 	swsusp_close(FMODE_READ);
 	goto Finish;
 }
+EXPORT_SYMBOL(software_resume);
 
 late_initcall(software_resume);
 
@@ -1044,11 +1087,27 @@ static ssize_t reserved_size_store(struct kobject *kobj,
 
 power_attr(reserved_size);
 
+static ssize_t boot_type_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", boot_type ? "fast" : "normal");
+}
+
+static struct kobj_attribute boot_type_attr = {
+	.attr	= {
+		.name = __stringify(boot_type),
+		.mode = 0444,
+	},
+	.show	= boot_type_show,
+	.store	= NULL,
+};
+
 static struct attribute * g[] = {
 	&disk_attr.attr,
 	&resume_attr.attr,
 	&image_size_attr.attr,
 	&reserved_size_attr.attr,
+	&boot_type_attr.attr,
 	NULL,
 };
 
@@ -1057,14 +1116,12 @@ static struct attribute_group attr_group = {
 	.attrs = g,
 };
 
-
 static int __init pm_disk_init(void)
 {
 	return sysfs_create_group(power_kobj, &attr_group);
 }
 
 core_initcall(pm_disk_init);
-
 
 static int __init resume_setup(char *str)
 {
@@ -1097,6 +1154,12 @@ static int __init hibernate_setup(char *str)
 	return 1;
 }
 
+static int __init  wipeinstaboot_setup(char *str)
+{
+	wipeinstaboot = 1;
+	return 1;
+}
+
 static int __init noresume_setup(char *str)
 {
 	noresume = 1;
@@ -1115,6 +1178,7 @@ static int __init resumedelay_setup(char *str)
 	return 1;
 }
 
+__setup("wipeinstaboot", wipeinstaboot_setup);
 __setup("noresume", noresume_setup);
 __setup("resume_offset=", resume_offset_setup);
 __setup("resume=", resume_setup);

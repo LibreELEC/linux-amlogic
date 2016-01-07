@@ -97,6 +97,20 @@ no_match:
 	return 0;
 }
 
+static int match_dev_by_name(struct device *dev, const void *data)
+{
+	const char* name = data;
+
+	//printk("cmp partition dev: %s, name: %s\n", dev_name(dev), name);
+
+	if (!strstr(name, dev_name(dev)))
+		goto no_match;
+
+	return 1;
+no_match:
+	return 0;
+}
+
 
 /**
  * devt_from_partuuid - looks up the dev_t of a partition by its UUID
@@ -207,6 +221,7 @@ dev_t name_to_dev_t(char *name)
 	char s[32];
 	char *p;
 	dev_t res = 0;
+	struct device *dev = NULL;
 	int part;
 
 #ifdef CONFIG_BLOCK
@@ -252,6 +267,13 @@ dev_t name_to_dev_t(char *name)
 	if (res)
 		goto done;
 
+	dev = class_find_device(&block_class, NULL, name,
+				&match_dev_by_name);
+
+	if (dev) {
+		res = dev->devt;
+		goto done;
+	}
 	/*
 	 * try non-existent, but valid partition, which may only exist
 	 * after revalidating the disk, like partitioned md devices

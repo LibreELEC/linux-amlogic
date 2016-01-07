@@ -155,7 +155,7 @@ void root_func(){
 		compatible = "amlogic,deinterlace";
 		dev_name = "deinterlace";
 		status = "ok";
-		reserve-memory = <0x01800000>; //8x1920x1088x3/2=24M
+		reserve-memory = <0x02100000>; //10x1920x1088x3/2=33M
 	};
 
 /// ***************************************************************************************
@@ -182,10 +182,23 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-                reserve-memory = <0x04000000>; // 64M
+								reserve-memory = <0x04000000>; // 64M
 //		reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
         };
+///	-	picture decoder
+//$$ MODULE="picture decoder"
+//$$ DEVICE="picdec"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+    picdec{
+		compatible = "amlogic,picdec";
+		dev_name = "picdec";
+		status = "okay";
+                share-memory-name = "vdec0";
+                share-memory-offset = <0>;
+                share-memory-size = <0x04000000>; //64M
+	};
 
 /// ***************************************************************************************
 ///	-	DISP&MM-PostProcess
@@ -388,12 +401,12 @@ void root_func(){
 //$$ DEVICE="bt-dev"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_STR = "gpio_reset"
-    bt-dev{
-        compatible = "amlogic,bt-dev";
-        dev_name = "bt-dev";
-        status = "ok";
-        gpio_reset = "GPIOX_20";
-    };
+//    bt-dev{
+//        compatible = "amlogic,bt-dev";
+//        dev_name = "bt-dev";
+//        status = "ok";
+//        gpio_reset = "GPIOX_20";
+//    };
 
 /// ***************************************************************************************
 ///	-	WiFi
@@ -412,7 +425,7 @@ void root_func(){
 		interrupt_pin = "GPIOX_21";
 		irq_num = <4>;
 		irq_trigger_type = "GPIO_IRQ_HIGH";
-		power_on_pin = "GPIOAO_6";
+		power_on_pin = "GPIOX_20";
 		power_on_pin2 = "GPIOX_11";
 //		clock_32k_pin = "GPIOX_10";
 	};

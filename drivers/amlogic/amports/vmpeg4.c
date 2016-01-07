@@ -147,6 +147,7 @@ static u32 vmpeg4_ratio;
 static u64 vmpeg4_ratio64;
 static u32 rate_detect;
 static u32 vmpeg4_rotation;
+static u32 pts_unstable = 0;
 
 static u32 total_frame;
 static u32 last_vop_time_inc, last_duration;
@@ -259,7 +260,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
     u32 pts, pts_valid = 0, offset = 0;
     u64 pts_us64 = 0;
     u32 rate, vop_time_inc, repeat_cnt, duration = 3200;
-
+    u32 trustable_pts;
     reg = READ_VREG(MREG_BUFFEROUT);
 
     if (reg) {
@@ -330,11 +331,18 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
         }
 
         offset = READ_VREG(MP4_OFFSET_REG);
+
+        if (1 == pts_unstable) {
+            trustable_pts = I_PICTURE == picture_type;
+        } else {
+            trustable_pts = I_PICTURE == picture_type || P_PICTURE == picture_type;
+        }
+
         /*2500-->3000,because some mpeg4 video may checkout failed;
          may have av sync problem.can changed small later.
          263 may need small?
         */
-        if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 3000, &pts_us64) == 0 && (I_PICTURE == picture_type)) {
+        if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 3000, &pts_us64) == 0 && trustable_pts) {
             pts_valid = 1;
             last_anch_pts = pts;
             last_anch_pts_us64 = pts_us64;
@@ -346,6 +354,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             pts_missed++;
 #endif
         }
+
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
         amlog_mask(LOG_MASK_PTS, "I offset 0x%x, pts_valid %d pts=0x%x\n", offset, pts_valid, pts);
 #endif
@@ -767,6 +776,7 @@ static void vmpeg4_local_init(void)
     vmpeg4_ratio64 = vmpeg4_amstream_dec_info.ratio64;
 
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
+    pts_unstable = ((u32)vmpeg4_amstream_dec_info.param & 0x40) >> 6;
 
     frame_width = frame_height = frame_dur = frame_prog = 0;
 

@@ -150,13 +150,6 @@ void root_func(){
 		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
 	};
 
-	continuemem{
-                compatible = "amlogic,contimuemem";
-                dev_name = "contimuemem";
-                reserve-memory = <0x06100000>; // 88M deinterlace+vdec
-	};
-
-	
 //$$ DEVICE="deinterlace"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_U32 2 = "reg"
@@ -164,8 +157,6 @@ void root_func(){
 		compatible = "amlogic,deinterlace";
 		dev_name = "deinterlace";
 		status = "ok";
-		share-memory-name = "continuemem0";
-                share-memory-offset = <0>;
 		reserve-memory = <0x02100000>; //10x1920x1088x3/2=33M
 	};
 
@@ -193,9 +184,7 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-                share-memory-name = "continuemem0";
-                share-memory-offset = <0x02100000>;
-                share-memory-size = <0x04000000>; //64M
+								reserve-memory = <0x04000000>; // 64M
 //		reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
         };
@@ -208,8 +197,8 @@ void root_func(){
 		compatible = "amlogic,picdec";
 		dev_name = "picdec";
 		status = "okay";
-                share-memory-name = "continuemem0";
-                share-memory-offset = <0x02100000>;
+                share-memory-name = "vdec0";
+                share-memory-offset = <0>;
                 share-memory-size = <0x04000000>; //64M
 	};
 

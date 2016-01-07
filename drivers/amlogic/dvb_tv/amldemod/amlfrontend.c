@@ -937,7 +937,7 @@ static int m6_demod_dtmb_read_status(struct dvb_frontend *fe, fe_status_t * stat
 	unsigned char s=0;
 //	s = amdemod_dtmb_stat_islock(dev);
 //	if(s==1)
-	s = dtmb_read_snr();
+	s = dtmb_read_snr(fe);
 	s = amdemod_dtmb_stat_islock(dev);
 //	s=1;
 	if(s==1)
@@ -978,7 +978,7 @@ static int m6_demod_dtmb_read_signal_strength(struct dvb_frontend *fe, u16 *stre
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
 
-	*strength=tuner_get_ch_power(dev);
+	*strength=0-tuner_get_ch_power(dev);
 	return 0;
 }
 
@@ -1003,7 +1003,7 @@ static int m6_demod_dtmb_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
 	*ucblocks=0;
 	return 0;
 }
-
+extern int dtmb_thread;
 static int m6_demod_dtmb_set_frontend(struct dvb_frontend *fe)
 {
 
@@ -1022,47 +1022,15 @@ static int m6_demod_dtmb_set_frontend(struct dvb_frontend *fe)
 	pr_dbg("m6_demod_dtmb_set_frontend,freq is %d\n",c->frequency);
 	memset(&param, 0, sizeof(param));
 	param.ch_freq = c->frequency/1000;
-
 	last_lock = -1;
-
-//	aml_dmx_before_retune(AM_TS_SRC_TS2, fe);
-  dtmb_set_ch(&demod_status, &demod_i2c, &param);
+	dtmb_thread = 0;
+//	demod_power_switch(PWR_OFF);
 	aml_fe_analog_set_frontend(fe);
-	
-	/*{
-		int ret;
-		ret = wait_event_interruptible_timeout(dev->lock_wq, amdemod_atsc_stat_islock(dev), 4*HZ);
-		if(!ret)	pr_error("amlfe wait lock timeout.\n");
-	}*/
-//rsj_debug
-	/*	int count;
-		for(count=0;count<10;count++){
-			if(amdemod_atsc_stat_islock(dev)){
-				printk("first lock success\n");
-				break;
-			}
-
-			msleep(200);
-		}	*/
-
-/*	times--;
-	if(amdemod_dtmb_stat_islock(dev) && times){
-		int lock;
-
-		aml_dmx_start_error_check(AM_TS_SRC_TS2, fe);
-		msleep(20);
-		error = aml_dmx_stop_error_check(AM_TS_SRC_TS2, fe);
-		lock  = amdemod_dtmb_stat_islock(dev);
-		if((error > 200) || !lock){
-			pr_error("amlfe too many error, error count:%d lock statuc:%d, retry\n", error, lock);
-			goto retry;
-		}
-	}
-
-	aml_dmx_after_retune(AM_TS_SRC_TS2, fe);*/
-
+	msleep(100);
+	dtmb_thread = 1;
+//	demod_power_switch(PWR_ON);
+	dtmb_set_ch(&demod_status,&demod_i2c,&param);
 	afe->params = *c;
-//	pr_dbg("AML amldemod => frequency=%d,symbol_rate=%d\r\n",p->frequency,p->u.qam.symbol_rate);
 	return  0;
 
 }
@@ -1250,9 +1218,9 @@ static int m6_demod_fe_enter_mode(struct aml_fe *fe, int mode)
 		if(dvbc_get_cci_task()==1)
 			dvbc_create_cci_task();
 	}
-	M6_Demod_Dtmb_Init(dev);
 	memstart = fe->dtv_demod->mem_start;
 	mem_buf=(long*)phys_to_virt(memstart);
+	M6_Demod_Dtmb_Init(dev);
 	return 0;
 }
 
@@ -1332,3 +1300,5 @@ module_exit(m6demodfrontend_exit);
 MODULE_DESCRIPTION("m6_demod DVB-T/DVB-C Demodulator driver");
 MODULE_AUTHOR("RSJ");
 MODULE_LICENSE("GPL");
+
+

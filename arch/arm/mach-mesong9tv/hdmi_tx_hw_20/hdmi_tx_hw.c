@@ -183,7 +183,7 @@ enum ddc_op {
 static int hdmitx_ddc_hw_op(enum ddc_op cmd)
 {
     int ret = 0;
-    return 0;   //tmp directly return
+
     switch(cmd) {
     case DDC_INIT_DISABLE_PULL_UP_DN:
         aml_set_reg32_bits(P_PAD_PULL_UP_EN_REG1, 0, 19, 2);      // Disable GPIOH_3/4 pull-up/down
@@ -2939,7 +2939,7 @@ static int hdmitx_cntl_ddc(hdmitx_dev_t* hdev, unsigned cmd, unsigned argv)
 {
     int i = 0;
     unsigned char *tmp_char = NULL;
-    return 0;    //tmp direct return
+
     if(!(cmd & CMD_DDC_OFFSET))
         hdmi_print(ERR, "ddc: " "w: invalid cmd 0x%x\n", cmd);
     else

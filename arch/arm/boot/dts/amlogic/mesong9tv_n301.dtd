@@ -95,12 +95,12 @@
 		mem_4k2k_decoder: region@1 {
 			region_name = "cma_4k2k";
 			linux,contiguous-region;
-			reg = <0x00000000 0x0c000000>;
+			reg = <0x00000000 0x0ca00000>;
 		};
 
 		cma_0:region@0 {
 			region_name = "cma_0";
-			reg = <0 0x01200000>;
+           reg = <0 0x02400000>;
 			linux,contiguous-region;
 		};
 	};
@@ -775,7 +775,7 @@
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-		reserve-iomap = "true";
+		//reserve-iomap = "true";
 	};
 
 
@@ -791,8 +791,8 @@
 		compatible = "amlogic,vdec";
 		dev_name = "vdec.0";
 		status = "okay";
-		reserve-memory = <0x10000000>; // 256M
-		reserve-iomap = "true";
+		reserve-memory = <0x04000000>; // 64M
+		//reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
 	};
 
@@ -825,7 +825,7 @@
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reserve-memory = <0x01000000>; // 16M
+		reserve-memory = <0x02000000>; // 32M
 	};
 
 
@@ -841,7 +841,6 @@
 		dev_name = "amvenc_avc.0";
 		status = "okay";
 		linux,contiguous-region = <&cma_0>;
-		reserve-iomap = "true";
 	};
 
 
@@ -915,6 +914,19 @@
 		>;
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-AMLVIDEO2
+//$$ MODULE = "DISP&MM-AMLVIDEO2"
+//$$ DEVICE="amlvideo2"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+    amlvideo2{
+        compatible = "amlogic,amlvideo2";
+        dev_name = "amlvideo2.0";
+        status = "okay";
+        reserve-memory = <0x01800000>;
+        reserve-iomap = "true";
+    };
 
 /// ****************************************************************************
 ///	-	ION
@@ -925,10 +937,10 @@
 		compatible = "amlogic,ion_dev";
 		dev_name = "ion_dev";
 		status = "ok";
-		reserve-memory = <0x01000000>; //16M
-	};
-
-
+        share-memory-name = "ppmgr0";
+        share-memory-offset = <0>;
+        share-memory-size = <0x02000000>; //32M
+    };
 
 
 /// ****************************************************************************
@@ -942,6 +954,19 @@
 		status = "okay";
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-A/V Amvideocap
+//$$ MODULE = "DISP&MM-Amvideocap"
+//$$ DEVICE="amvideocap"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+	amvideocap{
+		compatible = "amlogic,amvideocap";
+		dev_name = "amvideocap.0";
+		status = "okay";
+		reserve-memory = <0x00800000>;//1920*1088*4
+		reserve-iomap = "true";
+	};
 
 
 ///*****************************************************************************
@@ -1552,7 +1577,7 @@
 		fe0_ts = <2>;
 		fe0_dev = <0>;
 		dtv_demod0_mem = <1>;
-		reserve-memory = <0x6400000>;
+		reserve-memory = <0x1400000>;
 		reserve-iomap = "true";
 		//pinctrl-names = "default";
 		//pinctrl-0 = <&dvb_fe_pins>;

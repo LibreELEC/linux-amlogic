@@ -664,7 +664,6 @@ extern unsigned int IEC958_mode_codec;
 extern void audio_out_i2s_enable(unsigned flag);
 extern void aml_hw_iec958_init(struct snd_pcm_substream *substream);
 extern void audio_hw_958_enable(unsigned flag);
-extern int kernel_android_50;
 
 static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
                                  snd_pcm_uframes_t pos,
@@ -680,21 +679,6 @@ static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
     struct aml_audio_buffer *tmp_buf = buffer->private_data;
     void *ubuf = tmp_buf->buffer_start;
     audio_stream_t *s = &prtd->s;
-    int force_reinit_958 = 0;
-    force_reinit_958 = (IEC958_mode_codec == 0 && (READ_MPEG_REG(AIU_MEM_IEC958_START_PTR) != READ_MPEG_REG(AIU_MEM_I2S_START_PTR)));
-    if (s && s->device_type == AML_AUDIO_I2SOUT && (trigger_underrun) && kernel_android_50 == 1) {
-        printk("i2s out trigger underrun force_reinit_958/%d trigger_underrun/%d IEC958_mode_codec/%d IEC958_START_PTR/0x%x I2S_START_PTR/0x%x\n",
-               force_reinit_958, trigger_underrun, IEC958_mode_codec, READ_MPEG_REG(AIU_MEM_IEC958_START_PTR), READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
-        //trigger_underrun = 0;
-        return -EFAULT;
-    }
-    if (s && s->device_type == AML_AUDIO_I2SOUT && force_reinit_958 && kernel_android_50 == 1) {
-        printk("i2s out trigger underrun force_reinit_958/%d", force_reinit_958);
-        audio_hw_958_enable(0);
-        aml_hw_iec958_init(substream);
-        audio_hw_958_enable(1);
-    }
-
     if (s->device_type == AML_AUDIO_I2SOUT) {
         aml_i2s_alsa_write_addr = frames_to_bytes(runtime, pos);
     }

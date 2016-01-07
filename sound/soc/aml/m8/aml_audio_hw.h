@@ -141,6 +141,7 @@ void audio_in_spdif_enable(int flag);
 unsigned audio_spdifout_pg_enable(unsigned char enable);
 unsigned audio_aiu_pg_enable(unsigned char enable);
 void audio_mute_left_right(unsigned flag);
+void set_i2s_source(int source);
 
 #include "mach/cpu.h"
 

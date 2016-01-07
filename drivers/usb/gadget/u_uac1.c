@@ -23,7 +23,7 @@
  * This component encapsulates the ALSA devices for USB audio gadget
  */
 
-#define FILE_PCM_PLAYBACK	"/dev/snd/pcmC0D0p"
+#define FILE_PCM_PLAYBACK	"/dev/snd/pcmC0D1p"
 #define FILE_PCM_CAPTURE	"/dev/snd/pcmC0D0c"
 #define FILE_CONTROL		"/dev/snd/controlC0"
 

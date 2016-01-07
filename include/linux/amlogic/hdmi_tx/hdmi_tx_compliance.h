@@ -20,6 +20,6 @@
 
 void hdmitx_special_handler_video(hdmitx_dev_t* hdmitx_device);
 void hdmitx_special_handler_audio(hdmitx_dev_t* hdmitx_device);
-
+int hdmitx_is_special_tv(void);
 #endif
 

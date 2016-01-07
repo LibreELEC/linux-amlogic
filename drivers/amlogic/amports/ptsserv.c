@@ -726,7 +726,8 @@ static int _pts_lookup_offset_inline(
         else if ((type == PTS_TYPE_AUDIO) &&
             (p2 != NULL) &&
             (!list_is_last(&p2->list,  &pTable->valid_list)) &&
-            (VAL_DIFF((p = list_entry(p2->list.next, pts_rec_t, list))->val, p2->val) < INTERPOLATE_AUDIO_RESOLUTION)) {
+            (VAL_DIFF((p = list_entry(p2->list.next, pts_rec_t, list))->val, p2->val) < INTERPOLATE_AUDIO_RESOLUTION) &&
+            (VAL_DIFF(p->val,p2->val) >= 0)) {
             /* do interpolation between [p2, p] */
             *val = div_u64(((p->val - p2->val) * (offset - p2->offset)), (p->offset - p2->offset)) + p2->val;
             *uS64 = (u64)(*val) << 32;
@@ -772,7 +773,13 @@ static int _pts_lookup_offset_inline(
                 *val = pTable->first_checkin_pts;
                 pTable->first_lookup_ok = 1;
                 pTable->first_lookup_is_fail = 1;
-
+                if ( type == PTS_TYPE_VIDEO ) {
+                    if ( timestamp_vpts_get() == 0 ) {
+                        timestamp_firstvpts_set(1);
+                    } else {
+                        timestamp_firstvpts_set(timestamp_vpts_get());
+                    }
+                }
                 if (tsync_get_debug_pts_checkout()) {
                     if (tsync_get_debug_vpts() && (type == PTS_TYPE_VIDEO))
                         printk("first vpts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n",

@@ -69,6 +69,122 @@ unsigned p_pull_upen_addr[]={
 /* Pad names for the pinmux subsystem */
 const static struct pinctrl_pin_desc meson_pads[] = {
 
+	PINCTRL_PIN(GPIOAO_0,	"GPIOAO_0"),
+	PINCTRL_PIN(GPIOAO_1,	"GPIOAO_1"),
+	PINCTRL_PIN(GPIOAO_2,	"GPIOAO_2"),
+	PINCTRL_PIN(GPIOAO_3,	"GPIOAO_3"),
+	PINCTRL_PIN(GPIOAO_4,	"GPIOAO_4"),
+	PINCTRL_PIN(GPIOAO_5,	"GPIOAO_5"),
+	PINCTRL_PIN(GPIOAO_6,	"GPIOAO_6"),
+	PINCTRL_PIN(GPIOAO_7,	"GPIOAO_7"),
+	PINCTRL_PIN(GPIOAO_8,	"GPIOAO_8"),
+	PINCTRL_PIN(GPIOAO_9,	"GPIOAO_9"),
+	PINCTRL_PIN(GPIOAO_10,	"GPIOAO_10"),
+	PINCTRL_PIN(GPIOAO_11,	"GPIOAO_11"),
+	PINCTRL_PIN(GPIOAO_12,	"GPIOAO_12"),
+	PINCTRL_PIN(GPIOAO_13,	"GPIOAO_13"),
+
+	PINCTRL_PIN(GPIOZ_0,	"GPIOZ_0"),
+	PINCTRL_PIN(GPIOZ_1,	"GPIOZ_1"),
+	PINCTRL_PIN(GPIOZ_2,	"GPIOZ_2"),
+	PINCTRL_PIN(GPIOZ_3,	"GPIOZ_3"),
+	PINCTRL_PIN(GPIOZ_4,	"GPIOZ_4"),
+	PINCTRL_PIN(GPIOZ_5,	"GPIOZ_5"),
+	PINCTRL_PIN(GPIOZ_6,	"GPIOZ_6"),
+	PINCTRL_PIN(GPIOZ_7,	"GPIOZ_7"),
+	PINCTRL_PIN(GPIOZ_8,	"GPIOZ_8"),
+	PINCTRL_PIN(GPIOZ_9,	"GPIOZ_9"),
+	PINCTRL_PIN(GPIOZ_10,	"GPIOZ_10"),
+	PINCTRL_PIN(GPIOZ_11,	"GPIOZ_11"),
+	PINCTRL_PIN(GPIOZ_12,	"GPIOZ_12"),
+	PINCTRL_PIN(GPIOZ_13,	"GPIOZ_13"),
+	PINCTRL_PIN(GPIOZ_14,	"GPIOZ_14"),
+	PINCTRL_PIN(GPIOZ_15,	"GPIOZ_15"),
+	PINCTRL_PIN(GPIOZ_16,	"GPIOZ_16"),
+	PINCTRL_PIN(GPIOZ_17,	"GPIOZ_17"),
+	PINCTRL_PIN(GPIOZ_18,	"GPIOZ_18"),
+	PINCTRL_PIN(GPIOZ_19,	"GPIOZ_19"),
+	PINCTRL_PIN(GPIOZ_20,	"GPIOZ_20"),
+
+	PINCTRL_PIN(GPIOH_0,	"GPIOH_0"),
+	PINCTRL_PIN(GPIOH_1,	"GPIOH_1"),
+	PINCTRL_PIN(GPIOH_2,	"GPIOH_2"),
+	PINCTRL_PIN(GPIOH_3,	"GPIOH_3"),
+	PINCTRL_PIN(GPIOH_4,	"GPIOH_4"),
+	PINCTRL_PIN(GPIOH_5,	"GPIOH_5"),
+	PINCTRL_PIN(GPIOH_6,	"GPIOH_6"),
+	PINCTRL_PIN(GPIOH_7,	"GPIOH_7"),
+	PINCTRL_PIN(GPIOH_8,	"GPIOH_8"),
+	PINCTRL_PIN(GPIOH_9,	"GPIOH_9"),
+	PINCTRL_PIN(GPIOH_10,	"GPIOH_10"),
+
+	PINCTRL_PIN(BOOT_0,	"BOOT_0"),
+	PINCTRL_PIN(BOOT_1,	"BOOT_1"),
+	PINCTRL_PIN(BOOT_2,	"BOOT_2"),
+	PINCTRL_PIN(BOOT_3,	"BOOT_3"),
+	PINCTRL_PIN(BOOT_4,	"BOOT_4"),
+	PINCTRL_PIN(BOOT_5,	"BOOT_5"),
+	PINCTRL_PIN(BOOT_6,	"BOOT_6"),
+	PINCTRL_PIN(BOOT_7,	"BOOT_7"),
+	PINCTRL_PIN(BOOT_8,	"BOOT_8"),
+	PINCTRL_PIN(BOOT_9,	"BOOT_9"),
+	PINCTRL_PIN(BOOT_10,	"BOOT_10"),
+	PINCTRL_PIN(BOOT_11,	"BOOT_11"),
+	PINCTRL_PIN(BOOT_12,	"BOOT_12"),
+	PINCTRL_PIN(BOOT_13,	"BOOT_13"),
+	PINCTRL_PIN(BOOT_14,	"BOOT_14"),
+	PINCTRL_PIN(BOOT_15,	"BOOT_15"),
+	PINCTRL_PIN(BOOT_16,	"BOOT_16"),
+	PINCTRL_PIN(BOOT_17,	"BOOT_17"),
+	PINCTRL_PIN(BOOT_18,	"BOOT_18"),
+
+	PINCTRL_PIN(CARD_0,	"CARD_0"),
+	PINCTRL_PIN(CARD_1,	"CARD_1"),
+	PINCTRL_PIN(CARD_2,	"CARD_2"),
+	PINCTRL_PIN(CARD_3,	"CARD_3"),
+	PINCTRL_PIN(CARD_4,	"CARD_4"),
+	PINCTRL_PIN(CARD_5,	"CARD_5"),
+	PINCTRL_PIN(CARD_6,	"CARD_6"),
+	PINCTRL_PIN(CARD_7,	"CARD_7"),
+	PINCTRL_PIN(CARD_8,	"CARD_8"),
+
+	PINCTRL_PIN(GPIOW_0,	"GPIOW_0"),
+	PINCTRL_PIN(GPIOW_1,	"GPIOW_1"),
+	PINCTRL_PIN(GPIOW_2,	"GPIOW_2"),
+	PINCTRL_PIN(GPIOW_3,	"GPIOW_3"),
+	PINCTRL_PIN(GPIOW_4,	"GPIOW_4"),
+	PINCTRL_PIN(GPIOW_5,	"GPIOW_5"),
+	PINCTRL_PIN(GPIOW_6,	"GPIOW_6"),
+	PINCTRL_PIN(GPIOW_7,	"GPIOW_7"),
+	PINCTRL_PIN(GPIOW_8,	"GPIOW_8"),
+	PINCTRL_PIN(GPIOW_9,	"GPIOW_9"),
+	PINCTRL_PIN(GPIOW_10,	"GPIOW_10"),
+	PINCTRL_PIN(GPIOW_11,	"GPIOW_11"),
+	PINCTRL_PIN(GPIOW_12,	"GPIOW_12"),
+	PINCTRL_PIN(GPIOW_13,	"GPIOW_13"),
+	PINCTRL_PIN(GPIOW_14,	"GPIOW_14"),
+	PINCTRL_PIN(GPIOW_15,	"GPIOW_15"),
+	PINCTRL_PIN(GPIOW_16,	"GPIOW_16"),
+	PINCTRL_PIN(GPIOW_17,	"GPIOW_17"),
+	PINCTRL_PIN(GPIOW_18,	"GPIOW_18"),
+	PINCTRL_PIN(GPIOW_19,	"GPIOW_19"),
+	PINCTRL_PIN(GPIOW_20,	"GPIOW_20"),
+
+	PINCTRL_PIN(GPIOY_0,	"GPIOY_0"),
+	PINCTRL_PIN(GPIOY_1,	"GPIOY_1"),
+	PINCTRL_PIN(GPIOY_2,	"GPIOY_2"),
+	PINCTRL_PIN(GPIOY_3,	"GPIOY_3"),
+	PINCTRL_PIN(GPIOY_4,	"GPIOY_4"),
+	PINCTRL_PIN(GPIOY_5,	"GPIOY_5"),
+	PINCTRL_PIN(GPIOY_6,	"GPIOY_6"),
+	PINCTRL_PIN(GPIOY_7,	"GPIOY_7"),
+	PINCTRL_PIN(GPIOY_8,	"GPIOY_8"),
+	PINCTRL_PIN(GPIOY_9,	"GPIOY_9"),
+	PINCTRL_PIN(GPIOY_10,	"GPIOY_10"),
+	PINCTRL_PIN(GPIOY_11,	"GPIOY_11"),
+	PINCTRL_PIN(GPIOY_12,	"GPIOY_12"),
+	PINCTRL_PIN(GPIOY_13,	"GPIOY_13"),
+
 	PINCTRL_PIN(GPIOX_0,	"GPIOX_0"),
 	PINCTRL_PIN(GPIOX_1,	"GPIOX_1"),
 	PINCTRL_PIN(GPIOX_2,	"GPIOX_2"),
@@ -97,161 +213,43 @@ const static struct pinctrl_pin_desc meson_pads[] = {
 	PINCTRL_PIN(GPIOX_25,	"GPIOX_25"),
 	PINCTRL_PIN(GPIOX_26,	"GPIOX_26"),
 	PINCTRL_PIN(GPIOX_27,	"GPIOX_27"),
-
-	PINCTRL_PIN(BOOT_0,	"BOOT_0"),
-	PINCTRL_PIN(BOOT_1,	"BOOT_1"),
-	PINCTRL_PIN(BOOT_2,	"BOOT_2"),
-	PINCTRL_PIN(BOOT_3,	"BOOT_3"),
-	PINCTRL_PIN(BOOT_4,	"BOOT_4"),
-	PINCTRL_PIN(BOOT_5,	"BOOT_5"),
-	PINCTRL_PIN(BOOT_6,	"BOOT_6"),
-	PINCTRL_PIN(BOOT_7,	"BOOT_7"),
-	PINCTRL_PIN(BOOT_8,	"BOOT_8"),
-	PINCTRL_PIN(BOOT_9,	"BOOT_9"),
-	PINCTRL_PIN(BOOT_10,	"BOOT_10"),
-	PINCTRL_PIN(BOOT_11,	"BOOT_11"),
-	PINCTRL_PIN(BOOT_12,	"BOOT_12"),
-	PINCTRL_PIN(BOOT_13,	"BOOT_13"),
-	PINCTRL_PIN(BOOT_14,	"BOOT_14"),
-	PINCTRL_PIN(BOOT_15,	"BOOT_15"),
-	PINCTRL_PIN(BOOT_16,	"BOOT_16"),
-	PINCTRL_PIN(BOOT_17,	"BOOT_17"),
-	PINCTRL_PIN(BOOT_18,	"BOOT_18"),
-
-	PINCTRL_PIN(GPIOH_0,	"GPIOH_0"),
-	PINCTRL_PIN(GPIOH_1,	"GPIOH_1"),
-	PINCTRL_PIN(GPIOH_2,	"GPIOH_2"),
-	PINCTRL_PIN(GPIOH_3,	"GPIOH_3"),
-	PINCTRL_PIN(GPIOH_4,	"GPIOH_4"),
-	PINCTRL_PIN(GPIOH_5,	"GPIOH_5"),
-	PINCTRL_PIN(GPIOH_6,	"GPIOH_6"),
-	PINCTRL_PIN(GPIOH_7,	"GPIOH_7"),
-	PINCTRL_PIN(GPIOH_8,	"GPIOH_8"),
-	PINCTRL_PIN(GPIOH_9,	"GPIOH_9"),
-	PINCTRL_PIN(GPIOH_10,	"GPIOH_10"),
-
-	PINCTRL_PIN(GPIOZ_0,	"GPIOZ_0"),
-	PINCTRL_PIN(GPIOZ_1,	"GPIOZ_1"),
-	PINCTRL_PIN(GPIOZ_2,	"GPIOZ_2"),
-	PINCTRL_PIN(GPIOZ_3,	"GPIOZ_3"),
-	PINCTRL_PIN(GPIOZ_4,	"GPIOZ_4"),
-	PINCTRL_PIN(GPIOZ_5,	"GPIOZ_5"),
-	PINCTRL_PIN(GPIOZ_6,	"GPIOZ_6"),
-	PINCTRL_PIN(GPIOZ_7,	"GPIOZ_7"),
-	PINCTRL_PIN(GPIOZ_8,	"GPIOZ_8"),
-	PINCTRL_PIN(GPIOZ_9,	"GPIOZ_9"),
-	PINCTRL_PIN(GPIOZ_10,	"GPIOZ_10"),
-	PINCTRL_PIN(GPIOZ_11,	"GPIOZ_11"),
-	PINCTRL_PIN(GPIOZ_12,	"GPIOZ_12"),
-	PINCTRL_PIN(GPIOZ_13,	"GPIOZ_13"),
-	PINCTRL_PIN(GPIOZ_14,	"GPIOZ_14"),
-	PINCTRL_PIN(GPIOZ_15,	"GPIOZ_15"),
-	PINCTRL_PIN(GPIOZ_16,	"GPIOZ_16"),
-	PINCTRL_PIN(GPIOZ_17,	"GPIOZ_17"),
-	PINCTRL_PIN(GPIOZ_18,	"GPIOZ_18"),
-	PINCTRL_PIN(GPIOZ_19,	"GPIOZ_19"),
-	PINCTRL_PIN(GPIOZ_20,	"GPIOZ_20"),
-
-	PINCTRL_PIN(GPIOW_0,	"GPIOW_0"),
-	PINCTRL_PIN(GPIOW_1,	"GPIOW_1"),
-	PINCTRL_PIN(GPIOW_2,	"GPIOW_2"),
-	PINCTRL_PIN(GPIOW_3,	"GPIOW_3"),
-	PINCTRL_PIN(GPIOW_4,	"GPIOW_4"),
-	PINCTRL_PIN(GPIOW_5,	"GPIOW_5"),
-	PINCTRL_PIN(GPIOW_6,	"GPIOW_6"),
-	PINCTRL_PIN(GPIOW_7,	"GPIOW_7"),
-	PINCTRL_PIN(GPIOW_8,	"GPIOW_8"),
-	PINCTRL_PIN(GPIOW_9,	"GPIOW_9"),
-	PINCTRL_PIN(GPIOW_10,	"GPIOW_10"),
-	PINCTRL_PIN(GPIOW_11,	"GPIOW_11"),
-	PINCTRL_PIN(GPIOW_12,	"GPIOW_12"),
-	PINCTRL_PIN(GPIOW_13,	"GPIOW_13"),
-	PINCTRL_PIN(GPIOW_14,	"GPIOW_14"),
-	PINCTRL_PIN(GPIOW_15,	"GPIOW_15"),
-	PINCTRL_PIN(GPIOW_16,	"GPIOW_16"),
-	PINCTRL_PIN(GPIOW_17,	"GPIOW_17"),
-	PINCTRL_PIN(GPIOW_18,	"GPIOW_18"),
-	PINCTRL_PIN(GPIOW_19,	"GPIOW_19"),
-	PINCTRL_PIN(GPIOW_20,	"GPIOW_20"),
-
-	PINCTRL_PIN(GPIOAO_0,	"GPIOAO_0"),
-	PINCTRL_PIN(GPIOAO_1,	"GPIOAO_1"),
-	PINCTRL_PIN(GPIOAO_2,	"GPIOAO_2"),
-	PINCTRL_PIN(GPIOAO_3,	"GPIOAO_3"),
-	PINCTRL_PIN(GPIOAO_4,	"GPIOAO_4"),
-	PINCTRL_PIN(GPIOAO_5,	"GPIOAO_5"),
-	PINCTRL_PIN(GPIOAO_6,	"GPIOAO_6"),
-	PINCTRL_PIN(GPIOAO_7,	"GPIOAO_7"),
-	PINCTRL_PIN(GPIOAO_8,	"GPIOAO_8"),
-	PINCTRL_PIN(GPIOAO_9,	"GPIOAO_9"),
-	PINCTRL_PIN(GPIOAO_10,	"GPIOAO_10"),
-	PINCTRL_PIN(GPIOAO_11,	"GPIOAO_11"),
-	PINCTRL_PIN(GPIOAO_12,	"GPIOAO_12"),
-	PINCTRL_PIN(GPIOAO_13,	"GPIOAO_13"),
-
-	PINCTRL_PIN(CARD_0,	"CARD_0"),
-	PINCTRL_PIN(CARD_1,	"CARD_1"),
-	PINCTRL_PIN(CARD_2,	"CARD_2"),
-	PINCTRL_PIN(CARD_3,	"CARD_3"),
-	PINCTRL_PIN(CARD_4,	"CARD_4"),
-	PINCTRL_PIN(CARD_5,	"CARD_5"),
-	PINCTRL_PIN(CARD_6,	"CARD_6"),
-	PINCTRL_PIN(CARD_7,	"CARD_7"),
-	PINCTRL_PIN(CARD_8,	"CARD_8"),
-
-	PINCTRL_PIN(GPIOY_0,	"GPIOY_0"),
-	PINCTRL_PIN(GPIOY_1,	"GPIOY_1"),
-	PINCTRL_PIN(GPIOY_2,	"GPIOY_2"),
-	PINCTRL_PIN(GPIOY_3,	"GPIOY_3"),
-	PINCTRL_PIN(GPIOY_4,	"GPIOY_4"),
-	PINCTRL_PIN(GPIOY_5,	"GPIOY_5"),
-	PINCTRL_PIN(GPIOY_6,	"GPIOY_6"),
-	PINCTRL_PIN(GPIOY_7,	"GPIOY_7"),
-	PINCTRL_PIN(GPIOY_8,	"GPIOY_8"),
-	PINCTRL_PIN(GPIOY_9,	"GPIOY_9"),
-	PINCTRL_PIN(GPIOY_10,	"GPIOY_10"),
-	PINCTRL_PIN(GPIOY_11,	"GPIOY_11"),
-	PINCTRL_PIN(GPIOY_12,	"GPIOY_12"),
-	PINCTRL_PIN(GPIOY_13,	"GPIOY_13"),
 };
 
 int meson_pin_to_pullup(unsigned int pin , unsigned int *reg, unsigned int *bit,
 	unsigned int *en)
 {
 	/*
-	PAD_PULL_UP_REG4 0x203e
+	AO_RTI_PULL_UP_REG		0xc810002c
 
-	31~28	R/W	0		Unused
-	27~0	R/W	0x3000000	gpioX[27:0] 1 = pull up.  0 = pull down
+	31	R	0		Reserved
+	30	R/W	0		TEST_N pull-up/down direction.
+	29-16	R/W	0		gpioAO[13:0] pull-up/down direction.
+	15	R	0		Reserved
+	14	R/W	0		TEST_N pull-up enable.
+	13-0	R/W	0		gpioAO[13:0] pull-up enable
 	*/
-	/*
-	PULL_UP_EN_REG4 0x204c
-
-	31~28	R/W	0		Unused
-	27~0	R/W	0xF000FFF	gpioX[27:0]
-	*/
-	if (pin <= GPIOX_27)
+	if (pin <= GPIOAO_13)
 	{
-		*reg = 4;
-		*bit = pin - GPIOX_0;
-		*en  = *bit;
+		*reg = 5;
+		*bit = pin - GPIOAO_0 + 16;
+		*en  = pin - GPIOAO_0;
 	}
 	/*
-	PAD_PULL_UP_REG2 0x203c
+	PAD_PULL_UP_REG3 0x203d
 
-	19	R/W	1		Reserved
-	18~0	R/W	0x77FFF 	boot[18:0] 1 = pull up.  0 = pull down
+	31~21	R/W	0		Reserved
+	20~0	R/W	0x1FA040	gpioZ[20:0] 1 = pull up.  0 = pull down
 	*/
 	/*
-	PULL_UP_EN_REG2	0x204a
+	PULL_UP_EN_REG3	0x204b
 
-	19	R/W	1		Reserved
-	18~0	R/W	0x7FFFF 	boot[18:0]
+	31~21	R/W	0		Reserved
+	20~0	R/W	0x1FE07F	gpioZ[20:0]
 	*/
-	else if (pin <= BOOT_18)
+	else if (pin <= GPIOZ_20)
 	{
-		*reg = 2;
-		*bit = pin - BOOT_0;
+		*reg = 3;
+		*bit = pin - GPIOZ_0;
 		*en  = *bit;
 	}
 	/*
@@ -273,56 +271,22 @@ int meson_pin_to_pullup(unsigned int pin , unsigned int *reg, unsigned int *bit,
 		*en  = *bit;
 	}
 	/*
-	PAD_PULL_UP_REG3 0x203d
+	PAD_PULL_UP_REG2 0x203c
 
-	31~21	R/W	0		Reserved
-	20~0	R/W	0x1FA040	gpioZ[20:0] 1 = pull up.  0 = pull down
+	19	R/W	1		Reserved
+	18~0	R/W	0x77FFF 	boot[18:0] 1 = pull up.  0 = pull down
 	*/
 	/*
-	PULL_UP_EN_REG3	0x204b
+	PULL_UP_EN_REG2	0x204a
 
-	31~21	R/W	0		Reserved
-	20~0	R/W	0x1FE07F	gpioZ[20:0]
+	19	R/W	1		Reserved
+	18~0	R/W	0x7FFFF 	boot[18:0]
 	*/
-	else if (pin <= GPIOZ_20)
+	else if (pin <= BOOT_18)
 	{
-		*reg = 3;
-		*bit = pin - GPIOZ_0;
+		*reg = 2;
+		*bit = pin - BOOT_0;
 		*en  = *bit;
-	}
-	/*
-	PAD_PULL_UP_REG0 0x203a
-
-	31~21	R/W	0		Unused
-	20~0	R/W	0x2223F 	gpioW[20:0] 1 = pull up.  0 = pull down
-	*/
-	/*
-	PULL_UP_EN_REG0	0x2048
-
-	31~21	R/W	0		Unused
-	20~0	R/W	0x2223F		gpioW[20:0]
-	*/
-	if (pin <= GPIOW_20)
-	{
-		*reg = 0;
-		*bit = pin - GPIOW_0;
-		*en  = *bit;
-	}
-	/*
-	AO_RTI_PULL_UP_REG		0xc810002c
-
-	31	R	0		Reserved
-	30	R/W	0		TEST_N pull-up/down direction.
-	29-16	R/W	0		gpioAO[13:0] pull-up/down direction.
-	15	R	0		Reserved
-	14	R/W	0		TEST_N pull-up enable.
-	13-0	R/W	0		gpioAO[13:0] pull-up enable
-	*/
-	else if (pin <= GPIOAO_13)
-	{
-		*reg = 5;
-		*bit = pin - GPIOAO_0 + 16;
-		*en  = pin - GPIOAO_0;
 	}
 	/*
 	PAD_PULL_UP_REG2 0x203c
@@ -342,6 +306,25 @@ int meson_pin_to_pullup(unsigned int pin , unsigned int *reg, unsigned int *bit,
 		*bit = pin - CARD_0 + 20;
 		*en  = *bit;
 	}
+
+	/*
+	PAD_PULL_UP_REG0 0x203a
+
+	31~21	R/W	0		Unused
+	20~0	R/W	0x2223F 	gpioW[20:0] 1 = pull up.  0 = pull down
+	*/
+	/*
+	PULL_UP_EN_REG0	0x2048
+
+	31~21	R/W	0		Unused
+	20~0	R/W	0x2223F		gpioW[20:0]
+	*/
+	else if (pin <= GPIOW_20)
+	{
+		*reg = 0;
+		*bit = pin - GPIOW_0;
+		*en  = *bit;
+	}
 	/*
 	PAD_PULL_UP_REG1 0x203b
 
@@ -354,13 +337,31 @@ int meson_pin_to_pullup(unsigned int pin , unsigned int *reg, unsigned int *bit,
 	15~14	R/W	0		Reserved
 	13~0	R/W	0x3FFF		gpioY[13:0]
 	*/
-
 	else if (pin <= GPIOY_13)
 	{
 		*reg = 1;
 		*bit = pin - GPIOY_0;
 		*en  = *bit;
 	}
+	/*
+	PAD_PULL_UP_REG4 0x203e
+
+	31~28	R/W	0		Unused
+	27~0	R/W	0x3000000	gpioX[27:0] 1 = pull up.  0 = pull down
+	*/
+	/*
+	PULL_UP_EN_REG4 0x204c
+
+	31~28	R/W	0		Unused
+	27~0	R/W	0xF000FFF	gpioX[27:0]
+	*/
+	else if (pin <= GPIOX_27)
+	{
+		*reg = 4;
+		*bit = pin - GPIOX_0;
+		*en  = *bit;
+	}
+
 	else
 		return -1;
 	return 0;
@@ -369,31 +370,13 @@ int meson_pin_to_pullup(unsigned int pin , unsigned int *reg, unsigned int *bit,
 int meson_pin_map_to_direction(unsigned int pin,unsigned int *reg,unsigned int *bit)
 {
 	/*
-	PREG_PAD_GPIO4_EN_N	0x2018
-	27~0			GPIOX[27:0]
+	P_AO_GPIO_O_EN_N	0xc8100024
+	13-0			GPIOAO[13:0]
 	*/
-	if (pin <= GPIOX_27)
+	if (pin < GPIOAO_13)
 	{
-		*reg = 4;
-		*bit = pin - GPIOX_0;
-	}
-	/*
-	PREG_PAD_GPIO2_EN_N	0x2012
-	18~0			BOOT[18:0]
-	*/
-	else if (pin <= BOOT_18)
-	{
-		*reg = 2;
-		*bit = pin - BOOT_0;
-	}
-	/*
-	PREG_PAD_GPIO1_EN_N	0x200f
-	26~16			GPIOH[10:0]
-	*/
-	else if (pin <= GPIOH_10)
-	{
-		*reg = 1;
-		*bit = pin - GPIOH_0 + 16;
+		*reg = 6;
+		*bit = pin - GPIOAO_0;
 	}
 	/*
 	PREG_PAD_GPIO3_EN_N	0x2015
@@ -405,22 +388,22 @@ int meson_pin_map_to_direction(unsigned int pin,unsigned int *reg,unsigned int *
 		*bit = pin - GPIOZ_0;
 	}
 	/*
-	PREG_PAD_GPIO0_EN_N	0x200c
-	20~0			GPIOW[20:0]
+	PREG_PAD_GPIO1_EN_N	0x200f
+	26~16			GPIOH[10:0]
 	*/
-	if (pin <= GPIOW_20)
+	else if (pin <= GPIOH_10)
 	{
-		*reg = 0;
-		*bit = pin - GPIOW_0;
+		*reg = 1;
+		*bit = pin - GPIOH_0 + 16;
 	}
 	/*
-	P_AO_GPIO_O_EN_N	0xc8100024
-	13-0			GPIOAO[13:0]
+	PREG_PAD_GPIO2_EN_N	0x2012
+	18~0			BOOT[18:0]
 	*/
-	else if (pin < GPIOAO_13)
+	else if (pin <= BOOT_18)
 	{
-		*reg = 6;
-		*bit = pin - GPIOAO_0;
+		*reg = 2;
+		*bit = pin - BOOT_0;
 	}
 	/*
 	PREG_PAD_GPIO2_EN_N	0x2012
@@ -432,6 +415,15 @@ int meson_pin_map_to_direction(unsigned int pin,unsigned int *reg,unsigned int *
 		*bit = pin - CARD_0 + 20;
 	}
 	/*
+	PREG_PAD_GPIO0_EN_N	0x200c
+	20~0			GPIOW[20:0]
+	*/
+	else if (pin <= GPIOW_20)
+	{
+		*reg = 0;
+		*bit = pin - GPIOW_0;
+	}
+	/*
 	PREG_PAD_GPIO1_EN_N	0x200f
 	13~0			GPIOY[13:0]
 	*/
@@ -439,6 +431,15 @@ int meson_pin_map_to_direction(unsigned int pin,unsigned int *reg,unsigned int *
 	{
 		*reg = 1;
 		*bit = pin - GPIOY_0;
+	}
+	/*
+	PREG_PAD_GPIO4_EN_N	0x2018
+	27~0			GPIOX[27:0]
+	*/
+	else if (pin <= GPIOX_27)
+	{
+		*reg = 4;
+		*bit = pin - GPIOX_0;
 	}
 	else
 		return -1;

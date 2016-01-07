@@ -14,10 +14,13 @@
 #include <linux/delay.h>
 #include <linux/sched.h>
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+extern vmode_t mode_by_user;
+#endif
 
 static BLOCKING_NOTIFIER_HEAD(vout_notifier_list);
-static  DEFINE_MUTEX(vout_mutex)  ;
-static  vout_module_t  vout_module={
+static DEFINE_MUTEX(vout_mutex);
+static vout_module_t  vout_module={
 		.vout_server_list={&vout_module.vout_server_list,&vout_module.vout_server_list},
 		.curr_vout_server=NULL,
 };
@@ -147,7 +150,7 @@ void wakeup_early_suspend_proc(void)
 	wake_up_flag = 1;
 }
 #endif
-int vout_suspend(void)
+int vout_suspend(int pm_event)
 {
 	int ret=0 ;
 	vout_server_t  *p_server = vout_module.curr_vout_server;
@@ -166,14 +169,14 @@ int vout_suspend(void)
 	{
 		if(p_server->op.vout_suspend)
 		{
-			ret = p_server->op.vout_suspend() ;
+			ret = p_server->op.vout_suspend(pm_event) ;
 		}
 	}
 	mutex_unlock(&vout_mutex);
 	return ret;
 }
 EXPORT_SYMBOL(vout_suspend);
-int vout_resume(void)
+int vout_resume(int pm_event)
 {
 	vout_server_t  *p_server = vout_module.curr_vout_server;
 
@@ -182,7 +185,7 @@ int vout_resume(void)
 	{
 		if (p_server->op.vout_resume)
 		{
-			p_server->op.vout_resume() ; //ignore error when resume.
+			p_server->op.vout_resume(pm_event) ; //ignore error when resume.
 		}
 	}
 
@@ -193,6 +196,7 @@ EXPORT_SYMBOL(vout_resume);
 /*
 *interface export to client who want to set current vmode.
 */
+extern void update_vout_mode_attr(const vinfo_t* vinfo);
 int set_current_vmode(vmode_t mode)
 {
 	int r=-1;
@@ -207,6 +211,17 @@ int set_current_vmode(vmode_t mode)
 			vout_module.curr_vout_server=p_server;
 			r=p_server->op.set_vmode(mode);
 			//break;  do not exit , should disable other modules
+			if (vout_module.curr_vout_server)
+			{
+				BUG_ON(vout_module.curr_vout_server->op.get_vinfo == NULL);
+				update_vout_mode_attr(vout_module.curr_vout_server->op.get_vinfo());
+#ifdef CONFIG_HIBERNATION
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+				if (VMODE_INIT_NULL == mode_by_user)
+					mode_by_user = mode;
+#endif /* CONFIG_AML_VOUT_FRAMERATE_AUTOMATION */
+#endif /* CONFIG_HIBERNATION */
+			}
 		}
 		else
 		{

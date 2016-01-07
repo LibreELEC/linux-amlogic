@@ -500,6 +500,7 @@ void vclk_set_encl_lvds(vmode_t vmode, int lvds_ports)
 		//pll_video.pl 3500 pll_out
 		switch(vmode) {
 			case VMODE_1080P: //total: 2200x1125 pixel clk = 148.5MHz,phy_clk(s)=(pclk*7)= 1039.5 = 2079/2
+			case VMODE_1080P_50HZ:
 				hdmi_clk_out = 2079;
 				vx1_phy_div  = 2/2;
 				encl_div     = vx1_phy_div*7;
@@ -595,31 +596,57 @@ static void venc_set_lvds(Lcd_Config_t *pConf)
 static void venc_set_vx1(Lcd_Config_t *pConf)
 {
 	pr_info("%s\n", __FUNCTION__);
+	if (cur_vmode == VMODE_4K2K_60HZ) {
+		aml_write_reg32(P_ENCL_VIDEO_EN, 0);
+		//int havon_begin = 80;
+		aml_write_reg32(P_VPU_VIU_VENC_MUX_CTRL, (0<<0) |    // viu1 select encl
+												(3<<2) );     // viu2 select encl
+		aml_write_reg32(P_ENCL_VIDEO_MODE, 40);//0); // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
+		aml_write_reg32(P_ENCL_VIDEO_MODE_ADV,     0x18);//0x0418); // Sampling rate: 1
 
-	aml_write_reg32(P_ENCL_VIDEO_EN, 0);
-	//int havon_begin = 80;
-	aml_write_reg32(P_VPU_VIU_VENC_MUX_CTRL, (0<<0) |    // viu1 select encl
-											(3<<2) );     // viu2 select encl
-	aml_write_reg32(P_ENCL_VIDEO_MODE, 40);//0); // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
-	aml_write_reg32(P_ENCL_VIDEO_MODE_ADV,     0x18);//0x0418); // Sampling rate: 1
+		// bypass filter
+		aml_write_reg32(P_ENCL_VIDEO_FILT_CTRL, 0x1000); //??
 
-	// bypass filter
-	aml_write_reg32(P_ENCL_VIDEO_FILT_CTRL, 0x1000); //??
+		aml_write_reg32(P_ENCL_VIDEO_MAX_PXCNT, 3840+560-1);//pConf->lcd_basic.h_period - 1);
+		aml_write_reg32(P_ENCL_VIDEO_MAX_LNCNT, 2160+90-1);//pConf->lcd_basic.v_period - 1);
 
-	aml_write_reg32(P_ENCL_VIDEO_MAX_PXCNT, 3840+560-1);//pConf->lcd_basic.h_period - 1);
-	aml_write_reg32(P_ENCL_VIDEO_MAX_LNCNT, 2160+90-1);//pConf->lcd_basic.v_period - 1);
+		aml_write_reg32(P_ENCL_VIDEO_HAVON_BEGIN, 560-3);//pConf->lcd_timing.video_on_pixel);
+		aml_write_reg32(P_ENCL_VIDEO_HAVON_END, 3839+560-3);//pConf->lcd_basic.h_active - 1 + pConf->lcd_timing.video_on_pixel);
+		aml_write_reg32(P_ENCL_VIDEO_VAVON_BLINE,	90);//pConf->lcd_timing.video_on_line);
+		aml_write_reg32(P_ENCL_VIDEO_VAVON_ELINE,	2159+90);//pConf->lcd_basic.v_active - 1  + pConf->lcd_timing.video_on_line);
 
-	aml_write_reg32(P_ENCL_VIDEO_HAVON_BEGIN, 560-3);//pConf->lcd_timing.video_on_pixel);
-	aml_write_reg32(P_ENCL_VIDEO_HAVON_END, 3839+560-3);//pConf->lcd_basic.h_active - 1 + pConf->lcd_timing.video_on_pixel);
-	aml_write_reg32(P_ENCL_VIDEO_VAVON_BLINE,	90);//pConf->lcd_timing.video_on_line);
-	aml_write_reg32(P_ENCL_VIDEO_VAVON_ELINE,	2159+90);//pConf->lcd_basic.v_active - 1  + pConf->lcd_timing.video_on_line);
+		aml_write_reg32(P_ENCL_VIDEO_HSO_BEGIN,48-1);//	pConf->lcd_timing.sth1_hs_addr);//10);
+		aml_write_reg32(P_ENCL_VIDEO_HSO_END,	48-1+32);//pConf->lcd_timing.sth1_he_addr);//20);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_BEGIN,	48-1);//pConf->lcd_timing.stv1_hs_addr);//10);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_END,	48-1);//pConf->lcd_timing.stv1_he_addr);//20);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_BLINE,	3);//pConf->lcd_timing.stv1_vs_addr);//2);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_ELINE,	9);//pConf->lcd_timing.stv1_ve_addr);//4);
+	}else if (cur_vmode == VMODE_4K2K_50HZ) {
+		aml_write_reg32(P_ENCL_VIDEO_EN, 0);
+		//int havon_begin = 80;
+		aml_write_reg32(P_VPU_VIU_VENC_MUX_CTRL, (0<<0) |    // viu1 select encl
+												(3<<2) );     // viu2 select encl
+		aml_write_reg32(P_ENCL_VIDEO_MODE, 40);//0); // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
+		aml_write_reg32(P_ENCL_VIDEO_MODE_ADV,     0x18);//0x0418); // Sampling rate: 1
 
-	aml_write_reg32(P_ENCL_VIDEO_HSO_BEGIN,48-1);//	pConf->lcd_timing.sth1_hs_addr);//10);
-	aml_write_reg32(P_ENCL_VIDEO_HSO_END,	48-1+32);//pConf->lcd_timing.sth1_he_addr);//20);
-	aml_write_reg32(P_ENCL_VIDEO_VSO_BEGIN,	48-1);//pConf->lcd_timing.stv1_hs_addr);//10);
-	aml_write_reg32(P_ENCL_VIDEO_VSO_END,	48-1);//pConf->lcd_timing.stv1_he_addr);//20);
-	aml_write_reg32(P_ENCL_VIDEO_VSO_BLINE,	3);//pConf->lcd_timing.stv1_vs_addr);//2);
-	aml_write_reg32(P_ENCL_VIDEO_VSO_ELINE,	9);//pConf->lcd_timing.stv1_ve_addr);//4);
+		// bypass filter
+		aml_write_reg32(P_ENCL_VIDEO_FILT_CTRL, 0x1000); //??
+
+		aml_write_reg32(P_ENCL_VIDEO_MAX_PXCNT, 3840+1440-1);//pConf->lcd_basic.h_period - 1);
+		aml_write_reg32(P_ENCL_VIDEO_MAX_LNCNT, 2160+90-1);//pConf->lcd_basic.v_period - 1);
+
+		aml_write_reg32(P_ENCL_VIDEO_HAVON_BEGIN, 1440-3);//pConf->lcd_timing.video_on_pixel);
+		aml_write_reg32(P_ENCL_VIDEO_HAVON_END, 3839+1440-3);//pConf->lcd_basic.h_active - 1 + pConf->lcd_timing.video_on_pixel);
+		aml_write_reg32(P_ENCL_VIDEO_VAVON_BLINE,	90);//pConf->lcd_timing.video_on_line);
+		aml_write_reg32(P_ENCL_VIDEO_VAVON_ELINE,	2159+90);//pConf->lcd_basic.v_active - 1  + pConf->lcd_timing.video_on_line);
+
+		aml_write_reg32(P_ENCL_VIDEO_HSO_BEGIN,48-1);//	pConf->lcd_timing.sth1_hs_addr);//10);
+		aml_write_reg32(P_ENCL_VIDEO_HSO_END,	48-1+32);//pConf->lcd_timing.sth1_he_addr);//20);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_BEGIN,	48-1);//pConf->lcd_timing.stv1_hs_addr);//10);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_END,	48-1);//pConf->lcd_timing.stv1_he_addr);//20);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_BLINE,	3);//pConf->lcd_timing.stv1_vs_addr);//2);
+		aml_write_reg32(P_ENCL_VIDEO_VSO_ELINE,	9);//pConf->lcd_timing.stv1_ve_addr);//4);
+	}
 
 	aml_write_reg32(P_ENCL_VIDEO_RGBIN_CTRL, 0);
 
@@ -996,21 +1023,7 @@ void set_vx1_pinmux(void)
 
 static void _init_display_driver(Lcd_Config_t *pConf)
 {
-	int lcd_type;
-
-	const char* lcd_type_table[]={
-		"NULL",
-		"TTL",
-		"LVDS",
-		"MINILVDS",
-		"VBYONE",
-		"invalid",
-	};
-
-	lcd_type = pDev->conf.lcd_basic.lcd_type;
-	printk("\nInit LCD type: %s.\n", lcd_type_table[lcd_type]);
-
-	switch(lcd_type){
+	switch (pDev->conf.lcd_basic.lcd_type) {
 		case LCD_DIGITAL_TTL:
 			printk("ttl mode is selected!\n");
 			set_pll_ttl(pConf);
@@ -1092,7 +1105,7 @@ static void change_panel(lcd_dev_t *pDev)
 		(cur_vmode == VMODE_1080P_50HZ))
 	{
 		pDev->conf.lcd_basic.lcd_type = LCD_DIGITAL_LVDS;
-	}else if(cur_vmode == VMODE_4K2K_60HZ)
+	}else if((cur_vmode == VMODE_4K2K_60HZ)||(cur_vmode == VMODE_4K2K_50HZ))
 	{
 		pDev->conf.lcd_basic.lcd_type = LCD_DIGITAL_VBYONE;
 	}else if(cur_vmode == VMODE_720P)
@@ -1344,8 +1357,12 @@ static void lcd_output_mode_info(void)
 			cur_vmode = VMODE_720P;	
 		}else if(strncmp(info->name, "1080p", 5) == 0){
 			cur_vmode = VMODE_1080P;
+		}else if(strncmp(info->name, "1080p50hz", 5) == 0){
+			cur_vmode = VMODE_1080P_50HZ;
 		}else if(strncmp(info->name, "4k2k60hz", 8) == 0){
 			cur_vmode = VMODE_4K2K_60HZ;
+		}else if(strncmp(info->name, "4k2k50hz", 8) == 0){
+			cur_vmode = VMODE_4K2K_50HZ;
 		}else{
 			cur_vmode = VMODE_1080P;
 			printk("the output mode is not support,use default mode!\n");
@@ -1393,7 +1410,7 @@ static int lcd_probe(struct platform_device *pdev)
 
 	printk("LCD probe ok\n");
 	vout_register_client(&lcd_mode_notifier_nb_v);
-	_lcd_init(&pDev->conf);
+	//lcd_output_mode_info();
 	lcd_reboot_nb.notifier_call = lcd_reboot_notifier;
 	err = register_reboot_notifier(&lcd_reboot_nb);
 	if (err) {
@@ -1471,6 +1488,8 @@ int __init outputmode_setup(char *s)
 	        cur_vmode = VMODE_1080P_50HZ;
 	}else  if(!strcmp(s,"4k2k60hz")){
 		cur_vmode = VMODE_4K2K_60HZ;
+	}else  if(!strcmp(s,"4k2k50hz")){
+		cur_vmode = VMODE_4K2K_50HZ;
 	}else  if(!strcmp(s,"720p")){
 		cur_vmode = VMODE_720P;
 	}else{

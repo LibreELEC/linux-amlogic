@@ -312,7 +312,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 	set_freq=p->frequency;
 	if(p->analog.flag == ANALOG_FLAG_MANUL_SCAN){/*manul search force to ntsc_m*/
 		std_bk = p->analog.std;
-		#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9TV)
+		#if ((MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9TV) && (MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9BB))
 		p->analog.std = (p->analog.std&(~(V4L2_STD_B|V4L2_STD_GH)))|V4L2_STD_NTSC_M;
 		#endif
 		if( fe->ops.set_frontend(fe)){
@@ -322,7 +322,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			std_bk = 0;
 			return DVBFE_ALGO_SEARCH_FAILED;
 		}
-		#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
+		#if ((MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB))
 		fe->ops.tuner_ops.get_pll_status(fe, &tuner_state);
 		fe->ops.analog_ops.get_pll_status(fe, &ade_state);
 		mdelay(delay_cnt);
@@ -436,7 +436,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			tuner_status_cnt_local = tuner_status_cnt;
 			do{
 				mdelay(delay_cnt);
-				#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
+				#if ((MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) ||(MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB))
 				fe->ops.tuner_ops.get_pll_status(fe, &tuner_state);
 				fe->ops.analog_ops.get_pll_status(fe, &ade_state);
 				#else

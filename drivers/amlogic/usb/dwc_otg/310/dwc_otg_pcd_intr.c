@@ -2055,7 +2055,7 @@ static int32_t ep0_complete_request(dwc_otg_pcd_ep_t * ep)
 	} else if (ep->dwc_ep.is_in) {
 		deptsiz.d32 = DWC_READ_REG32(&in_ep_regs->dieptsiz);
 		if (core_if->dma_desc_enable != 0)
-			desc_sts = dev_if->in_desc_addr->status;
+			desc_sts.d32 = dev_if->in_desc_addr->status.d32;
 #ifdef DEBUG_EP0
 		DWC_DEBUGPL(DBG_PCDV, "%d len=%d  xfersize=%d pktcnt=%d\n",
 			    ep->dwc_ep.num, ep->dwc_ep.xfer_len,

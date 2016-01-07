@@ -4,10 +4,16 @@
 #include "demod_func.h"
 #include "../aml_fe.h"
 
+int dtmb_get_power_strength(int agc_gain);
+
+
 int tuner_get_ch_power(struct aml_fe_dev *adap)
 {
 	int strength=0;
-
+	#if (defined CONFIG_AM_R840)
+		int pll_status=0;
+		int agc_if_gain;
+	#endif
 	struct dvb_frontend *dvbfe;
 	dvbfe = get_tuner();
 	if (dvbfe != NULL)
@@ -15,7 +21,14 @@ int tuner_get_ch_power(struct aml_fe_dev *adap)
 		if (dvbfe->ops.tuner_ops.get_strength)
 			strength = dvbfe->ops.tuner_ops.get_strength(dvbfe);
 	}
-
+#if (defined CONFIG_AM_R840)
+	if (strength <= -50) {
+		agc_if_gain=((dtmb_read_reg(0xd9))&0x3ff);
+		strength=dtmb_get_power_strength(agc_if_gain);
+	 }
+	  printk("[r840] strength is %d\n",strength);
+	  printk("[r840] pll_status is %x\n",pll_status);
+#endif
 	 return strength;
 }
 
@@ -146,3 +159,20 @@ int  agc_power_to_dbm(int agc_gain, int ad_power, int offset, int tuner)
 
 	return (est_rf_power);
 }
+
+int dtmb_get_power_strength(int agc_gain)
+{
+	int strength;
+	int j;
+	static int calcE_R840[13]={1010,969,890,840,800,760,720,680,670,660,
+								510,440,368};
+	for (j=0; j<sizeof(calcE_R840)/sizeof(int); j++)
+		if (agc_gain >= calcE_R840[j])
+			break;
+	if (agc_gain >= 440)
+		strength=-90+j*3;
+	else
+		strength=-56;
+	return strength;
+}
+

@@ -167,6 +167,7 @@ module_param(force_pes_sf, int, 0644);
 #define LARGE_SEC_BUFF_MASK  0xFFFFFFFF
 #define LARGE_SEC_BUFF_COUNT 32
 #define WATCHDOG_TIMER    250
+#define ASYNCFIFO_BUFFER_SIZE_DEFAULT (512*1024)
 
 #define DEMUX_INT_MASK\
 			((0<<(AUDIO_SPLICING_POINT))    |\
@@ -1257,35 +1258,59 @@ static int dmx_alloc_pes_buffer(struct aml_dmx *dmx)
 }
 
 /*Allocate ASYNC FIFO Buffer*/
-static int asyncfifo_alloc_buffer(struct aml_asyncfifo *afifo)
+static unsigned long asyncfifo_alloc_buffer(int len)
 {
-	if(afifo->pages)
+	unsigned long pages = __get_free_pages(GFP_KERNEL, get_order(len));
+	if (!pages) {
+		pr_error("cannot allocate async fifo buffer\n");
 		return 0;
+	}
+	return pages;
+}
+static void asyncfifo_free_buffer(unsigned long buf, int len)
+{
+	free_pages(buf, get_order(len));
+}
+
+static int asyncfifo_set_buffer(struct aml_asyncfifo *afifo,
+							int len, unsigned long buf)
+{
+	if (afifo->pages)
+		return -1;
 
 	afifo->buf_toggle = 0;
 	afifo->buf_read   = 0;
-	afifo->buf_len = 512*1024;
+	afifo->buf_len = len;
 	pr_error("async fifo %d buf size %d, flush size %d\n", afifo->id, afifo->buf_len, afifo->flush_size);
 	if (afifo->flush_size <= 0) {
 		afifo->flush_size = afifo->buf_len>>1;
 	}
-	afifo->pages = __get_free_pages(GFP_KERNEL, get_order(afifo->buf_len));
-	if(!afifo->pages) {
-		pr_error("cannot allocate async fifo buffer\n");
+	afifo->pages = buf;
+	if (!afifo->pages)
 		return -1;
-	}
 
 	afifo->pages_map = dma_map_single(NULL, (void*)afifo->pages, afifo->buf_len, DMA_FROM_DEVICE);
 
 	return 0;
 }
-
-int async_fifo_init(struct aml_asyncfifo *afifo, int initirq)
+static void asyncfifo_put_buffer(struct aml_asyncfifo *afifo)
 {
+	if (afifo->pages) {
+		dma_unmap_single(NULL, afifo->pages_map, afifo->buf_len, DMA_FROM_DEVICE);
+		asyncfifo_free_buffer(afifo->pages, afifo->buf_len);
+		afifo->pages_map = 0;
+		afifo->pages = 0;
+	}
+}
+
+int async_fifo_init(struct aml_asyncfifo *afifo, int initirq,
+			int buf_len, unsigned long buf)
+{
+	int ret = 0;
 	int irq;
 
 	if (afifo->init)
-		return 0;
+		return -1;
 
 	afifo->source  = AM_DMX_MAX;
 	afifo->pages = 0;
@@ -1296,7 +1321,7 @@ int async_fifo_init(struct aml_asyncfifo *afifo, int initirq)
 	if (afifo->asyncfifo_irq == -1) {
 		pr_error("no irq for ASYNC_FIFO%d\n", afifo->id);
 		/*Do not return error*/
-		return 0;
+		return -1;
 	}
 
 	tasklet_init(&afifo->asyncfifo_tasklet, dvr_irq_bh_handler, (unsigned long)afifo);
@@ -1306,11 +1331,11 @@ int async_fifo_init(struct aml_asyncfifo *afifo, int initirq)
 		enable_irq(afifo->asyncfifo_irq);
 
 	/*alloc buffer*/
-	asyncfifo_alloc_buffer(afifo);
+	ret = asyncfifo_set_buffer(afifo, buf_len, buf);
 
 	afifo->init = 1;
 
-	return 0;
+	return ret;
 }
 
 int async_fifo_deinit(struct aml_asyncfifo *afifo, int freeirq)
@@ -1320,12 +1345,9 @@ int async_fifo_deinit(struct aml_asyncfifo *afifo, int freeirq)
 
 	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG1, 1 << ASYNC_FIFO_FLUSH_EN);
 	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG2, 1 << ASYNC_FIFO_FILL_EN);
-	if (afifo->pages) {
-		dma_unmap_single(NULL, afifo->pages_map, afifo->buf_len, DMA_FROM_DEVICE);
-		free_pages(afifo->pages, get_order(afifo->buf_len));
-		afifo->pages_map = 0;
-		afifo->pages = 0;
-	}
+
+	asyncfifo_put_buffer(afifo);
+
 	afifo->source  = AM_DMX_MAX;
 	afifo->buf_toggle = 0;
 	afifo->buf_read = 0;
@@ -2976,6 +2998,11 @@ int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo)
 	unsigned long flags;
 	int ret;
 
+	int len = ASYNCFIFO_BUFFER_SIZE_DEFAULT;
+	unsigned long buf = asyncfifo_alloc_buffer(len);
+	if (!buf)
+		return -1;
+
 	/*Async FIFO initialize*/
 	spin_lock_irqsave(&dvb->slock, flags);
 
@@ -2983,8 +3010,12 @@ int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo)
 	CLK_GATE_ON(ASYNC_FIFO);
 #endif
 
-	ret = async_fifo_init(afifo, 1);
+	ret = async_fifo_init(afifo, 1, len, buf);
+
 	spin_unlock_irqrestore(&dvb->slock, flags);
+
+	if (ret<0)
+		asyncfifo_free_buffer(buf, len);
 
 	return ret;
 }
@@ -3012,20 +3043,29 @@ int aml_asyncfifo_hw_reset(struct aml_asyncfifo *afifo)
 	struct aml_dvb *dvb = afifo->dvb;
 	unsigned long flags;
 	int ret, src = -1;
+
+	int len = ASYNCFIFO_BUFFER_SIZE_DEFAULT;
+	unsigned long buf = asyncfifo_alloc_buffer(len);
+	if (!buf)
+		return -1;
+
 	spin_lock_irqsave(&dvb->slock, flags);
 	if (afifo->init) {
 		src = afifo->source;
 		async_fifo_deinit(afifo, 0);
 	}
-	ret = async_fifo_init(afifo, 0);
+	ret = async_fifo_init(afifo, 0, len, buf);
 	/* restore the source */
 	if (src != -1) {
 		afifo->source = src;
 	}
-	if(ret==0 && afifo->dvb) {
+	if ((ret == 0) && afifo->dvb) {
 		reset_async_fifos(afifo->dvb);
 	}
 	spin_unlock_irqrestore(&dvb->slock, flags);
+
+	if (ret<0)
+		asyncfifo_free_buffer(buf, len);
 
 	return ret;
 }

@@ -668,13 +668,11 @@ static int remote_probe(struct platform_device *pdev)
 	//init logic0 logic1  time window
 	for(i = 0; i < 18; i++)
 		remote->time_window[i] = 0x1;
-	/* Disable the interrupt for the MPUIO keyboard */
-	for (i = 0; i < ARRAY_SIZE(key_map[remote->map_num]); i++) {
-		key_map[remote->map_num][i] = KEY_RESERVED;
-	}
-	for (i = 0; i < ARRAY_SIZE(mouse_map); i++) {
-		mouse_map[remote->map_num][i] = 0xffff;
-	}
+	/* Disable the interrupt for the MPUIO keyboard
+	init the default key map table ,and mouse map table.
+	note KEY_RESERVED==0*/
+	memset(key_map, 0x0, sizeof(key_map));
+	memset(mouse_map, 0xff, sizeof(mouse_map));
 	remote->repeat_delay[remote->map_num]  = 250;
 	remote->repeat_peroid[remote->map_num]  = 33;
 	/* get the irq and init timer */

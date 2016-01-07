@@ -1580,8 +1580,11 @@ static int lcd_module_disable(vmode_t cur_vmod)
     return 0;
 }
 #ifdef  CONFIG_PM
-static int lcd_suspend(void)
+static int lcd_suspend(int pm_event)
 {
+    /* in freeze process do not turn off the display devices */
+    if (pm_event == PM_EVENT_FREEZE)
+        return 0;
     BUG_ON(pDev==NULL);
     PRINT_INFO("lcd_suspend \n");
     //_disable_backlight();
@@ -1597,9 +1600,13 @@ static int lcd_suspend(void)
    // panel_power_off();
     return 0;
 }
-static int lcd_resume(void)
+static int lcd_resume(int pm_event)
 {
     PRINT_INFO("lcd_resume\n");
+    /* in thaw/restore process do not reset the display mode */
+    if (pm_event == PM_EVENT_THAW
+            || pm_event == PM_EVENT_RESTORE)
+        return 0;
 
     //panel_power_on();
    // mdelay(panel_power_on_delay);

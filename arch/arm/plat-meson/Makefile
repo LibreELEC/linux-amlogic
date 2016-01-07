@@ -18,3 +18,4 @@ obj-$(CONFIG_ARM_GIC) +=gic-irq.o
 #obj-$(CONFIG_AM_FB_EXT) += plat_dev_fb_ext.o
 #obj-$(CONFIG_AML_HDMI_TX) +=plat_dev_hdmi.o
 obj-$(CONFIG_CPU_IDLE) +=plat-cpuidle.o
+obj-$(CONFIG_HIBERNATION) +=plat-hibernate.o

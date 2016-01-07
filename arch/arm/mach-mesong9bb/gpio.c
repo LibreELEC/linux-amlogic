@@ -258,6 +258,122 @@ static unsigned int meson_pinmux_table[][PMUX_SIZE] = {
 
 struct amlogic_gpio_desc amlogic_pins[] = {
 
+	PIN_AOMAP(GPIOAO_0,	6,	0,	6,	16,	6,	0),
+	PIN_AOMAP(GPIOAO_1,	6,	1,	6,	17,	6,	1),
+	PIN_AOMAP(GPIOAO_2,	6,	2,	6,	18,	6,	2),
+	PIN_AOMAP(GPIOAO_3,	6,	3,	6,	19,	6,	3),
+	PIN_AOMAP(GPIOAO_4,	6,	4,	6,	20,	6,	4),
+	PIN_AOMAP(GPIOAO_5,	6,	5,	6,	21,	6,	5),
+	PIN_AOMAP(GPIOAO_6,	6,	6,	6,	22,	6,	6),
+	PIN_AOMAP(GPIOAO_7,	6,	7,	6,	23,	6,	7),
+	PIN_AOMAP(GPIOAO_8,	6,	8,	6,	24,	6,	8),
+	PIN_AOMAP(GPIOAO_9,	6,	9,	6,	25,	6,	9),
+	PIN_AOMAP(GPIOAO_10,	6,	10,	6,	26,	6,	10),
+	PIN_AOMAP(GPIOAO_11,	6,	11,	6,	27,	6,	11),
+	PIN_AOMAP(GPIOAO_12,	6,	12,	6,	28,	6,	12),
+	PIN_AOMAP(GPIOAO_13,	6,	13,	6,	29,	6,	13),
+
+	PIN_MAP(GPIOZ_0,	3,	0),
+	PIN_MAP(GPIOZ_1,	3,	1),
+	PIN_MAP(GPIOZ_2,	3,	2),
+	PIN_MAP(GPIOZ_3,	3,	3),
+	PIN_MAP(GPIOZ_4,	3,	4),
+	PIN_MAP(GPIOZ_5,	3,	5),
+	PIN_MAP(GPIOZ_6,	3,	6),
+	PIN_MAP(GPIOZ_7,	3,	7),
+	PIN_MAP(GPIOZ_8,	3,	8),
+	PIN_MAP(GPIOZ_9,	3,	9),
+	PIN_MAP(GPIOZ_10,	3,	10),
+	PIN_MAP(GPIOZ_11,	3,	11),
+	PIN_MAP(GPIOZ_12,	3,	12),
+	PIN_MAP(GPIOZ_13,	3,	13),
+	PIN_MAP(GPIOZ_14,	3,	14),
+	PIN_MAP(GPIOZ_15,	3,	15),
+	PIN_MAP(GPIOZ_16,	3,	16),
+	PIN_MAP(GPIOZ_17,	3,	17),
+	PIN_MAP(GPIOZ_18,	3,	18),
+	PIN_MAP(GPIOZ_19,	3,	19),
+	PIN_MAP(GPIOZ_20,	3,	20),
+
+	PIN_MAP(GPIOH_0,	1,	16),
+	PIN_MAP(GPIOH_1,	1,	17),
+	PIN_MAP(GPIOH_2,	1,	18),
+	PIN_MAP(GPIOH_3,	1,	19),
+	PIN_MAP(GPIOH_4,	1,	20),
+	PIN_MAP(GPIOH_5,	1,	21),
+	PIN_MAP(GPIOH_6,	1,	22),
+	PIN_MAP(GPIOH_7,	1,	23),
+	PIN_MAP(GPIOH_8,	1,	24),
+	PIN_MAP(GPIOH_9,	1,	25),
+	PIN_MAP(GPIOH_10,	1,	26),
+
+	PIN_MAP(BOOT_0,		2,	0),
+	PIN_MAP(BOOT_1,		2,	1),
+	PIN_MAP(BOOT_2,		2,	2),
+	PIN_MAP(BOOT_3,		2,	3),
+	PIN_MAP(BOOT_4,		2,	4),
+	PIN_MAP(BOOT_5,		2,	5),
+	PIN_MAP(BOOT_6,		2,	6),
+	PIN_MAP(BOOT_7,		2,	7),
+	PIN_MAP(BOOT_8,		2,	8),
+	PIN_MAP(BOOT_9,		2,	9),
+	PIN_MAP(BOOT_10,	2,	10),
+	PIN_MAP(BOOT_11,	2,	11),
+	PIN_MAP(BOOT_12,	2,	12),
+	PIN_MAP(BOOT_13,	2,	13),
+	PIN_MAP(BOOT_14,	2,	14),
+	PIN_MAP(BOOT_15,	2,	15),
+	PIN_MAP(BOOT_16,	2,	16),
+	PIN_MAP(BOOT_17,	2,	17),
+	PIN_MAP(BOOT_18,	2,	18),
+
+	PIN_MAP(CARD_0,		2,	20),
+	PIN_MAP(CARD_1,		2,	21),
+	PIN_MAP(CARD_2,		2,	22),
+	PIN_MAP(CARD_3,		2,	23),
+	PIN_MAP(CARD_4,		2,	24),
+	PIN_MAP(CARD_5,		2,	25),
+	PIN_MAP(CARD_6,		2,	26),
+	PIN_MAP(CARD_7,		2,	27),
+	PIN_MAP(CARD_8,		2,	28),
+
+	PIN_MAP(GPIOW_0,	0,	0),
+	PIN_MAP(GPIOW_1,	0,	1),
+	PIN_MAP(GPIOW_2,	0,	2),
+	PIN_MAP(GPIOW_3,	0,	3),
+	PIN_MAP(GPIOW_4,	0,	4),
+	PIN_MAP(GPIOW_5,	0,	5),
+	PIN_MAP(GPIOW_6,	0,	6),
+	PIN_MAP(GPIOW_7,	0,	7),
+	PIN_MAP(GPIOW_8,	0,	8),
+	PIN_MAP(GPIOW_9,	0,	9),
+	PIN_MAP(GPIOW_10,	0,	10),
+	PIN_MAP(GPIOW_11,	0,	11),
+	PIN_MAP(GPIOW_12,	0,	12),
+	PIN_MAP(GPIOW_13,	0,	13),
+	PIN_MAP(GPIOW_14,	0,	14),
+	PIN_MAP(GPIOW_15,	0,	15),
+	PIN_MAP(GPIOW_16,	0,	16),
+	PIN_MAP(GPIOW_17,	0,	17),
+	PIN_MAP(GPIOW_18,	0,	18),
+	PIN_MAP(GPIOW_19,	0,	19),
+	PIN_MAP(GPIOW_20,	0,	20),
+
+	PIN_MAP(GPIOY_0,	1,	0),
+	PIN_MAP(GPIOY_1,	1,	1),
+	PIN_MAP(GPIOY_2,	1,	2),
+	PIN_MAP(GPIOY_3,	1,	3),
+	PIN_MAP(GPIOY_4,	1,	4),
+	PIN_MAP(GPIOY_5,	1,	5),
+	PIN_MAP(GPIOY_6,	1,	6),
+	PIN_MAP(GPIOY_7,	1,	7),
+	PIN_MAP(GPIOY_8,	1,	8),
+	PIN_MAP(GPIOY_9,	1,	9),
+	PIN_MAP(GPIOY_10,	1,	10),
+	PIN_MAP(GPIOY_11,	1,	11),
+	PIN_MAP(GPIOY_12,	1,	12),
+	PIN_MAP(GPIOY_13,	1,	13),
+
 	PIN_MAP(GPIOX_0,	4,	0),
 	PIN_MAP(GPIOX_1,	4,	1),
 	PIN_MAP(GPIOX_2,	4,	2),
@@ -286,122 +402,6 @@ struct amlogic_gpio_desc amlogic_pins[] = {
 	PIN_MAP(GPIOX_25,	4,	25),
 	PIN_MAP(GPIOX_26,	4,	26),
 	PIN_MAP(GPIOX_27,	4,	27),
-
-	PIN_MAP(BOOT_0,		2,	0),
-	PIN_MAP(BOOT_1,		2,	1),
-	PIN_MAP(BOOT_2,		2,	2),
-	PIN_MAP(BOOT_3,		2,	3),
-	PIN_MAP(BOOT_4,		2,	4),
-	PIN_MAP(BOOT_5,		2,	5),
-	PIN_MAP(BOOT_6,		2,	6),
-	PIN_MAP(BOOT_7,		2,	7),
-	PIN_MAP(BOOT_8,		2,	8),
-	PIN_MAP(BOOT_9,		2,	9),
-	PIN_MAP(BOOT_10,	2,	10),
-	PIN_MAP(BOOT_11,	2,	11),
-	PIN_MAP(BOOT_12,	2,	12),
-	PIN_MAP(BOOT_13,	2,	13),
-	PIN_MAP(BOOT_14,	2,	14),
-	PIN_MAP(BOOT_15,	2,	15),
-	PIN_MAP(BOOT_16,	2,	16),
-	PIN_MAP(BOOT_17,	2,	17),
-	PIN_MAP(BOOT_18,	2,	18),
-
-	PIN_MAP(GPIOH_0,	1,	16),
-	PIN_MAP(GPIOH_1,	1,	17),
-	PIN_MAP(GPIOH_2,	1,	18),
-	PIN_MAP(GPIOH_3,	1,	19),
-	PIN_MAP(GPIOH_4,	1,	20),
-	PIN_MAP(GPIOH_5,	1,	21),
-	PIN_MAP(GPIOH_6,	1,	22),
-	PIN_MAP(GPIOH_7,	1,	23),
-	PIN_MAP(GPIOH_8,	1,	24),
-	PIN_MAP(GPIOH_9,	1,	25),
-	PIN_MAP(GPIOH_10,	1,	26),
-
-	PIN_MAP(GPIOZ_0,	3,	0),
-	PIN_MAP(GPIOZ_1,	3,	1),
-	PIN_MAP(GPIOZ_2,	3,	2),
-	PIN_MAP(GPIOZ_3,	3,	3),
-	PIN_MAP(GPIOZ_4,	3,	4),
-	PIN_MAP(GPIOZ_5,	3,	5),
-	PIN_MAP(GPIOZ_6,	3,	6),
-	PIN_MAP(GPIOZ_7,	3,	7),
-	PIN_MAP(GPIOZ_8,	3,	8),
-	PIN_MAP(GPIOZ_9,	3,	9),
-	PIN_MAP(GPIOZ_10,	3,	10),
-	PIN_MAP(GPIOZ_11,	3,	11),
-	PIN_MAP(GPIOZ_12,	3,	12),
-	PIN_MAP(GPIOZ_13,	3,	13),
-	PIN_MAP(GPIOZ_14,	3,	14),
-	PIN_MAP(GPIOZ_15,	3,	15),
-	PIN_MAP(GPIOZ_16,	3,	16),
-	PIN_MAP(GPIOZ_17,	3,	17),
-	PIN_MAP(GPIOZ_18,	3,	18),
-	PIN_MAP(GPIOZ_19,	3,	19),
-	PIN_MAP(GPIOZ_20,	3,	20),
-
-	PIN_MAP(GPIOW_0,	0,	0),
-	PIN_MAP(GPIOW_1,	0,	1),
-	PIN_MAP(GPIOW_2,	0,	2),
-	PIN_MAP(GPIOW_3,	0,	3),
-	PIN_MAP(GPIOW_4,	0,	4),
-	PIN_MAP(GPIOW_5,	0,	5),
-	PIN_MAP(GPIOW_6,	0,	6),
-	PIN_MAP(GPIOW_7,	0,	7),
-	PIN_MAP(GPIOW_8,	0,	8),
-	PIN_MAP(GPIOW_9,	0,	9),
-	PIN_MAP(GPIOW_10,	0,	10),
-	PIN_MAP(GPIOW_11,	0,	11),
-	PIN_MAP(GPIOW_12,	0,	12),
-	PIN_MAP(GPIOW_13,	0,	13),
-	PIN_MAP(GPIOW_14,	0,	14),
-	PIN_MAP(GPIOW_15,	0,	15),
-	PIN_MAP(GPIOW_16,	0,	16),
-	PIN_MAP(GPIOW_17,	0,	17),
-	PIN_MAP(GPIOW_18,	0,	18),
-	PIN_MAP(GPIOW_19,	0,	19),
-	PIN_MAP(GPIOW_20,	0,	20),
-
-	PIN_AOMAP(GPIOAO_0,	6,	0,	6,	16,	6,	0),
-	PIN_AOMAP(GPIOAO_1,	6,	1,	6,	17,	6,	1),
-	PIN_AOMAP(GPIOAO_2,	6,	2,	6,	18,	6,	2),
-	PIN_AOMAP(GPIOAO_3,	6,	3,	6,	19,	6,	3),
-	PIN_AOMAP(GPIOAO_4,	6,	4,	6,	20,	6,	4),
-	PIN_AOMAP(GPIOAO_5,	6,	5,	6,	21,	6,	5),
-	PIN_AOMAP(GPIOAO_6,	6,	6,	6,	22,	6,	6),
-	PIN_AOMAP(GPIOAO_7,	6,	7,	6,	23,	6,	7),
-	PIN_AOMAP(GPIOAO_8,	6,	8,	6,	24,	6,	8),
-	PIN_AOMAP(GPIOAO_9,	6,	9,	6,	25,	6,	9),
-	PIN_AOMAP(GPIOAO_10,	6,	10,	6,	26,	6,	10),
-	PIN_AOMAP(GPIOAO_11,	6,	11,	6,	27,	6,	11),
-	PIN_AOMAP(GPIOAO_12,	6,	12,	6,	28,	6,	12),
-	PIN_AOMAP(GPIOAO_13,	6,	13,	6,	29,	6,	13),
-
-	PIN_MAP(CARD_0,		2,	20),
-	PIN_MAP(CARD_1,		2,	21),
-	PIN_MAP(CARD_2,		2,	22),
-	PIN_MAP(CARD_3,		2,	23),
-	PIN_MAP(CARD_4,		2,	24),
-	PIN_MAP(CARD_5,		2,	25),
-	PIN_MAP(CARD_6,		2,	26),
-	PIN_MAP(CARD_7,		2,	27),
-	PIN_MAP(CARD_8,		2,	28),
-
-	PIN_MAP(GPIOY_0,	1,	0),
-	PIN_MAP(GPIOY_1,	1,	1),
-	PIN_MAP(GPIOY_2,	1,	2),
-	PIN_MAP(GPIOY_3,	1,	3),
-	PIN_MAP(GPIOY_4,	1,	4),
-	PIN_MAP(GPIOY_5,	1,	5),
-	PIN_MAP(GPIOY_6,	1,	6),
-	PIN_MAP(GPIOY_7,	1,	7),
-	PIN_MAP(GPIOY_8,	1,	8),
-	PIN_MAP(GPIOY_9,	1,	9),
-	PIN_MAP(GPIOY_10,	1,	10),
-	PIN_MAP(GPIOY_11,	1,	11),
-	PIN_MAP(GPIOY_12,	1,	12),
-	PIN_MAP(GPIOY_13,	1,	13)
 };
 
 /* amlogic request gpio interface*/
@@ -444,7 +444,7 @@ int gpio_amlogic_to_irq(struct gpio_chip *chip,unsigned offset)
 				0x10001, /*GPIO_IRQ_FALLING*/
 				};
 	 /*set trigger type*/
-	if (offset>GPIOX_21)
+	if (offset > GPIO_MAX)
 		return -1;
 	aml_clrset_reg32_bits(P_GPIO_INTR_EDGE_POL,0x10001<<irq_bank,type[irq_type]<<irq_bank);
 	printk(" reg:%x,clearmask=%x,setmask=%x\n",(P_GPIO_INTR_EDGE_POL&0xffff)>>2,0x10001<<irq_bank,(aml_read_reg32(P_GPIO_INTR_EDGE_POL)>>irq_bank)&0x10001);
@@ -541,22 +541,22 @@ int gpio_amlogic_name_to_num(const char *name)
 			num=num*10+*p-'0';
 	}
 	p = start;
-	if (!strcmp(p, "GPIOX"))
+	if (!strcmp(p, "GPIOAO"))
 		num = num + 0;
-	else if (!strcmp(p, "BOOT"))
-		num = num + 28;
-	else if (!strcmp(p, "GPIOH"))
-		num = num + 47;
 	else if (!strcmp(p, "GPIOZ"))
-		num = num + 58;
-	else if (!strcmp(p, "GPIOW"))
-		num = num + 79;
-	else if (!strcmp(p, "GPIOAO"))
-		num = num + 100;
+		num = num + 14;
+	else if (!strcmp(p, "GPIOH"))
+		num = num + 35;
+	else if (!strcmp(p, "BOOT"))
+		num = num + 46;
 	else if (!strcmp(p, "CARD"))
-		num = num + 114;
+		num = num + 65;
+	else if (!strcmp(p, "GPIOW"))
+		num = num + 74;
 	else if (!strcmp(p, "GPIOY"))
-		num = num + 123;
+		num = num + 95;
+	else if (!strcmp(p, "GPIOX"))
+		num = num + 109;
 	else
 		num= -1;
 	kzfree(start);

@@ -134,6 +134,12 @@ static unsigned int vid_limit = 16;
 module_param(vid_limit, uint, 0644);
 MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
+static int capture_proc = 0;
+static int source_top_proc = 0;
+static int source_left_proc = 0;
+static int source_width_proc = 0;
+static int source_height_proc = 0;
+
 static struct v4l2_fract amlvideo2_frmintervals_active = {
 	.numerator = 1,
 	.denominator = DEF_FRAMERATE,
@@ -1768,8 +1774,8 @@ int amlvideo2_ge2d_interlace_one_canvasAddr_process(vframe_t* vf, ge2d_context_t
 			return -1;
 		}
 		stretchblt_noalpha(context, src_left, src_top/2, src_width, src_height/2,
-			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
-	}
+			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2); }
+
 	return output_canvas;
 }
 
@@ -1787,6 +1793,28 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 	src_width = vf->width;
 	src_height = vf->height;
 
+	if (capture_proc == 1) {
+		if (( source_top_proc > 0 ) && ( source_top_proc < vf->height ))
+			src_top = source_top_proc;
+		else
+			src_top = 0;
+
+		if (( source_left_proc > 0 ) && ( source_left_proc < vf->width ))
+			src_left = source_left_proc;
+		else
+			src_left = 0;
+
+		if (( source_width_proc > 0 ) && ( source_width_proc < ( vf->width - src_left )))
+			src_width = source_width_proc;
+		else
+			src_width = vf->width - src_left;
+
+		if ( source_height_proc > 0 && ( source_height_proc < ( vf->height - src_top )))
+			src_height = source_height_proc;
+		else
+			src_height = vf->height - src_top;
+	}
+
 	dst_top = 0;
 	dst_left = 0;
 	dst_width = output->width;
@@ -1802,7 +1830,9 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 	if(src_width<src_height)
 		cur_angle = (cur_angle+90)%360;
 
-       output_axis_adjust(src_width,src_height,&dst_width,&dst_height,cur_angle);
+	if (capture_proc == 0)
+		output_axis_adjust(src_width,src_height,&dst_width,&dst_height,cur_angle);
+
 	dst_top = (output->height-dst_height)/2;
 	dst_left = (output->width-dst_width)/2;
 	dst_top = dst_top&0xfffffffe;
@@ -2197,7 +2227,9 @@ static int  amlvideo2_thread_tick(struct amlvideo2_fh *fh)
 	spin_lock_irqsave(&node->slock, flags);
 	if (list_empty(&dma_q->active)){
 		dprintk(node->vid_dev, 1, "No active queue to serve\n");
-		goto unlock;
+
+		spin_unlock_irqrestore(&node->slock, flags);
+		return -1;
 	}
 
 	buf = list_entry(dma_q->active.next,
@@ -3246,6 +3278,25 @@ static int vidioc_s_ctrl(struct file *file, void *priv,
 	return -EINVAL;
 }
 
+static int vidioc_s_crop(struct file *file, void *fh,
+					const struct v4l2_crop *a)
+{
+	if (a->c.width == 0 || a->c.height == 0) {
+		printk("disable capture proc\n");
+		capture_proc = 0;
+		source_top_proc = source_left_proc = source_width_proc = source_height_proc = 0;
+	} else {
+		printk("enable capture proc\n");
+		source_top_proc = a->c.top;
+		source_left_proc = a->c.left;
+		source_width_proc = a->c.width;
+		source_height_proc = a->c.height;
+		capture_proc = 1;
+	}
+
+	return 0;
+}
+
 /* ------------------------------------------------------------------
 	File operations for the device
    ------------------------------------------------------------------*/
@@ -3389,6 +3440,8 @@ static int amlvideo2_close(struct file *file)
 	amlvideo2_frmintervals_active.denominator = DEF_FRAMERATE;
 	//node->provider = NULL;
 	mutex_unlock(&node->mutex);
+
+	capture_proc = source_top_proc = source_left_proc = source_width_proc = source_height_proc = 0;
 	return 0;
 }
 
@@ -3443,6 +3496,7 @@ static const struct v4l2_ioctl_ops amlvideo2_ioctl_ops = {
 	.vidioc_enum_frameintervals =vidioc_enum_frameintervals,
 	.vidioc_s_input       = vidioc_s_input,
 	.vidioc_g_input       = vidioc_g_input,
+	.vidioc_s_crop        = vidioc_s_crop,
 #ifdef CONFIG_VIDEO_V4L1_COMPAT
 	.vidiocgmbuf          = vidiocgmbuf,
 #endif

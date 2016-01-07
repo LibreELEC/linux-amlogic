@@ -184,7 +184,7 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-                reserve-memory = <0x04000000>; // 64M
+								reserve-memory = <0x04000000>; // 64M
 //		reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
         };
@@ -197,9 +197,9 @@ void root_func(){
 		compatible = "amlogic,picdec";
 		dev_name = "picdec";								
 		status = "okay";
-        share-memory-name = "vdec0";
-        share-memory-offset = <0>;
-        share-memory-size = <0x04000000>; //64M
+                share-memory-name = "vdec0";
+                share-memory-offset = <0>;
+                share-memory-size = <0x04000000>; //64M
 	}; 
 
 /// ***************************************************************************************

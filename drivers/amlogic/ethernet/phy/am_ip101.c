@@ -54,6 +54,7 @@ MODULE_LICENSE("GPL");
 #define IP101G_DIO_PIN_DCR			0x1a
 #define OFF 1
 #define ON  0
+#ifndef CONFIG_HIBERNATION
 static void off_analog(struct phy_device *phydev, int off)
 {
 	int ana;
@@ -65,6 +66,7 @@ static void off_analog(struct phy_device *phydev, int off)
 	else
 		phy_write(phydev, IP101G_SPEC_CTRL_STATUS, (ana & ~IP101G_ANALOG_OFF));
 }
+#endif
 static int ip175c_config_init(struct phy_device *phydev)
 {
 	int err, i;
@@ -266,7 +268,9 @@ static int ip101a_g_genphy_suspend(struct phy_device *phydev)
 {
 	int value;
 	printk("**************ip101 sd*****************\n");
+#ifndef CONFIG_HIBERNATION
 	off_analog(phydev, OFF);
+#endif
 	value = phy_read(phydev, MII_BMCR);
 	phy_write(phydev, MII_BMCR, (value | BMCR_PDOWN));
 	return 0;
@@ -275,7 +279,9 @@ static int ip101a_g_genphy_resume(struct phy_device *phydev)
 {
 	int value;
 	printk("**************ip101 re*****************\n");
+#ifndef CONFIG_HIBERNATION
 	off_analog(phydev, ON);
+#endif
 	value = phy_read(phydev, MII_BMCR);
 	phy_write(phydev, MII_BMCR, (value & ~BMCR_PDOWN));
 	return 0;

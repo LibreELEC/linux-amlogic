@@ -2053,6 +2053,9 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 		hcd->state = HC_STATE_QUIESCING;
 		if(PMSG_IS_AUTO(msg))
 			hcd->flags |= (1<<31);
+		if (PMSG_IS_HIBERNATION(msg))
+			hcd->flags |= (1<<30);
+
 		status = hcd->driver->bus_suspend(hcd);
 	}
 	if (status == 0) {
@@ -2101,8 +2104,12 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 		return 0;
 
 	hcd->state = HC_STATE_RESUMING;
+
 	if(PMSG_IS_AUTO(msg))
 		hcd->flags |= (1<<31);
+	if (PMSG_IS_HIBERNATION(msg))
+		hcd->flags |= (1<<30);
+
 	status = hcd->driver->bus_resume(hcd);
 	clear_bit(HCD_FLAG_WAKEUP_PENDING, &hcd->flags);
 	if (status == 0) {

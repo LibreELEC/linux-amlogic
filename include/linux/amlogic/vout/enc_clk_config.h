@@ -12,7 +12,8 @@ extern int set_viu_path(unsigned viu_channel_sel, viu_type_e viu_type_sel);
 extern void set_enci_clk(unsigned clk);
 extern void set_encp_clk(unsigned clk);
 extern void set_vmode_clk(vmode_t mode);
-
+extern unsigned int reset_hpll(void);
+extern int hdmitx_is_special_tv_process(void);
 
 typedef struct enc_clk_val{
     vmode_t mode;

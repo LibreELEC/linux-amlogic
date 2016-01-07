@@ -76,13 +76,13 @@
 static const char dwc_driver_name[] = "dwc_otg";
 
 static struct aml_usb_platform usb_platform_data = {
-	.port_name 	= {MESON_USB_NAMES},
-	.ctrl_regaddr 	= {MESON_USB_CTRL_ADDRS},
-	.ctrl_size 	= {MESON_USB_CTRL_SIZES},
-	.phy_regaddr 	= {MESON_USB_PHY_ADDRS},
-	.phy_size 	= {MESON_USB_PHY_SIZES},
-	.irq_no 		= {MESON_USB_IRQS},
-	.fifo_size 	= {MESON_USB_FIFOS},
+	.port_name	= {MESON_USB_NAMES},
+	.ctrl_regaddr	= {MESON_USB_CTRL_ADDRS},
+	.ctrl_size	= {MESON_USB_CTRL_SIZES},
+	.phy_regaddr	= {MESON_USB_PHY_ADDRS},
+	.phy_size	= {MESON_USB_PHY_SIZES},
+	.irq_no			= {MESON_USB_IRQS},
+	.fifo_size	= {MESON_USB_FIFOS},
 };
 
 extern int pcd_init(
@@ -859,6 +859,20 @@ static const struct of_device_id dwc_otg_dt_match[]={
 	},
 	{},
 };
+
+bool force_device_mode = 0;
+static int __init force_otg_mode(char *str)
+{
+	force_device_mode = 1;
+	return 1;
+}
+__setup("otg_device", force_otg_mode);
+module_param_named(otg_device, force_device_mode,
+	bool, S_IRUGO | S_IWUSR);
+
+MODULE_PARM_DESC(otg_device, "set otg to force device mode"
+	" ");
+
 /**
  * This function is called when an lm_device is bound to a
  * dwc_otg_driver. It creates the driver components required to
@@ -1102,6 +1116,9 @@ static int dwc_otg_driver_probe(
 	dwc_otg_device->dev_name = dev_name(dwc_otg_device->gen_dev);
 
 	pcore_para = &dwc_otg_module_params;
+
+	if ( force_device_mode && ( port_index == 0 ))
+		port_type = USB_PORT_TYPE_SLAVE;
 
 	if(port_type == USB_PORT_TYPE_HOST)
 		pcore_para->host_only = 1;

@@ -1689,7 +1689,7 @@ static void axp_charging_monitor(struct work_struct *work)
 
 
 #if defined CONFIG_HAS_EARLYSUSPEND
-static int early_power_status = 0;
+static int early_power_status = -1;
 static void axp_earlysuspend(struct early_suspend *h)
 {
     struct axp20_supply *supply = (struct axp20_supply *)h->param;
@@ -1713,7 +1713,7 @@ static void axp_lateresume(struct early_suspend *h)
     axp_set_charge_current(axp_pmu_battery->pmu_resume_chgcur);     //set charging current
 #endif
     if (axp_pmu_battery) {
-        early_power_status = supply->aml_charger.ext_valid;
+        early_power_status = -1;
         input_report_key(powerkeydev, KEY_POWER, 0);                    // cancel power key
         input_sync(powerkeydev);
     }
@@ -1995,7 +1995,7 @@ static int axp20_suspend(struct platform_device *dev, pm_message_t state)
         api->pmu_suspend_process(charger);
     }
 #ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_power_status != supply->aml_charger.ext_valid) {
+    if ((early_power_status != supply->aml_charger.ext_valid) && (early_power_status != -1)) {
         AXP_PMU_DBG("%s, power status changed, prev:%x, now:%x, exit suspend process\n",
                     __func__, early_power_status, supply->aml_charger.ext_valid);
         input_report_key(powerkeydev, KEY_POWER, 1);                    // assume power key pressed

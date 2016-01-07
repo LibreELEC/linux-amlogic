@@ -355,7 +355,7 @@ unsigned long
 isolate_freepages_range(struct compact_control *cc,
 			unsigned long start_pfn, unsigned long end_pfn)
 {
-	unsigned long isolated, pfn, block_end_pfn;
+	unsigned long isolated = 0, pfn, block_end_pfn;
 	LIST_HEAD(freelist);
 
 	for (pfn = start_pfn; pfn < end_pfn; pfn += isolated) {

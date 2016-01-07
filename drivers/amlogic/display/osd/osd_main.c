@@ -70,7 +70,7 @@ osd_info_t  osd_info={
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
-static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
+myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
 static char request2XScaleValue[32];
@@ -494,8 +494,7 @@ static int osd_open(struct fb_info *info, int arg)
 }
 
 
-static int
-osd_blank(int blank_mode, struct fb_info *info)
+int osd_blank(int blank_mode, struct fb_info *info)
 {
  	osddev_enable((blank_mode != 0) ? 0 : 1,info->node);
 
@@ -660,6 +659,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 static struct notifier_block osd_notifier_nb = {
 	.notifier_call	= osd_notify_callback,
 };
+
 static ssize_t store_preblend_enable(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -1568,7 +1568,6 @@ static int osd_resume(struct platform_device * dev)
 		return 0;
 	}
 #endif
-
 #ifdef CONFIG_HAS_EARLYSUSPEND
     if (early_suspend_flag)
         return 0;
@@ -1577,6 +1576,34 @@ static int osd_resume(struct platform_device * dev)
        return 0;
 }
 #endif 
+
+#ifdef CONFIG_HIBERNATION
+extern void osddev_freeze(void);
+extern void osddev_thaw(void);
+extern void osddev_restore(void);
+
+static int osd_freeze(struct device *dev)
+{
+    printk("**** %s ****\n", __FUNCTION__);
+    osddev_freeze();
+    return 0;
+}
+
+static int osd_thaw(struct device *dev)
+{
+    printk("**** %s ****\n", __FUNCTION__);
+    osddev_thaw();
+    return 0;
+}
+
+static int osd_restore(struct device *dev)
+{
+    printk("**** %s ****\n", __FUNCTION__);
+    osddev_restore();
+    return 0;
+}
+#endif
+
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void osd_early_suspend(struct early_suspend *h)
@@ -1972,6 +1999,14 @@ static const struct of_device_id meson_fb_dt_match[]={
 	{},
 };
 
+#ifdef CONFIG_HIBERNATION
+struct dev_pm_ops osd_pm = {
+	.freeze		= osd_freeze,
+	.thaw		= osd_thaw,
+	.restore	= osd_restore,
+};
+#endif
+
 static struct platform_driver
 osd_driver = {
     .probe      = osd_probe,
@@ -1983,6 +2018,9 @@ osd_driver = {
     .driver     = {
         .name   = "mesonfb",
         .of_match_table=meson_fb_dt_match,
+#ifdef CONFIG_HIBERNATION
+        .pm     = &osd_pm,
+#endif
     }
 };
 

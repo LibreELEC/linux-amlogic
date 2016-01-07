@@ -2215,7 +2215,12 @@ static int hdmitx_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t
     }
 
     hdmitx_set_phy(hdmitx_device);
-
+    if (IS_MESON_M8_CPU && hdmitx_is_special_tv_process()) {
+        unsigned ret = 0;
+        ret = reset_hpll();
+        if (!ret)
+            reset_hpll();
+    }
     return 0;
 }
 
@@ -3219,6 +3224,24 @@ static void hdmitx_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
             cec_val = hdmi_rd_reg(cec_adr);
             hdmi_print(INF, "HDMI CEC Regs[0x%x]: 0x%x\n",cec_adr,cec_val);
         }
+        return;
+    }
+    else if (strncmp(tmpbuf, "dumpaocecreg", 12) == 0) {
+        unsigned char cec_val = 0;
+        unsigned int cec_adr =0;
+        for (cec_adr = P_AO_CEC_GEN_CNTL; cec_adr < P_AO_CEC_INTR_STAT; cec_adr += 4) {
+            cec_val = aml_read_reg32(cec_adr);
+            printk("aocec ctrl Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+        for (cec_adr = CEC_TX_MSG_0_HEADER; cec_adr < CEC_CLOCK_DIV_L; cec_adr ++) {
+            cec_val = aocec_rd_reg(cec_adr);
+            printk("aocec Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+        for (cec_adr = CEC_RX_MSG_0_HEADER; cec_adr < CEC_TX_NUM_MSG; cec_adr ++) {
+            cec_val = aocec_rd_reg(cec_adr);
+            printk("aocec Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+
         return;
     }
     else if(strncmp(tmpbuf, "dumpcbusreg", 11)==0){

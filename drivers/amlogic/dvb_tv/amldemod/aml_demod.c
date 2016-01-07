@@ -296,23 +296,54 @@ static long aml_demod_ioctl(struct file *file,
 {
 	int i=0;
 	int step;
+
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 	int strength=0;
 	struct dvb_frontend *dvbfe;
+#endif
+
+#if (defined CONFIG_AM_R840)
+	int strength=0;
+	struct dvb_frontend *dvbfe;
+#endif
+
 
     switch (cmd) {
 	case AML_DEMOD_GET_RSSI :
 		printk("Ioctl Demod GET_RSSI. \n");
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 		dvbfe = get_tuner();
 		if (dvbfe != NULL)
 			strength=dvbfe->ops.tuner_ops.get_strength(dvbfe);
-		 printk("[tuner] strength is %d\n",strength-256);
+		 printk("[si2177] strength is %d\n",strength-256);
+#endif
+
+#if (defined CONFIG_AM_R840)
+		 dvbfe = get_tuner();
+		 if (dvbfe != NULL)
+			 strength=dvbfe->ops.tuner_ops.get_strength(dvbfe);
+		  printk("[r840] strength is %d\n",strength);
+#endif
+
 		break;
 
 	case AML_DEMOD_SET_TUNER :
 		 printk("Ioctl Demod Set Tuner.\n");
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
+		printk("1234 \n");
+		dvbfe = get_tuner();
+		printk("1234999 \n");
+		if (dvbfe != NULL)
+			dvbfe->ops.tuner_ops.set_tuner(dvbfe, &demod_sta, &demod_i2c, (struct aml_tuner_sys *)arg);
+		printk("12345 \n");
+#endif
+
+#if (defined CONFIG_AM_R840)
+		printk("CONFIG_AM_R840.\n");
 		dvbfe = get_tuner();
 		if (dvbfe != NULL)
 			dvbfe->ops.tuner_ops.set_tuner(dvbfe, &demod_sta, &demod_i2c, (struct aml_tuner_sys *)arg);
+#endif
 		break;
 
 	case AML_DEMOD_SET_SYS :

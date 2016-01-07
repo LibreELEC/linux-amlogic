@@ -7,6 +7,7 @@
 #define HW_OSD_COUNT					2
 #define HW_OSD_BLOCK_COUNT			4
 #define HW_OSD_BLOCK_REG_COUNT		(HW_OSD_BLOCK_COUNT*2)
+#define HIBERNATE_OSD_SAVE_REG_COUNT		9
 
 typedef  enum{
 	OSD1=0,
@@ -124,7 +125,7 @@ typedef  struct {
 	u32  			color_key[HW_OSD_COUNT];
 	u32				color_key_enable[HW_OSD_COUNT];
 	u32				enable[HW_OSD_COUNT];
-	u32				reg_status_save;
+	u32				reg_status_save[HIBERNATE_OSD_SAVE_REG_COUNT];
 	bridge_item_t 		fiq_handle_item;
 	osd_scale_t		scale[HW_OSD_COUNT];
 	osd_freescale_t	free_scale[HW_OSD_COUNT];

@@ -397,8 +397,11 @@ static int lcd_vout_disable(vmode_t cur_vmod)
 }
 
 #ifdef  CONFIG_PM
-static int lcd_suspend(void)
+static int lcd_suspend(int pm_event)
 {
+    /* in freeze process do not turn off the display devices */
+    if (pm_event == PM_EVENT_FREEZE)
+        return 0;
     mutex_lock(&lcd_vout_mutex);
     BUG_ON(pDev==NULL);
     printk("lcd_suspend\n");
@@ -407,8 +410,12 @@ static int lcd_suspend(void)
     mutex_unlock(&lcd_vout_mutex);
     return 0;
 }
-static int lcd_resume(void)
+static int lcd_resume(int pm_event)
 {
+    /* in thaw/restore process do not open the display */
+    if (pm_event == PM_EVENT_THAW
+            || pm_event == PM_EVENT_RESTORE)
+        return 0;
     mutex_lock(&lcd_vout_mutex);
     printk("lcd_resume\n");
     _lcd_module_enable();

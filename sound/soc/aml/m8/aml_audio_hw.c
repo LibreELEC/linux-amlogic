@@ -204,7 +204,14 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
 }
 /*
 i2s mode 0: master 1: slave
+source: 0: linein; 1: ATV; 2: HDMI-in
 */
+static int audio_in_source = 0;
+void set_i2s_source(int source){
+    audio_in_source = source;
+    return;
+}
+
 static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode,u32 i2s_sync)
 {
     unsigned char  mode = 0;
@@ -236,16 +243,37 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode,u32 i2s_sync)
                                        | 2 << 2               // fifo0_din_byte_num
                                        | 0 << 0);             // fifo0_din_pos
 
-
-    WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, (3<<I2SIN_SIZE)
-                                    |(1<<I2SIN_CHAN_EN)        //  2 channel
-                                    |(sync_mode<<I2SIN_POS_SYNC)
-                                    |(1<<I2SIN_LRCLK_SKEW)
+    if (audio_in_source == 0) {
+        WRITE_MPEG_REG(AUDIN_I2SIN_CTRL,
+                                    (1<<I2SIN_CHAN_EN)        //  2 channel
+                                    |(3<<I2SIN_SIZE)
                                     |(1<<I2SIN_LRCLK_INVT)
-                                    |(!mode<<I2SIN_CLK_SEL)
+                                    |(1<<I2SIN_LRCLK_SKEW)
+                                    |(sync_mode<<I2SIN_POS_SYNC)
                                     |(!mode<<I2SIN_LRCLK_SEL)
-                                    |(!mode<<I2SIN_DIR)
-                  );
+                                    |(!mode<<I2SIN_CLK_SEL)
+                                    |(!mode<<I2SIN_DIR));
+    } else if (audio_in_source == 1) {
+        WRITE_MPEG_REG(AUDIN_I2SIN_CTRL,
+                                    (1<<I2SIN_CHAN_EN)        //  2 channel
+                                    |(0<<I2SIN_SIZE)
+                                    |(0<<I2SIN_LRCLK_INVT)
+                                    |(0<<I2SIN_LRCLK_SKEW)
+                                    |(sync_mode<<I2SIN_POS_SYNC)
+                                    |(0<<I2SIN_LRCLK_SEL)
+                                    |(0<<I2SIN_CLK_SEL)
+                                    |(0<<I2SIN_DIR));
+    } else if (audio_in_source == 2) {
+        WRITE_MPEG_REG(AUDIN_I2SIN_CTRL,
+                                    (1<<I2SIN_CHAN_EN)        //  2 channel
+                                    |(3<<I2SIN_SIZE)
+                                    |(1<<I2SIN_LRCLK_INVT)
+                                    |(1<<I2SIN_LRCLK_SKEW)
+                                    |(sync_mode<<I2SIN_POS_SYNC)
+                                    |(1<<I2SIN_LRCLK_SEL)
+                                    |(1<<I2SIN_CLK_SEL)
+                                    |(1<<I2SIN_DIR));
+    }
 
 }
 

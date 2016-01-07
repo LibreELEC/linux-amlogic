@@ -50,7 +50,7 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend aml1216_early_suspend;
 static int    in_early_suspend = 0;
-static int    early_power_status = 0;
+static int    early_power_status = -1;
 static struct wake_lock aml1216_lock;
 #endif
 struct aml1216_supply           *g_aml1216_supply  = NULL;
@@ -1453,7 +1453,7 @@ static void aml1216_lateresume(struct early_suspend *h)
         input_report_key(aml1216_power_key, KEY_POWER, 0);                  // cancel power key
         input_sync(aml1216_power_key);
     }
-    early_power_status = supply->aml_charger.ext_valid;
+    early_power_status = -1;
     in_early_suspend = 0;
     wake_unlock(&aml1216_lock);
 }
@@ -1704,7 +1704,7 @@ static int aml1216_suspend(struct platform_device *dev, pm_message_t state)
         }
     }
 #ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_power_status != supply->aml_charger.ext_valid) {
+    if ((early_power_status != supply->aml_charger.ext_valid) && (early_power_status != -1)) {
         AML1216_DBG("%s, power status changed, prev:%x, now:%x, exit suspend process\n",
                 __func__, early_power_status, supply->aml_charger.ext_valid);
         input_report_key(aml1216_power_key, KEY_POWER, 1);              // assume power key pressed

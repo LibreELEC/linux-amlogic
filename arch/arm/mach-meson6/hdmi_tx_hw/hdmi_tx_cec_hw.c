@@ -56,9 +56,15 @@ void cec_enable_irq(void)
     hdmi_print(INF, CEC "enable:int mask:0x%x\n", aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK));
 }
 
-void cec_rx_buf_check(void)
+void cec_rx_buf_clear(void)
 {
-  ;
+
+}
+
+int cec_rx_buf_check(void)
+{
+    // TODO
+    return 0;
 }
 void cec_hw_reset(void)
 {
@@ -432,4 +438,9 @@ void cec_gpi_init(void)
 void cec_test_(unsigned int cmd)
 {
     printk("CEC: bus level: %s\n", BUS_LEVEL() ? "High" : "Low");
+}
+
+void cec_keep_reset(void)
+{
+    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0xc); //[3]cec_creg_sw_rst [2]cec_sys_sw_rst
 }

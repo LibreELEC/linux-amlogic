@@ -89,7 +89,7 @@ vmode_t get_current_vmode2(void)
 	return mode;
 }
 EXPORT_SYMBOL(get_current_vmode2);
-int vout2_suspend(void)
+int vout2_suspend(int pm_event)
 {
 	int ret=0 ;
 	vout_server_t  *p_server = vout_module.curr_vout_server;
@@ -99,7 +99,7 @@ int vout2_suspend(void)
 	{
 		if(p_server->op.vout_suspend)
 		{
-			ret = p_server->op.vout_suspend() ;
+			ret = p_server->op.vout_suspend(pm_event) ;
 		}
 	}
 
@@ -107,7 +107,7 @@ int vout2_suspend(void)
 	return ret;
 }
 EXPORT_SYMBOL(vout2_suspend);
-int vout2_resume(void)
+int vout2_resume(int pm_event)
 {
 	vout_server_t  *p_server = vout_module.curr_vout_server;
 
@@ -116,7 +116,7 @@ int vout2_resume(void)
 	{
 		if (p_server->op.vout_resume)
 		{
-			p_server->op.vout_resume() ; //ignore error when resume.
+			p_server->op.vout_resume(pm_event) ; //ignore error when resume.
 		}
 	}
 

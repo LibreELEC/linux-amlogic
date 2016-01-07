@@ -38,8 +38,8 @@ struct pmu4_audio_init_reg {
 
 static struct pmu4_audio_init_reg init_list[] = {
     {PMU4_BLOCK_ENABLE    , 0xBc06}, // 
-    {PMU4_AUDIO_CONFIG    , 0x3c00}, //
-    {PMU4_PGA_IN_CONFIG   , 0x3535}, // ALI1,20dB;AR1,20dB
+    {PMU4_AUDIO_CONFIG    , 0x3400}, //
+    {PMU4_PGA_IN_CONFIG   , 0x2525}, // ALI1,0dB;AR1,0dB
     {PMU4_ADC_VOL_CTR     , 0x5050}, // 0dB
     {PMU4_DAC_SOFT_MUTE   , 0x0000}, //
     {PMU4_DAC_VOL_CTR     , 0xFFFF}, // 0dB

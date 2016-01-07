@@ -161,6 +161,8 @@ static DEFINE_SPINLOCK(lock);
 static u32 frame_rpt_state;
 
 static struct dec_sysinfo vmpeg12_amstream_dec_info;
+extern u32 trickmode_i;
+static bool i_only_mode = false;
 
 /* for error handling */
 static s32 frame_force_skip_flag = 0;
@@ -323,6 +325,15 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
         }
         else if (dec_control & DEC_CONTROL_FLAG_FORCE_SEQ_INTERLACE) {
             frame_prog = 0;
+        }
+
+        if (i_only_mode) {
+            pts_valid = false;
+
+            // and add a default duration for 1/30 second if there is no valid frame duration available
+            if (frame_dur == 0) {
+                frame_dur = 96000/30;
+            }
         }
 
         if (frame_prog & PICINFO_PROG) {
@@ -711,6 +722,19 @@ static void vmpeg12_canvas_init(void)
 
 }
 
+int vmpeg12_set_trickmode(unsigned long trickmode)
+{
+    if (trickmode == TRICKMODE_I) {
+        i_only_mode = true;
+        trickmode_i = 1;
+    } else if (trickmode == TRICKMODE_NONE) {
+        i_only_mode = false;
+        trickmode_i = 0;
+    }
+
+    return 0;
+}
+
 static void vmpeg12_prot_init(void)
 {
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6)
@@ -867,6 +891,8 @@ static s32 vmpeg12_init(void)
     stat |= STAT_VDEC_RUN;
 
     set_vdec_func(&vmpeg12_dec_status);
+
+    set_trickmode_func(&vmpeg12_set_trickmode);
 
     return 0;
 }

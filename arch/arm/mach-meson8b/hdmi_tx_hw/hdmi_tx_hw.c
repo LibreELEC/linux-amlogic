@@ -3007,6 +3007,24 @@ static void hdmitx_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         }
         return;
     }
+    else if (strncmp(tmpbuf, "dumpaocecreg", 12) == 0) {
+        unsigned char cec_val = 0;
+        unsigned int cec_adr =0;
+        for (cec_adr = P_AO_CEC_GEN_CNTL; cec_adr < P_AO_CEC_INTR_STAT; cec_adr += 4) {
+            cec_val = aml_read_reg32(cec_adr);
+            printk("aocec ctrl Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+        for (cec_adr = CEC_TX_MSG_0_HEADER; cec_adr < CEC_CLOCK_DIV_L; cec_adr ++) {
+            cec_val = aocec_rd_reg(cec_adr);
+            printk("aocec Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+        for (cec_adr = CEC_RX_MSG_0_HEADER; cec_adr < CEC_TX_NUM_MSG; cec_adr ++) {
+            cec_val = aocec_rd_reg(cec_adr);
+            printk("aocec Regs[0x%x]: 0x%x\n", cec_adr,cec_val);
+        }
+
+        return;
+    }
     else if(strncmp(tmpbuf, "dumpcbusreg", 11)==0){
         unsigned j;
         adr=simple_strtoul(tmpbuf+11, NULL, 16);  //CBUS Start addr

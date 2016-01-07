@@ -48,6 +48,8 @@
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_compliance.h>
+#include <linux/amlogic/vout/enc_clk_config.h>
 
 #define DEVICE_NAME "amhdmitx"
 #define HDMI_TX_COUNT 32
@@ -441,6 +443,25 @@ static int set_disp_mode_auto(void)
             // DVI case judgement. In uboot, directly output HDMI mode
             hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_HDMI_DVI_MODE, DVI_MODE);
             hdmi_print(IMP, SYS "change to DVI mode\n");
+        }
+        switch (vic) {
+        case HDMI_3840x2160p24_16x9:
+        case HDMI_3840x2160p25_16x9:
+        case HDMI_3840x2160p30_16x9:
+        case HDMI_4096x2160p24_256x135:
+            hdmitx_special_handler_video(&hdmitx_device);
+            if (IS_MESON_M8_CPU && hdmitx_is_special_tv_process()) {
+                unsigned ret = 0;
+                printk("%s[%d]\n", __func__, __LINE__);
+                set_vmode_clk(VMODE_4K2K_30HZ);
+                msleep(200);
+                ret = reset_hpll();
+                if (!ret)
+                    reset_hpll();
+            }
+            break;
+        default:
+            break;
         }
         hdmitx_device.cur_VIC = vic;
         hdmitx_device.output_blank_flag = 1;
@@ -1557,6 +1578,8 @@ static void hdmitx_pwr_init(struct hdmi_pwr_ctl *ctl)
     }
 }
 
+extern void register_hdmi_is_special_tv_func( int (*pfunc)(void) );
+
 static int amhdmitx_probe(struct platform_device *pdev)
 {
     extern struct switch_dev lang_dev;
@@ -1635,7 +1658,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     vout2_register_client(&hdmitx_notifier_nb_v2);
 #endif
     aout_register_client(&hdmitx_notifier_nb_a);
-
+    register_hdmi_is_special_tv_func(hdmitx_is_special_tv);
 #ifdef CONFIG_USE_OF
     if(pdev->dev.of_node){
         memset(&hdmitx_device.config_data, 0, sizeof(struct hdmi_config_platform_data));
@@ -1976,7 +1999,7 @@ static  int __init hdmitx_boot_para_setup(char *s)
             }
             else if(strncmp(token, "cec", 3)==0) {
                 unsigned int list = simple_strtoul(token+3,NULL,16);
-                if((list >= 0) && (list <= 0xf)) {
+                if ((list >= 0) && (list <= 0x2f)) {
                     hdmitx_device.cec_func_config = list;
                     aml_write_reg32(P_AO_DEBUG_REG0, hdmitx_device.cec_func_config);         // save cec function list to AO_REG
                 }

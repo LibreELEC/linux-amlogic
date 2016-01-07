@@ -1012,3 +1012,8 @@ void cec_test_(unsigned int cmd)
 {
     
 }
+
+void cec_keep_reset(void)
+{
+    aml_write_reg32(P_AO_CEC_GEN_CNTL, 0x1);
+}

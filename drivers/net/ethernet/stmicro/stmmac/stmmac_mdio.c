@@ -262,10 +262,6 @@ int stmmac_mdio_register(struct net_device *ndev)
 				irqlist[addr] = mdio_bus_data->probed_phy_irq;
 				phydev->irq = mdio_bus_data->probed_phy_irq;
 			}
-#ifdef CONFIG_DWMAC_MESON
-			irqlist[addr] = PHY_POLL;
-			phydev->irq = PHY_POLL;
-#endif
 			/*
 			 * If we're  going to bind the MAC to this PHY bus,
 			 * and no PHY number was provided to the MAC,
@@ -273,6 +269,14 @@ int stmmac_mdio_register(struct net_device *ndev)
 			 */
 			if (priv->plat->phy_addr == -1)
 				priv->plat->phy_addr = addr;
+#ifdef CONFIG_DWMAC_MESON
+			if (!((phydev->phy_id  == 0x001cc916)&& (addr == 0)))
+			{
+				priv->plat->phy_addr = addr;
+				phydev->irq = PHY_POLL;
+				irqlist[addr] = PHY_POLL;
+			}
+#endif
 
 			act = (priv->plat->phy_addr == addr);
 			switch (phydev->irq) {
