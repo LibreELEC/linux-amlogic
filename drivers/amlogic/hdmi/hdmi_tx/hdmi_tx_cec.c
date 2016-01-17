@@ -363,6 +363,9 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
             cec_active_source_smp();
             msleep(120);
 
+            cec_system_audio_mode_request_smp();
+            msleep(100);
+
             cec_menu_status_smp(DEVICE_MENU_ACTIVE);
             msleep(100);
 
@@ -381,6 +384,11 @@ void cec_node_uninit(hdmitx_dev_t* hdmitx_device)
 {
     if (!(hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK)))
        return ;
+
+    cec_inactive_source_smp();
+
+    cec_system_audio_mode_release_smp();
+
     cec_global_info.cec_node_info[cec_global_info.my_node_index].power_status = TRANS_ON_TO_STANDBY;
     hdmi_print(INF, CEC "cec node uninit!\n");
     cec_global_info.cec_node_info[cec_global_info.my_node_index].power_status = POWER_STANDBY;
@@ -734,7 +742,7 @@ static irqreturn_t cec_isr_handler(int irq, void *dev_instance)
     //cec_disable_irq();
     hdmitx_dev_t* hdmitx;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    unsigned int intr_stat = 0;
+    unsigned int intr_stat;
     intr_stat = aml_read_reg32(P_AO_CEC_INTR_STAT);
     if (cec_msg_dbg_en  == 1)
     {
@@ -972,6 +980,73 @@ void cec_active_source_smp(void)
     }
     cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_status = DEVICE_MENU_ACTIVE;
 }
+
+void cec_inactive_source_smp(void)
+{
+    unsigned char index = cec_global_info.my_node_index;
+    unsigned char msg[4];
+    unsigned char phy_addr_ab = (aml_read_reg32(P_AO_DEBUG_REG1) >> 8) & 0xff;
+    unsigned char phy_addr_cd = aml_read_reg32(P_AO_DEBUG_REG1) & 0xff;
+
+    if (hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK))
+    {
+        if (hdmitx_device->cec_func_config & (1 << ONE_TOUCH_PLAY_MASK))
+        {
+            msg[0] = ((index & 0xf) << 4) | CEC_TV_ADDR;
+            msg[1] = CEC_OC_INACTIVE_SOURCE;
+            msg[2] = phy_addr_ab;
+            msg[3] = phy_addr_cd;
+            cec_ll_tx(msg, 4);
+        }
+    }
+    cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_status = DEVICE_MENU_INACTIVE;
+}
+
+void cec_system_audio_mode_request_smp(void)
+{
+    unsigned char index = cec_global_info.my_node_index;
+    unsigned char phy_addr_ab = (aml_read_reg32(P_AO_DEBUG_REG1) >> 8) & 0xff;
+    unsigned char phy_addr_cd = aml_read_reg32(P_AO_DEBUG_REG1) & 0xff;
+
+    if (hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK))
+    {
+        if (hdmitx_device->cec_func_config & (1 << SYSTEM_AUDIO_MASK))
+        {
+            if (cec_global_info.cec_node_info[index].specific_info.audio.sys_audio_mode == OFF)
+            {
+                MSG_P2( index, CEC_AUDIO_SYSTEM_ADDR,//CEC_TV_ADDR,
+                        CEC_OC_SYSTEM_AUDIO_MODE_REQUEST,
+                        phy_addr_ab,
+                        phy_addr_cd
+                );
+                cec_ll_tx(gbl_msg, 4);
+                cec_global_info.cec_node_info[index].specific_info.audio.sys_audio_mode = ON;
+            }
+        }
+    }
+}
+
+void cec_system_audio_mode_release_smp(void)
+{
+    unsigned char index = cec_global_info.my_node_index;
+
+    if (hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK))
+    {
+        if (hdmitx_device->cec_func_config & (1 << SYSTEM_AUDIO_MASK))
+        {
+            if (cec_global_info.cec_node_info[index].specific_info.audio.sys_audio_mode == ON)
+            {
+                MSG_P2( index, CEC_AUDIO_SYSTEM_ADDR,//CEC_TV_ADDR,
+                        CEC_OC_SYSTEM_AUDIO_MODE_REQUEST,
+						0, 0	// physical address of TV
+                );
+                cec_ll_tx(gbl_msg, 4);
+                cec_global_info.cec_node_info[index].specific_info.audio.sys_audio_mode = OFF;
+            }
+        }
+    }
+}
+
 void cec_active_source(cec_rx_message_t* pcec_message)
 {
     unsigned char msg[4];
@@ -1792,6 +1867,9 @@ static void __exit cec_uninit(void)
     {
         return ;
     }
+
+    cec_node_uninit(hdmitx_device);
+
     hdmi_print(INF, CEC "cec uninit!\n");
     if (cec_global_info.cec_flag.cec_init_flag == 1)
     {
@@ -1883,6 +1961,7 @@ void cec_usrcmd_set_config(const char * buf, size_t count)
         while ( buf[i] != ' ' )
             i ++;
     }
+    hdmi_print(INF, CEC "cec_func_config entry :0x%x : 0x%x\n",hdmitx_device->cec_func_config, aml_read_reg32(P_AO_DEBUG_REG0));
     value = aml_read_reg32(P_AO_DEBUG_REG0);
     aml_set_reg32_bits(P_AO_DEBUG_REG0, param[0], 0, 32);
     hdmitx_device->cec_func_config = aml_read_reg32(P_AO_DEBUG_REG0);
@@ -1905,19 +1984,36 @@ void cec_usrcmd_set_config(const char * buf, size_t count)
         !hdmitx_device->hpd_state) {
         return ;
     }
-    if ((1 == (param[0] & 1)) && (0x2 == (value & 0x2)) && (0x0 == (param[0] & 0x2)))
+    if ((1 == (param[0] & 1)) && ((value & 0x2) != (param[0] & 0x2)))
     {
-        cec_menu_status_smp(DEVICE_MENU_INACTIVE);
-    }
-    if ((1 == (param[0] & 1)) && (0x0 == (value & 0x2)) && (0x2 == (param[0] & 0x2)))
-    {
-        cec_active_source_smp();
+        if (0x2 == (param[0] & 0x2))
+        {
+            cec_active_source_smp();
+        }
+        else
+        {
+        	//cec_inactive_source();
+            cec_menu_status_smp(DEVICE_MENU_INACTIVE);
+        }
     }
     if ((0x20 == (param[0] & 0x20)) && (0x0 == (value & 0x20)) )
     {
         cec_get_menu_language_smp();
     }
-    hdmi_print(INF, CEC "cec_func_config:0x%x : 0x%x\n",hdmitx_device->cec_func_config, aml_read_reg32(P_AO_DEBUG_REG0));
+    if ((1 == (param[0] & 1)) && ((param[0] & 0x40) != (value & 0x40)))
+    {
+        if (0x40 == (param[0] & 0x40))
+        {
+            hdmi_print(INF, CEC "cec_func_config: cec_system_audio_mode_request_smp");
+            cec_system_audio_mode_request_smp();
+        }
+        else
+        {
+            hdmi_print(INF, CEC "cec_func_config: cec_system_audio_mode_release_smp");
+            cec_system_audio_mode_release_smp();
+        }
+    }
+    hdmi_print(INF, CEC "cec_func_config exit:0x%x : 0x%x\n",hdmitx_device->cec_func_config, aml_read_reg32(P_AO_DEBUG_REG0));
 }
 
 

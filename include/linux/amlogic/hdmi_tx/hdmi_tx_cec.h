@@ -390,6 +390,7 @@ typedef unsigned long cec_info_mask;
 #define ONE_TOUCH_PLAY_MASK                  1
 #define ONE_TOUCH_STANDBY_MASK               2
 #define AUTO_POWER_ON_MASK                   3
+#define SYSTEM_AUDIO_MASK                    6
 
 
 typedef struct {
@@ -599,6 +600,10 @@ void cec_report_physical_address_smp(void);
 void cec_imageview_on_smp(void);
 void cec_active_source_smp(void);
 void cec_active_source_rx(cec_rx_message_t* pcec_message);
+
+void cec_system_audio_mode_request_smp(void);
+void cec_system_audio_mode_release_smp(void);
+void cec_inactive_source_smp(void);
 
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);
