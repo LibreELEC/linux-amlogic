@@ -2173,6 +2173,9 @@ void cec_usrcmd_set_dispatch(const char * buf, size_t count)
         case PING_TV:    //0x1a LA : For TV CEC detected.
             detect_tv_support_cec(param[1]);
             break;
+        case DEVICE_MENU_CONTROL:    //0x1b
+            cec_usrcmd_device_menu_control(param[1], param[2]);
+            break;
         default:
             break;
     }
