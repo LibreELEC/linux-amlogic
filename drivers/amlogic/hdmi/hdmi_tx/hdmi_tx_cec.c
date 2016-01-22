@@ -742,7 +742,7 @@ static irqreturn_t cec_isr_handler(int irq, void *dev_instance)
     //cec_disable_irq();
     hdmitx_dev_t* hdmitx;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    unsigned int intr_stat;
+    unsigned int intr_stat = 0;
     intr_stat = aml_read_reg32(P_AO_CEC_INTR_STAT);
     if (cec_msg_dbg_en  == 1)
     {
