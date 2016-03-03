@@ -5768,10 +5768,11 @@ static void force_bob_vframe(di_buf_t* di_buf)
 #endif
 #ifdef NEW_DI_TV
 static int pulldown_mode = 1;
+static int blend_mode = -1;
 #else
 static int pulldown_mode = 0;
+static int blend_mode = 5;
 #endif
-static int debug_blend_mode = -1;
 
 static int process_post_vframe(void)
 {
@@ -5918,10 +5919,8 @@ static int process_post_vframe(void)
 							di_buf->process_fun_index = PROCESS_FUN_NULL;
 						}
 						else {
-
-						/*for debug*/
-							if (debug_blend_mode != -1)
-								di_buf->pulldown_mode = debug_blend_mode;
+							if (blend_mode != -1)
+								di_buf->pulldown_mode = blend_mode;
 							di_buf->vframe->process_fun = de_post_process;
 							di_buf->process_fun_index = PROCESS_FUN_DI;
 							inc_post_ref_count(di_buf);
@@ -7779,8 +7778,8 @@ MODULE_PARM_DESC(use_2_interlace_buff,"/n debug for progress interlace mixed sou
 module_param(pulldown_mode,int,0664);
 MODULE_PARM_DESC(pulldown_mode,"\n option for pulldown \n");
 
-module_param(debug_blend_mode,int,0664);
-MODULE_PARM_DESC(debug_blend_mode,"\n force post blend mode \n");
+module_param(blend_mode,int,0664);
+MODULE_PARM_DESC(blend_mode,"\n force post blend mode \n");
 
 module_param(static_pic_threshold,int,0664);
 MODULE_PARM_DESC(static_pic_threshold,"/n threshold for static pic /n");
