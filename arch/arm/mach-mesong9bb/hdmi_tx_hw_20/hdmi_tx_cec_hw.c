@@ -996,6 +996,7 @@ void cec_tx_irq_handle(void)
 #endif
 }
 
+#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 void cec_polling_online_dev(int log_addr, int *bool)
 {
 #ifdef AO_CEC
@@ -1005,7 +1006,7 @@ void cec_polling_online_dev(int log_addr, int *bool)
 #endif
     hdmi_print(INF, CEC "CEC: poll online logic device: 0x%x BOOL: %d\n", log_addr, *bool);
 }
-
+#endif
 
 // DELETE LATER, TEST ONLY
 void cec_test_(unsigned int cmd)
