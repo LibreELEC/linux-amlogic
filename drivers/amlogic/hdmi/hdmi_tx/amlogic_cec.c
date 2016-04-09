@@ -326,8 +326,6 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 
     if ((tx_msg_state == TX_DONE) || (tx_msg_state == TX_ERROR))
     {
-	amlogic_cec_write_reg(CEC_TX_MSG_CMD, TX_NO_OP);
-
 	switch (tx_msg_state) {
 	  case TX_ERROR :
 	    amlogic_cec_set_tx_state(STATE_ERROR);
@@ -338,6 +336,14 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 	}
 	wake_up_interruptible(&cec_tx_struct.waitq);
     }
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if (aml_read_reg32(P_AO_CEC_INTR_STAT) & (1<<1))
+    {   // aocec tx intr
+        tx_irq_handle();
+        return IRQ_HANDLED;
+    }
+#endif
 
     if (rx_msg_state == RX_DONE)
     {
