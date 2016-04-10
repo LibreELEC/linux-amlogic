@@ -237,7 +237,7 @@ static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
 
 	INIT_LIST_HEAD(&entry->list);
 
-	if ((-1) == amlogic_cec_read_hw(entry->buffer, &entry->size))
+	if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
 	{
 	    kfree(entry);
 	    amlogic_cec_log_dbg("buffer got unrecorgnized msg\n");
@@ -405,7 +405,7 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 
 	spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
 
-	if ((-1) == amlogic_cec_read_hw(entry->buffer, &entry->size))
+	if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
 	{
 	    kfree(entry);
 	    amlogic_cec_log_dbg("amlogic_cec_irq_handler: nothing to read\n");
