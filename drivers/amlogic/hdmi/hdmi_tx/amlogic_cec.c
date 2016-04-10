@@ -102,6 +102,8 @@ static struct cec_rx_struct cec_rx_struct;
 
 static struct cec_tx_struct cec_tx_struct;
 
+static struct hrtimer cec_late_timer;
+
 static atomic_t hdmi_on = ATOMIC_INIT(0);
 
 cec_global_info_t cec_global_info;
@@ -215,6 +217,48 @@ unsigned short cec_log_addr_to_dev_type(unsigned char log_addr)
 {
 // unused, just to satisfy the linker
   return log_addr;
+}
+
+static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
+{
+    unsigned long spin_flags;
+    struct cec_rx_list *entry;
+
+    if (cec_rx_buf_check())
+    {
+        /*
+         * start another check if rx buffer is full
+         */
+	if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+	{
+	    amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
+	    return HRTIMER_NORESTART;
+	}
+
+	INIT_LIST_HEAD(&entry->list);
+
+	if ((-1) == amlogic_cec_read_hw(entry->buffer, &entry->size))
+	{
+	    kfree(entry);
+	    amlogic_cec_log_dbg("buffer got unrecorgnized msg\n");
+	    cec_rx_buf_clear();
+	}
+	else
+	{
+	    spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+	    list_add_tail(&entry->list, &cec_rx_struct.list);
+	    amlogic_cec_set_rx_state(STATE_DONE);
+	    spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+
+	    wake_up_interruptible(&cec_rx_struct.waitq);
+	}
+    }
+    if (atomic_read(&hdmi_on))
+    {
+        hrtimer_start(&cec_late_timer, ktime_set(0, 384*1000*1000), HRTIMER_MODE_REL);
+    }
+
+    return HRTIMER_NORESTART;
 }
 
 void cec_node_init(hdmitx_dev_t* hdmitx_device)
@@ -429,6 +473,8 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
         cec_arbit_bit_time_set(7, 0x2aa, 0);
 #endif
         amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+
+        hrtimer_start(&cec_late_timer, ktime_set(0, 384*1000*1000), HRTIMER_MODE_REL);
 
         hdmitx_device->cec_init_ready = 1;
 
@@ -652,6 +698,9 @@ static int amlogic_cec_init(void)
 	printk(KERN_WARNING " Couldn't register device 10, %d.\n", CEC_MINOR);
 	retval = -EBUSY;
     }
+
+    hrtimer_init(&cec_late_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+    cec_late_timer.function = cec_late_check_rx_buffer;
 
     // release initial lock on init_mutex
     up(&init_mutex);
