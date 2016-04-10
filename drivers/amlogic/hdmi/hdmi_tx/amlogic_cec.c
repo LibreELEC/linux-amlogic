@@ -160,59 +160,6 @@ static void amlogic_cec_write_reg(unsigned int reg, unsigned int value)
 #endif
 }
 
-static int amlogic_cec_read_hw(unsigned char *data, unsigned char *count)
-{
-    int ret = -1;
-    int valid_msg;
-    int rx_msg_status;
-    int rx_num_msg;
-
-    rx_msg_status = amlogic_cec_read_reg(CEC_RX_MSG_STATUS);
-    rx_num_msg = amlogic_cec_read_reg(CEC_RX_NUM_MSG);
-
-    amlogic_cec_log_dbg("rx_msg_status: %d, rx_num_msg: %d\n", rx_msg_status, rx_num_msg);
-
-    valid_msg = (RX_DONE == rx_msg_status) && (1 == rx_num_msg);
-
-    if (valid_msg)
-    {
-      int i;
-
-      *count = amlogic_cec_read_reg(CEC_RX_MSG_LENGTH) + 1;
-      for (i = 0; i < (*count) && i < CEC_RX_BUFF_SIZE; ++i)
-      {
-          data[i]= amlogic_cec_read_reg(CEC_RX_MSG_0_HEADER + i);
-      }
-
-      amlogic_cec_msg_dump("RX", data, *count);
-
-      ret = RX_DONE;
-    }
-
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    aml_write_reg32(P_AO_CEC_INTR_CLR, aml_read_reg32(P_AO_CEC_INTR_CLR) | (1 << 2));
-#endif
-    amlogic_cec_write_reg(CEC_RX_MSG_CMD, valid_msg ? RX_ACK_NEXT : RX_ACK_CURRENT);
-    amlogic_cec_write_reg(CEC_RX_MSG_CMD, RX_NO_OP);
-
-    return ret;
-}
-
-
-static void amlogic_cec_write_hw(const char *data, size_t count)
-{
-  int i;
-
-  for (i = 0; i < count; ++i)
-  {
-      amlogic_cec_write_reg(CEC_TX_MSG_0_HEADER + i, data[i]);
-  }
-  amlogic_cec_write_reg(CEC_TX_MSG_LENGTH, count - 1);
-  amlogic_cec_write_reg(CEC_TX_MSG_CMD, TX_REQ_CURRENT);
-
-  amlogic_cec_msg_dump("TX", data, count);
-}
-
 unsigned short cec_log_addr_to_dev_type(unsigned char log_addr)
 {
 // unused, just to satisfy the linker
