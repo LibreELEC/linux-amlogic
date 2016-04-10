@@ -517,6 +517,7 @@ static ssize_t amlogic_cec_write(struct file *file, const char __user *buffer,
     {
 	amlogic_cec_log_dbg("error during wait on state change, resetting\n");
 	printk(KERN_ERR "[amlogic] ##### cec write error! #####\n");
+	cec_hw_reset();
 	retval = -ERESTARTSYS;
 	goto error_exit;
     }
