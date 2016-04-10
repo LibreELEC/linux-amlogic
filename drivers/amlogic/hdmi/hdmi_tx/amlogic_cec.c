@@ -574,15 +574,13 @@ static ssize_t amlogic_cec_write(struct file *file, const char __user *buffer,
 	return -ERESTARTSYS;
     }
 
-    amlogic_cec_write_hw(data, count);
+    cec_ll_tx(data, count);
 
     if (wait_event_interruptible_timeout(cec_tx_struct.waitq,
         atomic_read(&cec_tx_struct.state) != STATE_TX, 2 * HZ) <= 0)
     {
 	amlogic_cec_log_dbg("error during wait on state change, resetting\n");
 	printk(KERN_ERR "[amlogic] ##### cec write error! #####\n");
-	amlogic_cec_write_reg(CEC_TX_MSG_CMD, TX_ABORT); // stop cec tx for hw retry.
-	amlogic_cec_write_reg(CEC_TX_MSG_CMD, TX_NO_OP);
 	retval = -ERESTARTSYS;
 	goto error_exit;
     }
