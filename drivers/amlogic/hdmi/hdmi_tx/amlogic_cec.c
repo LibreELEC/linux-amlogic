@@ -356,16 +356,15 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 
 	INIT_LIST_HEAD(&entry->list);
 
-	spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-
 	if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
 	{
 	    kfree(entry);
 	    amlogic_cec_log_dbg("amlogic_cec_irq_handler: nothing to read\n");
-            spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+	    cec_rx_buf_clear();
 	    return IRQ_HANDLED;
 	}
 
+	spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
 	list_add_tail(&entry->list, &cec_rx_struct.list);
 	amlogic_cec_set_rx_state(STATE_DONE);
 	spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
