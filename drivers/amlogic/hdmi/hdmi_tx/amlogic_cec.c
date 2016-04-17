@@ -182,8 +182,6 @@ static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
 	    return HRTIMER_NORESTART;
 	}
 
-	INIT_LIST_HEAD(&entry->list);
-
 	if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
 	{
 	    kfree(entry);
@@ -192,6 +190,7 @@ static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
 	}
 	else
 	{
+	    INIT_LIST_HEAD(&entry->list);
 	    spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
 	    list_add_tail(&entry->list, &cec_rx_struct.list);
 	    amlogic_cec_set_rx_state(STATE_DONE);
@@ -354,8 +353,6 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 	    return IRQ_HANDLED;
 	}
 
-	INIT_LIST_HEAD(&entry->list);
-
 	if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
 	{
 	    kfree(entry);
@@ -363,6 +360,8 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 	    cec_rx_buf_clear();
 	    return IRQ_HANDLED;
 	}
+
+	INIT_LIST_HEAD(&entry->list);
 
 	spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
 	list_add_tail(&entry->list, &cec_rx_struct.list);
