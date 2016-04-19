@@ -246,28 +246,13 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
             spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
 
 	    amlogic_cec_log_dbg("start reset\n");
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
-	    aml_write_reg32(P_HDMI_CTRL_PORT, aml_read_reg32(P_HDMI_CTRL_PORT)|(1<<16));
-	    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0xc); //[3]cec_creg_sw_rst [2]cec_sys_sw_rst
-
-#if 0
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_TX_CLEAR_BUF, 0x1);
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_RX_CLEAR_BUF, 0x1);
-
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_TX_CLEAR_BUF, 0x0);
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_RX_CLEAR_BUF, 0x0);
-#endif
-
-	    hdmi_wr_reg(OTHER_BASE_ADDR+HDMI_OTHER_CTRL0, 0x0);
-	    aml_write_reg32(P_HDMI_CTRL_PORT, aml_read_reg32(P_HDMI_CTRL_PORT)&(~(1<<16)));
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_CLOCK_DIV_H, 0x00 );
-	    hdmi_wr_reg(CEC0_BASE_ADDR+CEC_CLOCK_DIV_L, 0xf0 );
-
-#endif
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	    // regain rx interrupts
 	    cec_enable_irq();
-#endif
+            if (cec_rx_buf_check()) {
+                cec_rx_buf_clear();
+            }
+            cec_hw_reset();
+
             spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
 
             hdmitx_device->cec_init_ready = 1;
