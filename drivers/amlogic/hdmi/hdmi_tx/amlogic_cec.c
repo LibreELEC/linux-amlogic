@@ -163,6 +163,8 @@ static void amlogic_cec_write_reg(unsigned int reg, unsigned int value)
 static int amlogic_cec_read_hw()
 {
     int retval = 0;
+    unsigned long spin_flags;
+    struct cec_rx_list *entry;
 
     if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
     {
@@ -197,9 +199,6 @@ unsigned short cec_log_addr_to_dev_type(unsigned char log_addr)
 
 static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
 {
-    unsigned long spin_flags;
-    struct cec_rx_list *entry;
-
     if (cec_rx_buf_check())
     {
         /*
@@ -224,79 +223,83 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
     unsigned long spin_flags;
     struct cec_rx_list *entry;
 
-    cec_phy_addr = (((hdmitx_device->hdmi_info.vsdb_phy_addr.a) & 0xf) << 12)
-                 | (((hdmitx_device->hdmi_info.vsdb_phy_addr.b) & 0xf) << 8)
-                 | (((hdmitx_device->hdmi_info.vsdb_phy_addr.c) & 0xf) << 4)
-                 | (((hdmitx_device->hdmi_info.vsdb_phy_addr.d) & 0xf) << 0);
-
-    // If VSDB is not valid,use last or default physical address.
-    if (hdmitx_device->hdmi_info.vsdb_phy_addr.valid == 0)
+    if (atomic_read(&hdmi_on))
     {
-        amlogic_cec_log_dbg("no valid cec physical address\n");
-        if (aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff)
+        cec_phy_addr = (((hdmitx_device->hdmi_info.vsdb_phy_addr.a) & 0xf) << 12)
+                     | (((hdmitx_device->hdmi_info.vsdb_phy_addr.b) & 0xf) << 8)
+                     | (((hdmitx_device->hdmi_info.vsdb_phy_addr.c) & 0xf) << 4)
+                     | (((hdmitx_device->hdmi_info.vsdb_phy_addr.d) & 0xf) << 0);
+
+        // If VSDB is not valid,use last or default physical address.
+        if (hdmitx_device->hdmi_info.vsdb_phy_addr.valid == 0)
         {
-            amlogic_cec_log_dbg("use last physical address\n");
+            amlogic_cec_log_dbg("no valid cec physical address\n");
+            if (aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff)
+            {
+                amlogic_cec_log_dbg("use last physical address\n");
+            }
+            else
+            {
+                aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | 0x1000);
+                amlogic_cec_log_dbg("use default physical address\n");
+            }
         }
         else
         {
-            aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | 0x1000);
-            amlogic_cec_log_dbg("use default physical address\n");
-        }
-    }
-    else
-    {
-        if (cec_global_info.my_node_index)
-        {
-            // prevent write operations
-            if (down_interruptible(&init_mutex))
+            if (cec_global_info.my_node_index)
             {
-                printk(KERN_ERR "[amlogic] ##### cec node init interrupted! #####\n");
-                return;
-            }
-            hdmitx_device->cec_init_ready = 0;
-            spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-
-            amlogic_cec_log_dbg("start reset\n");
-            // regain rx interrupts
-            cec_enable_irq();
-            if (cec_rx_buf_check()) {
-                cec_rx_buf_clear();
-            }
-            cec_hw_reset();
-
-            spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
-
-            hdmitx_device->cec_init_ready = 1;
-
-            up(&init_mutex);
-            amlogic_cec_log_dbg("stop reset\n");
-        }
-
-        if ((aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff) != cec_phy_addr)
-        {
-            aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | cec_phy_addr);
-            amlogic_cec_log_dbg("physical address:0x%x\n", aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff);
-
-            if ((hdmitx_device->cec_init_ready != 0) && (hdmitx_device->hpd_state != 0))
-            {
-                if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+                // prevent write operations
+                if (down_interruptible(&init_mutex))
                 {
-                    amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
+                    printk(KERN_ERR "[amlogic] ##### cec node init interrupted! #####\n");
+                    return;
                 }
-                else
+                hdmitx_device->cec_init_ready = 0;
+                spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+
+                amlogic_cec_log_dbg("start reset\n");
+
+                // regain rx interrupts
+                cec_enable_irq();
+                if (cec_rx_buf_check()) {
+                    cec_rx_buf_clear();
+                }
+                cec_hw_reset();
+
+                spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+
+                hdmitx_device->cec_init_ready = 1;
+
+                up(&init_mutex);
+                amlogic_cec_log_dbg("stop reset\n");
+            }
+
+            if ((aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff) != cec_phy_addr)
+            {
+                aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | cec_phy_addr);
+                amlogic_cec_log_dbg("physical address:0x%x\n", aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff);
+
+                if ((hdmitx_device->cec_init_ready != 0) && (hdmitx_device->hpd_state != 0))
                 {
-                    // let the libCEC ask for new physical Address
-                    entry->buffer[0] = 0xff;
-                    entry->size = 1;
-                    INIT_LIST_HEAD(&entry->list);
+                    if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+                    {
+                        amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
+                    }
+                    else
+                    {
+                        // let the libCEC ask for new physical Address
+                        entry->buffer[0] = 0xff;
+                        entry->size = 1;
+                        INIT_LIST_HEAD(&entry->list);
 
-                    spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-                    list_add_tail(&entry->list, &cec_rx_struct.list);
-                    amlogic_cec_set_rx_state(STATE_DONE);
-                    spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+                        spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+                        list_add_tail(&entry->list, &cec_rx_struct.list);
+                        amlogic_cec_set_rx_state(STATE_DONE);
+                        spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
 
-                    amlogic_cec_log_dbg("trigger libCEC\n");
-                    wake_up_interruptible(&cec_rx_struct.waitq);
+                        amlogic_cec_log_dbg("trigger libCEC\n");
+                        wake_up_interruptible(&cec_rx_struct.waitq);
+                    }
                 }
             }
         }
@@ -305,8 +308,6 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
 
 static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 {
-    unsigned long spin_flags;
-    struct cec_rx_list *entry;
     unsigned int tx_msg_state;
     unsigned int rx_msg_state;
 
@@ -363,7 +364,7 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
         cec_gpi_init();
 #endif
-
+        cec_node_init(hdmitx_device);
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
         aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 1, 25, 1);
         // Clear CEC Int. state and set CEC Int. mask
