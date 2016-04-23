@@ -372,23 +372,6 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
     {
 	atomic_inc(&hdmi_on);
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
-        if (request_irq(INT_HDMI_CEC, &amlogic_cec_irq_handler,
-        IRQF_SHARED, "amhdmitx-cec",(void *)hdmitx_device))
-        {
-    	    amlogic_cec_log_dbg("Can't register IRQ %d\n",INT_HDMI_CEC);
-            return -EFAULT;
-        }
-#endif
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-        if (request_irq(INT_AO_CEC, &amlogic_cec_irq_handler,
-        IRQF_SHARED, "amhdmitx-aocec",(void *)hdmitx_device))
-        {
-    	    amlogic_cec_log_dbg("Can't register IRQ %d\n",INT_HDMI_CEC);
-            return -EFAULT;
-        }
-#endif
-
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
         cec_gpi_init();
 #endif
 
@@ -420,14 +403,6 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
 
 static int amlogic_cec_release(struct inode *inode, struct file *file)
 {
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
-    aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK) & ~(1 << 23));            // Disable the hdmi cec interrupt
-    free_irq(INT_HDMI_CEC, (void *)hdmitx_device);
-#endif
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    free_irq(INT_AO_CEC, (void *)hdmitx_device);
-#endif
-
     amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
 
     atomic_dec(&hdmi_on);
@@ -646,6 +621,23 @@ static int amlogic_cec_init(void)
     hrtimer_init(&cec_late_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     cec_late_timer.function = cec_late_check_rx_buffer;
 
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
+    if (request_irq(INT_HDMI_CEC, &amlogic_cec_irq_handler,
+        IRQF_SHARED, "amhdmitx-cec",(void *)hdmitx_device))
+    {
+        amlogic_cec_log_dbg("Can't register IRQ %d\n",INT_HDMI_CEC);
+        return -EFAULT;
+    }
+#endif
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if (request_irq(INT_AO_CEC, &amlogic_cec_irq_handler,
+        IRQF_SHARED, "amhdmitx-aocec",(void *)hdmitx_device))
+    {
+        amlogic_cec_log_dbg("Can't register IRQ %d\n",INT_HDMI_CEC);
+        return -EFAULT;
+    }
+#endif
+
     // release initial lock on init_mutex
     up(&init_mutex);
 
@@ -656,6 +648,13 @@ static int amlogic_cec_init(void)
 
 static void amlogic_cec_exit(void)
 {
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
+    aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK) & ~(1 << 23));            // Disable the hdmi cec interrupt
+    free_irq(INT_HDMI_CEC, (void *)hdmitx_device);
+#endif
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    free_irq(INT_AO_CEC, (void *)hdmitx_device);
+#endif
     misc_deregister(&cec_misc_device);
 }
 
