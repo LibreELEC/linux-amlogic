@@ -465,20 +465,21 @@ static ssize_t amlogic_cec_read(struct file *file, char __user *buffer,
 	printk(KERN_ERR " copy_to_user() failed!\n");
 
 	retval = -EFAULT;
-	goto error_exit;
+	goto error_exit2;
     }
 
     retval = entry->size;
 
+error_exit:
     amlogic_cec_set_rx_state(STATE_RX);
 
-error_exit:
     if (entry != NULL)
     {
     	list_del(&entry->list);
     	kfree(entry);
     }
 
+error_exit2:
     spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
 
     return retval;
