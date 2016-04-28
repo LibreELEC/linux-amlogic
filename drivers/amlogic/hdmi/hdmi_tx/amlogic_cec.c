@@ -223,8 +223,25 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
     unsigned long spin_flags;
     struct cec_rx_list *entry;
 
-    if (atomic_read(&hdmi_on))
+    if (atomic_read(&hdmi_on) && (0 == hdmitx_device->cec_init_ready))
     {
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
+        cec_gpi_init();
+        aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 1, 25, 1);
+        // Clear CEC Int. state and set CEC Int. mask
+        aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_STAT_CLR, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_STAT_CLR) | (1 << 23));    // Clear the interrupt
+        aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK) | (1 << 23));            // Enable the hdmi cec interrupt
+#endif
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        // GPIOAO_12
+        aml_set_reg32_bits(P_AO_RTI_PIN_MUX_REG, 0, 14, 1);       // bit[14]: AO_PWM_C pinmux                  //0xc8100014
+        aml_set_reg32_bits(P_AO_RTI_PULL_UP_REG, 1, 12, 1);       // bit[12]: enable AO_12 internal pull-up   //0xc810002c
+        aml_set_reg32_bits(P_AO_RTI_PIN_MUX_REG, 1, 17, 1);       // bit[17]: AO_CEC pinmux                    //0xc8100014
+        ao_cec_init();
+        cec_arbit_bit_time_set(3, 0x118, 0);
+        cec_arbit_bit_time_set(5, 0x000, 0);
+        cec_arbit_bit_time_set(7, 0x2aa, 0);
+#endif
         cec_phy_addr = (((hdmitx_device->hdmi_info.vsdb_phy_addr.a) & 0xf) << 12)
                      | (((hdmitx_device->hdmi_info.vsdb_phy_addr.b) & 0xf) << 8)
                      | (((hdmitx_device->hdmi_info.vsdb_phy_addr.c) & 0xf) << 4)
@@ -246,34 +263,6 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
         }
         else
         {
-            if (cec_global_info.my_node_index)
-            {
-                // prevent write operations
-                if (down_interruptible(&init_mutex))
-                {
-                    printk(KERN_ERR "[amlogic] ##### cec node init interrupted! #####\n");
-                    return;
-                }
-                hdmitx_device->cec_init_ready = 0;
-                spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-
-                amlogic_cec_log_dbg("start reset\n");
-
-                // regain rx interrupts
-                cec_enable_irq();
-                if (cec_rx_buf_check()) {
-                    cec_rx_buf_clear();
-                }
-                cec_hw_reset();
-
-                spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
-
-                hdmitx_device->cec_init_ready = 1;
-
-                up(&init_mutex);
-                amlogic_cec_log_dbg("stop reset\n");
-            }
-
             if ((aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff) != cec_phy_addr)
             {
                 aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | cec_phy_addr);
@@ -303,6 +292,8 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
                 }
             }
         }
+
+        hdmitx_device->cec_init_ready = 1;
     }
 }
 
@@ -352,6 +343,8 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 static int amlogic_cec_open(struct inode *inode, struct file *file)
 {
     int ret = 0;
+    unsigned long spin_flags;
+    struct cec_rx_list* entry = NULL;
 
     if (atomic_read(&hdmi_on))
     {
@@ -361,32 +354,23 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
     else
     {
         atomic_inc(&hdmi_on);
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
-        cec_gpi_init();
-#endif
+
+        spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+        while(!list_empty(&cec_rx_struct.list))
+        {
+            entry = list_first_entry(&cec_rx_struct.list, struct cec_rx_list, list);
+            list_del(&entry->list);
+            kfree(entry);
+        }
+        spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+
         cec_node_init(hdmitx_device);
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
-        aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 1, 25, 1);
-        // Clear CEC Int. state and set CEC Int. mask
-        aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_STAT_CLR, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_STAT_CLR) | (1 << 23));    // Clear the interrupt
-        aml_write_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK, aml_read_reg32(P_SYS_CPU_0_IRQ_IN1_INTR_MASK) | (1 << 23));            // Enable the hdmi cec interrupt
-#endif
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-// GPIOAO_12
-        aml_set_reg32_bits(P_AO_RTI_PIN_MUX_REG, 0, 14, 1);       // bit[14]: AO_PWM_C pinmux                  //0xc8100014
-        aml_set_reg32_bits(P_AO_RTI_PULL_UP_REG, 1, 12, 1);       // bit[12]: enable AO_12 internal pull-up   //0xc810002c
-        aml_set_reg32_bits(P_AO_RTI_PIN_MUX_REG, 1, 17, 1);       // bit[17]: AO_CEC pinmux                    //0xc8100014
-        ao_cec_init();
-        cec_arbit_bit_time_set(3, 0x118, 0);
-        cec_arbit_bit_time_set(5, 0x000, 0);
-        cec_arbit_bit_time_set(7, 0x2aa, 0);
-#endif
+
+        cec_enable_irq();
+
         amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
 
         hrtimer_start(&cec_late_timer, ktime_set(0, 384*1000*1000), HRTIMER_MODE_REL);
-
-        hdmitx_device->cec_init_ready = 1;
-
     }
     return ret;
 }
@@ -394,6 +378,8 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
 static int amlogic_cec_release(struct inode *inode, struct file *file)
 {
     amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+
+    cec_disable_irq();
 
     atomic_dec(&hdmi_on);
 
