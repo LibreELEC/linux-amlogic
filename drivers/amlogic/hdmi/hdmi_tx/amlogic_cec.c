@@ -160,6 +160,35 @@ static void amlogic_cec_write_reg(unsigned int reg, unsigned int value)
 #endif
 }
 
+static int amlogic_cec_read_hw()
+{
+    int retval = 0;
+
+    if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+    {
+        amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
+        retval = -1;
+    }
+
+    if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
+    {
+        kfree(entry);
+        cec_rx_buf_clear();
+    }
+    else
+    {
+        INIT_LIST_HEAD(&entry->list);
+        spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+        list_add_tail(&entry->list, &cec_rx_struct.list);
+        amlogic_cec_set_rx_state(STATE_DONE);
+        spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+
+        wake_up_interruptible(&cec_rx_struct.waitq);
+    }
+
+    return retval;
+}
+
 unsigned short cec_log_addr_to_dev_type(unsigned char log_addr)
 {
     // unused, just to satisfy the linker
@@ -176,27 +205,9 @@ static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
         /*
          * start another check if rx buffer is full
          */
-        if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+        if ((-1) == amlogic_cec_read_hw())
         {
-            amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
             return HRTIMER_NORESTART;
-        }
-
-        if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
-        {
-            kfree(entry);
-            amlogic_cec_log_dbg("buffer got unrecorgnized msg\n");
-            cec_rx_buf_clear();
-        }
-        else
-        {
-            INIT_LIST_HEAD(&entry->list);
-            spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-            list_add_tail(&entry->list, &cec_rx_struct.list);
-            amlogic_cec_set_rx_state(STATE_DONE);
-            spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
-
-            wake_up_interruptible(&cec_rx_struct.waitq);
         }
     }
     if (atomic_read(&hdmi_on))
@@ -331,29 +342,7 @@ static irqreturn_t amlogic_cec_irq_handler(int irq, void *dummy)
 
     if (rx_msg_state == RX_DONE)
     {
-
-        if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
-        {
-            amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
-            return IRQ_HANDLED;
-        }
-
-        if ((-1) == cec_ll_rx(entry->buffer, &entry->size))
-        {
-            kfree(entry);
-            amlogic_cec_log_dbg("amlogic_cec_irq_handler: nothing to read\n");
-            cec_rx_buf_clear();
-            return IRQ_HANDLED;
-        }
-
-        INIT_LIST_HEAD(&entry->list);
-
-        spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-        list_add_tail(&entry->list, &cec_rx_struct.list);
-        amlogic_cec_set_rx_state(STATE_DONE);
-        spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
-
-        wake_up_interruptible(&cec_rx_struct.waitq);
+        amlogic_cec_read_hw();
     }
 
     return IRQ_HANDLED;
