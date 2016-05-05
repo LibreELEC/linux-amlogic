@@ -268,7 +268,7 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
                 aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | cec_phy_addr);
                 amlogic_cec_log_dbg("physical address:0x%x\n", aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff);
 
-                if ((hdmitx_device->cec_init_ready != 0) && (hdmitx_device->hpd_state != 0))
+                if (hdmitx_device->hpd_state != 0)
                 {
                     if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
                     {
