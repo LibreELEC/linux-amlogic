@@ -44,6 +44,10 @@ static int early_suspend_flag;
 #undef pr_fmt
 #define pr_fmt(fmt) "gxbb_pm: " fmt
 
+#ifdef CONFIG_GXBB_FORCE_POWER_ON_STATE_AFTER_RESUME
+extern void request_suspend_state(suspend_state_t new_state);
+#endif
+
 static DEFINE_MUTEX(late_suspend_lock);
 static LIST_HEAD(late_suspend_handlers);
 static void __iomem *debug_reg;
@@ -108,6 +112,9 @@ static void late_suspend(void)
 static void early_resume(void)
 {
 	struct late_suspend *pos;
+#ifdef CONFIG_GXBB_FORCE_POWER_ON_STATE_AFTER_RESUME
+	request_suspend_state(PM_SUSPEND_ON);
+#endif
 
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
