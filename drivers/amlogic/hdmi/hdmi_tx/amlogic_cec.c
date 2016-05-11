@@ -220,8 +220,6 @@ static enum hrtimer_restart cec_late_check_rx_buffer(struct hrtimer *timer)
 void cec_node_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned long cec_phy_addr;
-    unsigned long spin_flags;
-    struct cec_rx_list *entry;
 
     if (atomic_read(&hdmi_on) && (0 == hdmitx_device->cec_init_ready))
     {
@@ -267,29 +265,6 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
             {
                 aml_write_reg32(P_AO_DEBUG_REG1, (aml_read_reg32(P_AO_DEBUG_REG1) & (0xf << 16)) | cec_phy_addr);
                 amlogic_cec_log_dbg("physical address:0x%x\n", aml_read_reg32(P_AO_DEBUG_REG1) & 0xffff);
-
-                if (hdmitx_device->hpd_state != 0)
-                {
-                    if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
-                    {
-                        amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
-                    }
-                    else
-                    {
-                        // let the libCEC ask for new physical Address
-                        entry->buffer[0] = 0xff;
-                        entry->size = 1;
-                        INIT_LIST_HEAD(&entry->list);
-
-                        spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
-                        list_add_tail(&entry->list, &cec_rx_struct.list);
-                        amlogic_cec_set_rx_state(STATE_DONE);
-                        spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
-
-                        amlogic_cec_log_dbg("trigger libCEC\n");
-                        wake_up_interruptible(&cec_rx_struct.waitq);
-                    }
-                }
             }
         }
 
@@ -369,6 +344,29 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
         cec_enable_irq();
 
         amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+
+        if (hdmitx_device->hpd_state != 0)
+        {
+            if ((entry = kmalloc(sizeof(struct cec_rx_list), GFP_ATOMIC)) == NULL)
+            {
+                amlogic_cec_log_dbg("can't alloc cec_rx_list\n");
+            }
+            else
+            {
+                // let the libCEC ask for new physical Address
+                entry->buffer[0] = 0xff;
+                entry->size = 1;
+                INIT_LIST_HEAD(&entry->list);
+
+                spin_lock_irqsave(&cec_rx_struct.lock, spin_flags);
+                list_add_tail(&entry->list, &cec_rx_struct.list);
+                amlogic_cec_set_rx_state(STATE_DONE);
+                spin_unlock_irqrestore(&cec_rx_struct.lock, spin_flags);
+
+                amlogic_cec_log_dbg("trigger libCEC\n");
+                wake_up_interruptible(&cec_rx_struct.waitq);
+            }
+        }
 
         hrtimer_start(&cec_late_timer, ktime_set(0, 384*1000*1000), HRTIMER_MODE_REL);
     }
