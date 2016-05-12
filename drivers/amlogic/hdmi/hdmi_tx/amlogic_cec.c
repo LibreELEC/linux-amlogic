@@ -191,6 +191,12 @@ static int amlogic_cec_read_hw()
     return retval;
 }
 
+static void amlogic_cec_set_logical_addr(unsigned int logical_addr)
+{
+    amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | logical_addr);
+    cec_global_info.my_node_index = logical_addr;
+}
+
 unsigned short cec_log_addr_to_dev_type(unsigned char log_addr)
 {
     // unused, just to satisfy the linker
@@ -343,7 +349,7 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
 
         cec_enable_irq();
 
-        amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+        amlogic_cec_set_logical_addr(0xf);
 
         if (hdmitx_device->hpd_state != 0)
         {
@@ -375,7 +381,7 @@ static int amlogic_cec_open(struct inode *inode, struct file *file)
 
 static int amlogic_cec_release(struct inode *inode, struct file *file)
 {
-    amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+    amlogic_cec_set_logical_addr(0xf);
 
     cec_disable_irq();
 
@@ -501,8 +507,7 @@ static long amlogic_cec_ioctl(struct file *file, unsigned int cmd,
             return -EFAULT;
         }
 
-        amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | logical_addr);
-        cec_global_info.my_node_index = logical_addr;
+        amlogic_cec_set_logical_addr(logical_addr);
         /*
          * use DEBUG_REG1 bit 16 ~ 31 to save logic address.
          * So uboot can use this logic address directly
@@ -571,7 +576,7 @@ static int amlogic_cec_init(void)
     hdmitx_device = get_hdmitx_device();
     amlogic_cec_log_dbg("CEC init\n");
 
-    amlogic_cec_write_reg(CEC_LOGICAL_ADDR0, (0x1 << 4) | 0xf);
+    amlogic_cec_set_logical_addr(0xf);
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
     hdmi_wr_reg(CEC0_BASE_ADDR+CEC_CLOCK_DIV_H, 0x00 );
