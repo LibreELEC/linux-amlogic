@@ -590,19 +590,6 @@ static ssize_t show_cec_lang_config(struct device * dev, struct device_attribute
     pos+=snprintf(buf+pos, PAGE_SIZE, "%x\n",cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_lang);
     return pos;
 }
-#else
-
-extern unsigned long amlogic_cec_debug_flag;
-
-static ssize_t show_amlogic_cec_debug_config(struct device *dev, struct device_attribute *attr, char *buf)
-{
-    return snprintf(buf, PAGE_SIZE, "amlogic_cec_debug:%lu\n", amlogic_cec_debug_flag);
-}
-
-static ssize_t store_amlogic_cec_debug_config(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-   return kstrtoul(buf, 16, &amlogic_cec_debug_flag) ? 0 : count;
-}
 #endif
 
 /*aud_mode attr*/
@@ -983,8 +970,6 @@ static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 static DEVICE_ATTR(cec_config, S_IWUSR | S_IRUGO | S_IWGRP, show_cec_config, store_cec_config);
 //static DEVICE_ATTR(cec_config, S_IWUGO | S_IRUGO , NULL, store_cec_config);
 static DEVICE_ATTR(cec_lang_config, S_IWUSR | S_IRUGO | S_IWGRP, show_cec_lang_config, store_cec_lang_config);
-#else
-static DEVICE_ATTR(amlogic_cec_debug_config, S_IWUSR | S_IRUGO | S_IWGRP, show_amlogic_cec_debug_config, store_amlogic_cec_debug_config);
 #endif
 
 /*****************************
@@ -1668,8 +1653,6 @@ static int amhdmitx_probe(struct platform_device *pdev)
     ret=device_create_file(hdmitx_dev, &dev_attr_cec);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec_config);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec_lang_config);
-#else
-    ret=device_create_file(hdmitx_dev, &dev_attr_amlogic_cec_debug_config);
 #endif
 
     if (hdmitx_dev == NULL) {

@@ -39,19 +39,20 @@
 
 #define CONFIG_TV_DEBUG // for verbose output
 //#undef CONFIG_TV_DEBUG
-unsigned long amlogic_cec_debug_flag = 1;
 
 MODULE_AUTHOR("Gerald Dachs");
 MODULE_DESCRIPTION("Amlogic CEC driver");
 MODULE_LICENSE("GPL");
 
-//unused, only left to satisfy the linker
-bool cec_msg_dbg_en = 1;
+bool cec_msg_dbg_en = 0;
+
+MODULE_PARM_DESC(cec_msg_dbg_en, "\n cec_msg_dbg_en\n");
+module_param(cec_msg_dbg_en, bool, 0664);
 
 #define DRV_NAME "amlogic_cec"
 #ifndef amlogic_cec_log_dbg
 #define amlogic_cec_log_dbg(fmt, ...) \
-    if (amlogic_cec_debug_flag)       \
+    if (cec_msg_dbg_en)       \
         printk(KERN_INFO "[%s] %s(): " fmt, DRV_NAME, __func__, ##__VA_ARGS__)
 #endif
 
@@ -118,26 +119,6 @@ static void amlogic_cec_set_rx_state(enum cec_state state)
 static void amlogic_cec_set_tx_state(enum cec_state state)
 {
     atomic_set(&cec_tx_struct.state, state);
-}
-
-static void amlogic_cec_msg_dump(char * msg_tag, const unsigned char *data, unsigned char count)
-{
-    int i;
-    int pos;
-    unsigned char msg_log_buf[128] = { 0 };
-
-    if (amlogic_cec_debug_flag == 1)
-    {
-        pos = 0;
-        pos += sprintf(msg_log_buf + pos, "msg %s len: %d   dat: ", msg_tag, count);
-        for (i = 0; i < count; ++i)
-        {
-            pos += sprintf(msg_log_buf + pos, "%02x ", data[i]);
-        }
-        pos += sprintf(msg_log_buf + pos, "\n");
-        msg_log_buf[pos] = '\0';
-        hdmi_print(INF, "[amlogic_cec] dump: %s", msg_log_buf);
-    }
 }
 
 static unsigned int amlogic_cec_read_reg(unsigned int reg)
