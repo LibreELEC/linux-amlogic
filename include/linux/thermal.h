@@ -259,8 +259,8 @@ static inline int thermal_generate_netlink_event(struct thermal_zone_device *tz,
 }
 #endif
 
-#ifdef CONFIG_AMLOGIC_THERMAL
+#ifdef CONFIG_AML_PLATFORM_THERMAL
 #include <mach/thermal.h>
-#endif /* CONFIG_AMLOGIC_THERMAL */
+#endif /* CONFIG_AML_PLATFORM_THERMAL */
 
 #endif /* __THERMAL_H__ */
