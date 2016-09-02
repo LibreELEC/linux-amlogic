@@ -38,9 +38,10 @@ struct hw_enc_clk_val_group {
 void hdmitx_set_clk(enum hdmi_vic vic); /* For 24bits */
 void hdmitx_set_clk_30b(enum hdmi_vic vic); /* For 30bits */
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 /* for framerate-auto, fine tune for clock */
 int hdmitx_fine_tune_hpll(enum fine_tune_mode_e mode);
-
+#endif
 
 #endif
 

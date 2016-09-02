@@ -704,6 +704,7 @@ next:
 	set_enci_div(p_enc[j].enci_div);
 }
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 int hdmitx_fine_tune_hpll(enum fine_tune_mode_e mode)
 {
 	static unsigned int save_div_frac;
@@ -727,4 +728,4 @@ int hdmitx_fine_tune_hpll(enum fine_tune_mode_e mode)
 
 	return 0;
 }
-
+#endif
