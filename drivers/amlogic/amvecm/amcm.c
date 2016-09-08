@@ -48,6 +48,10 @@ int cm_en = 0;/* 0:disabel;1:enable */
 module_param(cm_en, int, 0664);
 MODULE_PARM_DESC(cm_en, "\n enable or disable cm\n");
 
+static unsigned int cm_width_limit = 50;/* vlsi adjust */
+module_param(cm_width_limit, uint, 0664);
+MODULE_PARM_DESC(cm_width_limit, "\n cm_width_limit\n");
+
 #if 0
 struct cm_region_s cm_region;
 struct cm_top_s    cm_top;
@@ -131,6 +135,14 @@ void am_set_regmap(struct am_regs_s *p)
 						p->am_reg[i].val & 0xffffff00;
 				} else
 					cm2_patch_flag = 0;
+			}
+			/* add for cm patch size config */
+			if ((p->am_reg[i].addr == 0x205) ||
+				(p->am_reg[i].addr == 0x209) ||
+				(p->am_reg[i].addr == 0x20a)) {
+				pr_amcm_dbg("[amcm]:%s REG_TYPE_INDEX_VPPCHROMA addr:0x%x",
+					__func__, p->am_reg[i].addr);
+				break;
 			}
 			WRITE_VPP_REG(VPP_CHROMA_ADDR_PORT,
 					p->am_reg[i].addr);
@@ -241,14 +253,14 @@ void amcm_level_sel(unsigned int cm_level)
 void cm2_frame_size_patch(unsigned int width, unsigned int height)
 {
 	unsigned int vpp_size;
+	if (width < cm_width_limit)
+		amcm_disable();
+	else if (cm_en)
+		amcm_enable();
 	/*check if the cm2 enable/disable to config the cm2 size*/
 	if (!(READ_VPP_REG(VPP_MISC)&(0x1<<28)))
 		return;
 	vpp_size = width|(height << 16);
-	if (cm_size == 0) {
-		WRITE_VPP_REG(VPP_CHROMA_ADDR_PORT, 0x205);
-		cm_size = READ_VPP_REG(VPP_CHROMA_DATA_PORT);
-	}
 	if (cm_size != vpp_size) {
 		WRITE_VPP_REG(VPP_CHROMA_ADDR_PORT, 0x205);
 		WRITE_VPP_REG(VPP_CHROMA_DATA_PORT, vpp_size);

@@ -39,6 +39,12 @@
 			reg = <0x0 0x10000000 0x0 0x200000>;
 			no-map;
 		};
+		secos_reserved:linux,secos {
+			status = "disable";
+			compatible = "amlogic, aml_secos_memory";
+			reg = <0x0 0x05300000 0x0 0x2000000>;
+			no-map;
+		};
 		pstore:aml_pstore {
 			compatible = "amlogic, pstore";
 			reg = <0x0 0x07300000 0x0 0x100000>;
@@ -307,11 +313,20 @@
 		compatible = "amlogic, hdmirx";
 		dev_name = "hdmirx";
 		status = "ok";
-		pinctrl-names = "hdmirx_pins";
+		pinctrl-names = "hdmirx_pins","hu_det_none",
+				"hu_det_uart0","hu_det_uart1","hu_det_uart2";
 		pinctrl-0 = <&hdmirx_pins>;
+		pinctrl-1 = <&hu_det_none>;
+		pinctrl-2 = <&hdmirx_pins &cha_uart_in>;
+		pinctrl-3 = <&hdmirx_pins &chb_uart_in>;
+		pinctrl-4 = <&hdmirx_pins &chc_uart_in>;
 		rx_port_maps = <0x3120>;
+		hdmiuart_share_cfg = <7>;
 		repeat = <0>;
 		interrupts = <0 56 1>;
+		hdmirx_addr_port = <0xda83e000>;
+		hdmirx_data_port = <0xda83e004>;
+		hdmirx_ctrl_port = <0xda83e008>;
 		clocks = <&clock CLK_HDMIRX_MODET_CLK>,
 			<&clock CLK_HDMIRX_CFG_CLK>,
 			<&clock CLK_HDMIRX_ACR_REF_CLK>,
@@ -325,6 +340,9 @@
 			"xtal",
 			"fclk_div5";
 		hdmirx_id = <0>;
+		uart_scl_a_pin =  <&gpio       GPIOW_8       GPIO_ACTIVE_HIGH>;
+		uart_scl_b_pin =  <&gpio       GPIOW_12      GPIO_ACTIVE_HIGH>;
+		uart_scl_c_pin =  <&gpio       GPIOW_16      GPIO_ACTIVE_HIGH>;
  	};
 
 	tvafe {
@@ -450,7 +468,32 @@
 		gpio_reset = <&gpio       GPIOX_20       GPIO_ACTIVE_HIGH>;
 	};
 
-
+	emmc{
+		compatible = "amlogic, aml_sd_emmc";
+		dev_name = "aml_newsd.0";
+		status = "okay";
+		reg = <0x0 0xd0074000 0x0 0x2000>;
+		interrupts = <	0 218 1>;
+		pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
+		pinctrl-0 = <&emmc_clk_cmd_pins>;
+		pinctrl-1 = <&emmc_all_pins>;
+		emmc{
+			status = "okay";
+			pinname = "emmc";
+			ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
+			caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
+				 "MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
+				 "MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
+			caps2 = "MMC_CAP2_HS200";
+			f_min = <300000>;
+			f_max = <100000000>;
+			max_req_size = <0x20000>;          /**256KB*/
+			//			gpio_dat3 = "BOOT_3"
+			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
+			hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
+			card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
+		};
+	};
 	sd{
 		compatible = "amlogic, aml_sd_emmc";
 		dev_name = "aml_newsd.0";
@@ -480,33 +523,6 @@
 			irq_in = <3>;
 			irq_out = <5>;
 			card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
-		};
-	};
-
-	emmc{
-		compatible = "amlogic, aml_sd_emmc";
-		dev_name = "aml_newsd.0";
-		status = "okay";
-		reg = <0x0 0xd0074000 0x0 0x2000>;
-		interrupts = <	0 218 1>;
-		pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
-		pinctrl-0 = <&emmc_clk_cmd_pins>;
-		pinctrl-1 = <&emmc_all_pins>;
-		emmc{
-			status = "okay";
-			pinname = "emmc";
-			ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
-			caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
-			"MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
-			"MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
-			caps2 = "MMC_CAP2_HS200";
-			f_min = <300000>;
-			f_max = <100000000>;
-			max_req_size = <0x20000>;          /**256KB*/
-//			gpio_dat3 = "BOOT_3"
-			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
-			hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
-			card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
 		};
 	};
 
@@ -774,6 +790,7 @@
 		dev_name = "lcd";
 		mode = "tv";
 		status = "okay";
+		fr_auto_policy = <0>;
 		key_valid = <0>;
 		resets = <&clock GCLK_IDX_VCLK2_ENCL &clock GCLK_IDX_VCLK2_VENCL>;
 		reset-names = "encl","vencl";
@@ -793,6 +810,7 @@
 			model_name = "1080p-vfreq";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2060 2650 1100 1480 120000000 160000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
@@ -807,6 +825,7 @@
 			model_name = "1080p-pclk";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720 1100 1380 133940000 156000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
@@ -821,6 +840,7 @@
 			model_name = "1080p-hfreq";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720 1100 1380 133940000 156000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <1 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
@@ -836,6 +856,7 @@
 			model_name = "public";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4340 4700 2200 2850 480000000 614000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
@@ -851,6 +872,7 @@
 			model_name = "LG_RDL550WY";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2760 480000000 624000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
@@ -866,6 +888,7 @@
 			model_name = "INL_V580DJ2";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2790 552000000 632000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 1 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
@@ -881,6 +904,7 @@
 			model_name = "BOE_HV550QU2";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2760 560000000 624000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 1 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
 			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
@@ -1320,6 +1344,34 @@
 			"GPIOW_17","GPIOW_18","GPIOW_19","GPIOW_20";
 	};
 
+	hu_det_none: hu_det_none {
+		amlogic,setmask = <6  0x3def780>,
+			<AO 0x3>;
+		amlogic,clrmask = <6  0x04210800>,
+			<10 0x0000001e>;
+		amlogic,pins = "GPIOW_5";
+	};
+	cha_uart_in: cha_uart_in {
+		amlogic,setmask = <6  0x00000800>,
+			<10  0x00000002>;
+		amlogic,clrmask = <6  0x00000600>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_7","GPIOW_8";
+	};
+	chb_uart_in: chb_uart_in {
+		amlogic,setmask = <6  0x00010000>,
+			<10  0x00000004>;
+		amlogic,clrmask = <6  0x0000c000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_11","GPIOW_12";
+	};
+	chc_uart_in: chc_uart_in {
+		amlogic,setmask = <6  0x00200000>,
+			<10  0x00000008>;
+		amlogic,clrmask = <6  0x00180000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_15","GPIOW_16";
+	};
 	/*PWM-A*/
 	/*pwm_a_pins:pwm_a_pins{
 		amlogic,setmask=<10 0x200000>;

@@ -1231,21 +1231,18 @@ int aml_sd_uart_detect(struct amlsd_platform *pdata)
 			return 1;
 		else
 			pdata->is_in = true;
-		if (aml_is_sduart(pdata)
-		&& (!mmc_host_uhs(pdata->mmc))) {
-			/*if (!pdata->is_sduart) {  status change */
-				aml_uart_switch(pdata, 1);
-				pr_info("Uart in\n");
-				pdata->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
-				if (aml_is_sdjtag(pdata)) {
-					is_jtag = true;
-					/* aml_jtag_sd(); */
-					aml_jtag_switch_sd(pdata);
-					pdata->is_in = false;
-					pr_info("JTAG in\n");
-					return 0;
-				}
-			/*}*/
+		if (aml_is_sduart(pdata)) {
+			aml_uart_switch(pdata, 1);
+			pr_info("Uart in\n");
+			pdata->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
+			if (aml_is_sdjtag(pdata)) {
+				is_jtag = true;
+				/* aml_jtag_sd(); */
+				aml_jtag_switch_sd(pdata);
+				pdata->is_in = false;
+				pr_info("JTAG in\n");
+				return 0;
+			}
 		} else {
 			pr_info("normal card in\n");
 			aml_uart_switch(pdata, 0);
@@ -1467,7 +1464,8 @@ int aml_sd_voltage_switch(struct amlsd_platform *pdata, char signal_voltage)
 			ret = gpio_direction_output(pdata->vol_switch,
 					(!pdata->vol_switch_18));
 		CHECK_RET(ret);
-		pdata->signal_voltage = signal_voltage;
+		if (!ret)
+			pdata->signal_voltage = signal_voltage;
 	} else
 		return -EINVAL;
 
@@ -1480,10 +1478,8 @@ void aml_emmc_hw_reset(struct mmc_host *mmc)
 {
 	struct amlsd_platform *pdata = mmc_priv(mmc);
 	u32 ret;
-	if (!aml_card_type_mmc(pdata))
+	if (!aml_card_type_mmc(pdata) || !pdata->hw_reset)
 		return;
-
-	pr_info("%s %d\n", __func__, __LINE__);
 
 	/* boot_9 used as eMMC hw_rst pin here. */
 	gpio_free(pdata->hw_reset);

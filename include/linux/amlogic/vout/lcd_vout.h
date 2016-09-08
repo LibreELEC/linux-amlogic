@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/amlogic/vout/vout_notify.h>
 
 /* **********************************
  * debug print define
@@ -85,13 +86,14 @@ enum lcd_mode_e {
 
 enum lcd_chip_e {
 	LCD_CHIP_M6 = 0,
-	LCD_CHIP_M8,
-	LCD_CHIP_M8B,
-	LCD_CHIP_M8M2,
-	LCD_CHIP_G9TV,
-	LCD_CHIP_G9BB,
-	LCD_CHIP_GXTVBB,
-	LCD_CHIP_MAX,
+	LCD_CHIP_M8,     /* 1 */
+	LCD_CHIP_M8B,    /* 2 */
+	LCD_CHIP_M8M2,   /* 3 */
+	LCD_CHIP_G9TV,   /* 4 */
+	LCD_CHIP_G9BB,   /* 5 */
+	LCD_CHIP_GXTVBB, /* 6 */
+	LCD_CHIP_TXL,    /* 7 */
+	LCD_CHIP_MAX,    /* 8 */
 };
 
 enum lcd_type_e {
@@ -113,15 +115,26 @@ struct lcd_basic_s {
 	unsigned short v_active;    /* Vertical display area */
 	unsigned short h_period;    /* Horizontal total period time */
 	unsigned short v_period;    /* Vertical total period time */
+	unsigned short h_period_min;
+	unsigned short h_period_max;
+	unsigned short v_period_min;
+	unsigned short v_period_max;
+	unsigned int lcd_clk_min;
+	unsigned int lcd_clk_max;
 
 	unsigned int screen_width;  /* screen physical width(unit: mm) */
 	unsigned int screen_height; /* screen physical height(unit: mm) */
 };
 
+#define LCD_CLK_FRAC_UPDATE     (1 << 0)
+#define LCD_CLK_PLL_CHANGE      (1 << 1)
 struct lcd_timing_s {
 	unsigned char clk_auto; /* clk parameters auto generation */
 	unsigned int lcd_clk;   /* pixel clock(unit: Hz) */
 	unsigned int lcd_clk_dft; /* internal used */
+	unsigned int h_period_dft; /* internal used */
+	unsigned int v_period_dft; /* internal used */
+	unsigned char clk_change; /* internal used */
 	unsigned int pll_ctrl;  /* pll settings */
 	unsigned int div_ctrl;  /* divider settings */
 	unsigned int clk_ctrl;  /* clock settings */
@@ -346,7 +359,13 @@ struct lcd_config_s {
 	struct lcd_control_config_s lcd_control;
 	struct lcd_power_ctrl_s *lcd_power;
 	struct pinctrl *pin;
+	unsigned char pinmux_flag;
 	struct lcd_clk_gate_ctrl_s rstc;
+};
+
+struct lcd_duration_s {
+	unsigned int duration_num;
+	unsigned int duration_den;
 };
 
 struct aml_lcd_drv_s {
@@ -361,11 +380,14 @@ struct aml_lcd_drv_s {
 	struct device *dev;
 	struct lcd_config_s *lcd_config;
 	struct vinfo_s *lcd_info;
+	unsigned char fr_auto_policy;
+	struct lcd_duration_s std_duration;
 
 	void (*vout_server_init)(void);
 	void (*driver_init_pre)(void);
 	int (*driver_init)(void);
 	void (*driver_disable)(void);
+	void (*module_reset)(void);
 	/*void (*module_enable)(void);
 	void (*module_disable)(void);
 	void (*set_gamma_table)(unsigned int gamma_en);

@@ -451,6 +451,7 @@ static void set_hpll_clk_out(unsigned clk)
 		break;
 	case MESON_CPU_MAJOR_ID_GXL:
 	case MESON_CPU_MAJOR_ID_GXM:
+	case MESON_CPU_MAJOR_ID_TXL:
 		set_hpll_clk_out_gxl(clk);
 		break;
 	default:
@@ -659,8 +660,7 @@ void set_vmode_clk(enum vmode_e mode)
 	int j = 0;
 
 	mutex_lock(&setclk_mutex);
-	if (is_meson_gxl_cpu() ||
-		is_meson_gxm_cpu()) {
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXL)) {
 		p_enc = &setting_enc_clk_val_gxl[0];
 		i = sizeof(setting_enc_clk_val_gxl)
 			/ sizeof(struct enc_clk_val_s);
@@ -685,6 +685,12 @@ void set_vmode_clk(enum vmode_e mode)
 		i = sizeof(setting_enc_clk_val_m6)
 			/ sizeof(struct enc_clk_val_s);
 	}
+
+	if (p_enc == NULL) {
+		vout_log_err("can't find clock table!\n");
+		return;
+	}
+
 	vout_log_info("mode is: %d\n", mode);
 	for (j = 0; j < i; j++) {
 		if (mode == p_enc[j].mode)

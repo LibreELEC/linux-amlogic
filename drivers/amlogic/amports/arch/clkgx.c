@@ -315,8 +315,8 @@ static  struct clk_set_setting clks_for_formats[] = {
 			{0, 0}, {0, 0}, {0, 0},}
 	},
 	{/*VFORMAT_HEVC*/
-		{{1280*720*30, 100}, {1920*1080*30, 100}, {1920*1080*60, 166},
-		{4096*2048*30, 333}, {4096*2048*60, 630}, {INT_MAX, 630},}
+		{{1280*720*30, 100}, {1920*1080*60, 166}, {4096*2048*25, 333},
+		{4096*2048*30, 400}, {4096*2048*60, 630}, {INT_MAX, 630},}
 	},
 	{/*VFORMAT_H264_ENC*/
 		{{1280*720*30, 0}, {INT_MAX, 0},
@@ -342,14 +342,12 @@ static int vdec_clock_init(void)
 {
 	gp_pll_user_vdec = gp_pll_user_register("vdec", 0,
 		gp_pll_user_cb_vdec);
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL
-		|| get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL)
 		is_gp0_div2 = false;
 	else
 		is_gp0_div2 = true;
 
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL
-		|| get_cpu_type() == MESON_CPU_MAJOR_ID_GXM) {
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL) {
 		pr_info("used fix clk for vdec clk source!\n");
 		update_vdec_clk_config_settings(1);
 	}
@@ -399,8 +397,6 @@ static int vdec_clock_set(int clk)
 		else
 			clk = clock_real_clk[VDEC_1];
 	}
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL && clk >= 500)
-		clk = 667;
 	vdec_get_clk_source(clk, &source, &div, &rclk);
 	update_clk_with_clk_configs(clk, &source, &div, &rclk);
 
@@ -606,6 +602,7 @@ static int vdec_clock_get(enum vdec_type_e core)
 	MESON_CPU_MAJOR_ID_GXTVBB,\
 	MESON_CPU_MAJOR_ID_GXL,\
 	MESON_CPU_MAJOR_ID_GXM,\
+	MESON_CPU_MAJOR_ID_TXL,\
 	0}
 #include "clk.h"
 ARCH_VDEC_CLK_INIT();

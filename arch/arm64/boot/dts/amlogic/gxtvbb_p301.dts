@@ -39,6 +39,12 @@
 			reg = <0x0 0x10000000 0x0 0x200000>;
 			no-map;
 		};
+		secos_reserved:linux,secos {
+			status = "disable";
+			compatible = "amlogic, aml_secos_memory";
+			reg = <0x0 0x05300000 0x0 0x2000000>;
+			no-map;
+		};
 		pstore:aml_pstore {
 			compatible = "amlogic, pstore";
 			reg = <0x0 0x07300000 0x0 0x100000>;
@@ -367,11 +373,20 @@
 		compatible = "amlogic, hdmirx";
 		dev_name = "hdmirx";
 		status = "ok";
-		pinctrl-names = "hdmirx_pins";
+		pinctrl-names = "hdmirx_pins","hu_det_none",
+				"hu_det_uart0","hu_det_uart1","hu_det_uart2";
 		pinctrl-0 = <&hdmirx_pins>;
+		pinctrl-1 = <&hu_det_none>;
+		pinctrl-2 = <&hdmirx_pins &cha_uart_in>;
+		pinctrl-3 = <&hdmirx_pins &chb_uart_in>;
+		pinctrl-4 = <&hdmirx_pins &chc_uart_in>;
 		rx_port_maps = <0x3120>;
+		hdmiuart_share_cfg = <7>;
 		repeat = <0>;
 		interrupts = <0 56 1>;
+		hdmirx_addr_port = <0xda83e000>;
+		hdmirx_data_port = <0xda83e004>;
+		hdmirx_ctrl_port = <0xda83e008>;
 		clocks = <&clock CLK_HDMIRX_MODET_CLK>,
 			<&clock CLK_HDMIRX_CFG_CLK>,
 			<&clock CLK_HDMIRX_ACR_REF_CLK>,
@@ -385,6 +400,9 @@
 			"xtal",
 			"fclk_div5";
 		hdmirx_id = <0>;
+		uart_scl_a_pin =  <&gpio       GPIOW_8       GPIO_ACTIVE_HIGH>;
+		uart_scl_b_pin =  <&gpio       GPIOW_12      GPIO_ACTIVE_HIGH>;
+		uart_scl_c_pin =  <&gpio       GPIOW_16      GPIO_ACTIVE_HIGH>;
  	};
 	tvafe {
 		compatible = "amlogic, tvafe";
@@ -470,6 +488,7 @@
 		reg = <0x0 0xc8840000 0x0 0x2000>;
 		reg_23cf = <0x88188832>;/*default:0x88188832;r840 on haier:0x48188832*/
 		audio_gain_val = <1024>; /*haier need this*/
+		video_gain_val = <0x5C8808C1>;
 	};
 	amlvecm {
 		compatible = "amlogic, vecm";
@@ -514,7 +533,33 @@
 		init_date = "2015/01/01";
 		status = "okay";
 	};
-
+	emmc{
+		compatible = "amlogic, aml_sd_emmc";
+		dev_name = "aml_newsd.0";
+		status = "okay";
+		reg = <0x0 0xd0074000 0x0 0x2000>;
+		interrupts = <	0 218 1>;
+		pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
+		pinctrl-0 = <&emmc_clk_cmd_pins>;
+		pinctrl-1 = <&emmc_all_pins>;
+		emmc{
+			status = "okay";
+			pinname = "emmc";
+			ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
+			caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
+				 "MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
+				 "MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
+			caps2 = "MMC_CAP2_HS200";
+			f_min = <300000>;
+			f_max = <100000000>;
+			tx_phase = <1>;
+			max_req_size = <0x20000>;          /**256KB*/
+			//            gpio_dat3 = "BOOT_3"
+			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
+			hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
+			card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
+		};
+	};
     sd{
         compatible = "amlogic, aml_sd_emmc";
         dev_name = "aml_newsd.0";
@@ -545,33 +590,6 @@
 			irq_out = <5>;
 	   		card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
 		};
-    };
-    emmc{
-        compatible = "amlogic, aml_sd_emmc";
-        dev_name = "aml_newsd.0";
-        status = "okay";
-        reg = <0x0 0xd0074000 0x0 0x2000>;
-        interrupts = <	0 218 1>;
-        pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
-        pinctrl-0 = <&emmc_clk_cmd_pins>;
-        pinctrl-1 = <&emmc_all_pins>;
-        emmc{
-            status = "okay";
-            pinname = "emmc";
-            ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
-            caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
-				"MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
-				"MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
-			caps2 = "MMC_CAP2_HS200";
-			f_min = <300000>;
-            f_max = <100000000>;
-			tx_phase = <1>;
-            max_req_size = <0x20000>;          /**256KB*/
-//            gpio_dat3 = "BOOT_3"
-			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
-            hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
-			card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
-	};
     };
 
 	nand{
@@ -942,6 +960,7 @@
 		dev_name = "lcd";
 		mode = "tv";
 		status = "okay";
+		fr_auto_policy = <1>; /* 0=disable, 1=60/50hz, 2=60/50/48hz */
 		key_valid = <0>;
 		resets = <&clock GCLK_IDX_VCLK2_ENCL &clock GCLK_IDX_VCLK2_VENCL>;
 		reset-names = "encl","vencl";
@@ -962,8 +981,9 @@
 			model_name = "1080p-vfreq";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2060 2650 1100 1480 120000000 160000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
 			phy_attr=<3 0 0 0>; /* vswing_level, preemphasis_level, lvds_clk_vswing_level, lvds_clk_preem_level */
 			power_on_step = <0 0 1 20 /* panel power on */
@@ -978,8 +998,9 @@
 			model_name = "1080p-pclk";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720 1100 1380 133940000 156000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
 			phy_attr=<3 0 0 0>; /* vswing_level, preemphasis_level, lvds_clk_vswing_level, lvds_clk_preem_level */
 			power_on_step = <0 0 1 20 /* panel power on */
@@ -994,8 +1015,9 @@
 			model_name = "1080p-hfreq";
 			interface = "lvds"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <1920 1080 2200 1125 8 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <2080 2720 1100 1380 133940000 156000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <44 148 0 5 30 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <1 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <1 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			lvds_attr = <1 1 0 0>; /* lvds_repack, dual_port, pn_swap, port_swap */
 			phy_attr=<3 0 0 0>; /* vswing_level, preemphasis_level, lvds_clk_vswing_level, lvds_clk_preem_level */
 			power_on_step = <0 0 1 20 /* panel power on */
@@ -1011,8 +1033,9 @@
 			model_name = "public";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4340 4700 2200 2850 480000000 614000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <0 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
 			phy_attr=<3 0>; /* vswing_level, preemphasis_level */
 			power_on_step = <0 0 1 50 /* panel power on */
@@ -1028,8 +1051,9 @@
 			model_name = "LG_RDL550WY";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2760 480000000 624000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
 			phy_attr=<3 0>; /* vswing_level, preemphasis_level */
 			power_on_step = <0 0 1 50 /* panel power on */
@@ -1045,8 +1069,9 @@
 			model_name = "INL_V580DJ2";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2790 552000000 632000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 0 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 1 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
 			phy_attr=<3 0>; /* vswing_level, preemphasis_level */
 			power_on_step = <0 0 1 50 /* panel power on */
@@ -1062,8 +1087,9 @@
 			model_name = "BOE_HV550QU2";
 			interface = "vbyone"; /* lcd_interface(lvds, vbyone) */
 			basic_setting = <3840 2160 4400 2250 10 16 9>; /* h_active, v_active, h_period, v_period, lcd_bits, screen_widht, screen_height */
+			range_setting = <4240 4800 2200 2760 560000000 624000000>; /* h_period_min,max, v_period_min,max, pclk_min,max */
 			lcd_timing = <33 477 1 6 65 0>; /* hs_width, hs_bp, hs_pol, vs_width, vs_bp, vs_pol */
-			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
+			clk_attr = <2 0 1 0>; /* fr_adj_type(0=clock, 1=htotal, 2=vtotal, 3=auto range), clk_ss_level, clk_auto_generate, pixel_clk(unit in Hz) */
 			vbyone_attr = <8 2 4 4>; /* lane_count, region_num, byte_mode, color_fmt */
 			phy_attr=<3 0>; /* vswing_level, preemphasis_level */
 			power_on_step = <0 0 1 20 /* panel power on */
@@ -1204,28 +1230,45 @@
 					     1 18000 100 20>; /* pwm_method, pwm_freq, duty_max, duty_min */
 			bl_pwm_combo_power = <1 0 2 0 10 10>; /* pwm0_gpio_index, pwm0_gpio_off, pwm1_gpio_index, pwm1_gpio_off, pwm_on_delay, pwm_off_delay */
 		};
+		backlight_4{
+			index = <4>;
+			bl_name = "backlight_4";
+			bl_level_default_uboot_kernel = <100 100>;
+			bl_level_attr = <255 10 128 102>; /* max, min, mid, mid_mapping */
+
+			bl_ctrl_method = <3>; /* 0=gpio, 1=pwm, 2=pwm_combo, 3=ldim, 4=extern */
+			bl_power_attr = <0 1 0 200 200>; /* en_gpio_index, on_value, off_value, on_delay, off_delay */
+
+			bl_ldim_region_row_col = <1 1>;
+			bl_ldim_mode = <1>; /* 1=single_side(top, bottom, left or right), 2=uniform(top/bottom, left/right) */
+			ldim_dev_index = <2>;
+		};
 	};
 
 	local_diming_device {
 		compatible = "amlogic, ldim_dev";
 		dev_name = "ldim_dev";
 		status = "disabled";
-		spi_bus_num = <0>;
-		spi_chip_select = <0>;
-		spi_max_frequency = <400000>; /* unit: hz */
-		spi_mode = <0>; /* mode: 0, 1, 2, 3 */
-		pinctrl-names = "ldim_pwm";
-		pinctrl-0 = <&ldim_pwm_pins>;
+		pinctrl-names = "ldim_pwm0","ldim_pwm1";
+		pinctrl-0 = <&ldim_pwm0_pins>;
+		pinctrl-1 = <&ldim_pwm1_pins>;
 
 		ldim_dev-gpios = <&gpio GPIOX_9 GPIO_ACTIVE_HIGH
-			&gpio GPIOX_11 GPIO_ACTIVE_HIGH>;
-		ldim_dev_gpio_names = "GPIOX_9","GPIOX_11";
+			&gpio GPIOX_11 GPIO_ACTIVE_HIGH
+			&gpio GPIOY_4 GPIO_ACTIVE_HIGH>;
+		ldim_dev_gpio_names = "GPIOX_9","GPIOX_11","GPIOY_4";
 
 		ldim_dev_0 {
 			index = <0>; /* 120mA */
+			type = <1>; /* 0=normal,1=spi,2=i2c */
 			ldim_dev_name = "iw7019";
+			ldim_pwm_pinmux_sel = "ldim_pwm0";
 			ldim_pwm_port = "none"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
 			ldim_pwm_attr = <1 2 50>; /* pol, freq(Hz for pwm, v-freq mulit for pwm_vs), duty(%) */
+			spi_bus_num = <0>;
+			spi_chip_select = <0>;
+			spi_max_frequency = <400000>; /* unit: hz */
+			spi_mode = <0>; /* mode: 0, 1, 2, 3 */
 			spi_cs_delay = <10 100>; /* hold_high_delay, clk_cs_delay (unit: us) */
 
 			en_gpio_on_off = <0 1 0>; /* ldim_dev-gpios index, on_level, off_level */
@@ -1297,9 +1340,15 @@
 		};
 		ldim_dev_1 {
 			index = <1>;
+			type = <1>; /* 0=normal,1=spi,2=i2c */
 			ldim_dev_name = "iw7027";
+			ldim_pwm_pinmux_sel = "ldim_pwm0";
 			ldim_pwm_port = "PWM_VS"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
 			ldim_pwm_attr = <1 2 50>; /* pol, freq(Hz for pwm, v-freq mulit for pwm_vs), duty(%) */
+			spi_bus_num = <0>;
+			spi_chip_select = <0>;
+			spi_max_frequency = <400000>; /* unit: hz */
+			spi_mode = <0>; /* mode: 0, 1, 2, 3 */
 			spi_cs_delay = <10 10>; /* hold_high_delay, clk_cs_delay (unit: us) */
 
 			en_gpio_on_off = <0 1 0>; /* ldim_dev-gpios index, on_level, off_level */
@@ -1313,6 +1362,16 @@
 			/*   data: spi data, fill 0x0 for no use */
 			/*   delay: unit ms */
 			init_on = <0xff 0x00 0x00 0x00>;
+		};
+		ldim_dev_2 {
+			index = <2>;
+			type = <0>; /* 0=normal,1=spi,2=i2c */
+			ldim_dev_name = "ob3350";
+			ldim_pwm_pinmux_sel = "ldim_pwm1";
+			ldim_pwm_port = "PWM_B"; /* PWM_A, PWM_B, PWM_C, PWM_D, PWM_VS */
+			ldim_pwm_attr = <0 200 50>; /* pol, freq(Hz for pwm, v-freq mulit for pwm_vs), duty(%) */
+			dim_max_min = <100 20>; /* dim_max, dim_min */
+			en_gpio_on_off = <2 0 1>; /* ldim_dev-gpios index, on_level, off_level */
 		};
 	};
 
@@ -1739,14 +1798,20 @@
 			"GPIOZ_16","GPIOZ_19","GPIOZ_20";
 	};
 
-	ldim_pwm_pins:ldim_pwm_pin {
+	ldim_pwm0_pins:ldim_pwm0_pin {
 		amlogic,setmask = <2 0x00200000>;
 		amlogic,clrmask = <0 0x00900000
 				   1 0x00000008
 				   2 0x00180400
-                                   3 0x20000000>;
+					 3 0x20000000>;
 		amlogic,pins = "GPIOX_10";
 	};
+	ldim_pwm1_pins:ldim_pwm1_pin {
+		amlogic,setmask = <10 0x00800000>;
+		amlogic,clrmask = <10 0x0100a000>;
+		amlogic,pins = "GPIOY_13";
+	};
+
 	bl_pwm_on_pins:bl_pwm_on_pin {
 		amlogic,setmask = <10 0x00800000>;
 		amlogic,clrmask = <10 0x0100a000>;
@@ -1781,6 +1846,34 @@
                 amlogic,clrmask = <6  0x04210800>,
                                   <10 0x0000001e>;
                 amlogic,pins = "GPIOW_7";
+	};
+	hu_det_none: hu_det_none {
+		amlogic,setmask = <6  0x3def780>,
+			<AO 0x3>;
+		amlogic,clrmask = <6  0x04210800>,
+			<10 0x0000001e>;
+		amlogic,pins = "GPIOW_5";
+	};
+	cha_uart_in: cha_uart_in {
+		amlogic,setmask = <6  0x00000800>,
+			<10  0x00000002>;
+		amlogic,clrmask = <6  0x00000600>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_7","GPIOW_8";
+	};
+	chb_uart_in: chb_uart_in {
+		amlogic,setmask = <6  0x00010000>,
+			<10  0x00000004>;
+		amlogic,clrmask = <6  0x0000c000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_11","GPIOW_12";
+	};
+	chc_uart_in: chc_uart_in {
+		amlogic,setmask = <6  0x00200000>,
+			<10  0x00000008>;
+		amlogic,clrmask = <6  0x00180000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_15","GPIOW_16";
 	};
 	u_ch1_in:u_ch1_in {
 		amlogic,clrmask = <AO 0x33>,

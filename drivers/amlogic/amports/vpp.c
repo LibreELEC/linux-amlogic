@@ -300,7 +300,8 @@ static uint coeff(uint *settings, uint ratio, uint phase, bool interlace)
 	}
 	coeff_type = settings[coeff_select];
 	/* TODO: add future TV chips */
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) {
+	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_TXL)) {
 		if (coeff_type == COEF_BICUBIC_SHARP)
 			coeff_type = COEF_BICUBIC;
 	} else {
@@ -578,8 +579,10 @@ vpp_process_speed_check(s32 width_in,
 						(u64)vinfo->height *
 						1000,
 						height_out * 2160);
-					if (cur_ratio > MIN_RATIO_1000)
-						return SPEED_CHECK_VSKIP;
+				if ((cur_ratio > MIN_RATIO_1000) &&
+				(vf->source_type != VFRAME_SOURCE_TYPE_TUNER) &&
+				(vf->source_type != VFRAME_SOURCE_TYPE_CVBS))
+					return SPEED_CHECK_VSKIP;
 			}
 			if (vf->type & VIDTYPE_VIU_422) {
 				/*TODO vpu */
@@ -1172,9 +1175,10 @@ RESTART:
 	if (start >= end) {
 		/* nothing to display */
 		next_frame_par->VPP_hsc_startp = 0;
-
 		next_frame_par->VPP_hsc_endp = 0;
-
+		/* avoid mif set wrong or di out size overflow */
+		next_frame_par->VPP_hd_start_lines_ = 0;
+		next_frame_par->VPP_hd_end_lines_ = 0;
 	} else {
 		next_frame_par->VPP_hsc_startp = start;
 
@@ -1320,6 +1324,11 @@ RESTART:
 		pre_scaler_en) {
 		filter->vpp_pre_vsc_en = 1;
 		filter->vpp_vsc_start_phase_step >>= 1;
+		ratio_y >>= 1;
+		f2v_get_vertical_phase(ratio_y, ini_vphase,
+		next_frame_par->VPP_vf_ini_phase_,
+		vpp_flags & VPP_FLAG_INTERLACE_OUT);
+
 	} else
 		filter->vpp_pre_vsc_en = 0;
 
@@ -1442,7 +1451,7 @@ VPP_SRSHARP0_CTRL:0x1d91
 [1]if sharpness is enable or vscaler is enable,must set to 1,
 sharpness1;reg can only to be w
 */
-int vpp_set_super_sclaer_regs(int scaler_path_sel,
+int vpp_set_super_scaler_regs(int scaler_path_sel,
 		int reg_srscl0_enable,
 		int reg_srscl0_hsize,
 		int reg_srscl0_vsize,
@@ -2008,8 +2017,13 @@ vpp_set_filters(u32 process_3d_type, u32 wide_mode,
 		vpp_get_video_source_size(&src_width, &src_height,
 			process_3d_type, vf, next_frame_par);
 	} else {
-		src_width = vf->width;
-		src_height = vf->height;
+		if (vf->type & VIDTYPE_COMPRESS) {
+			src_width = vf->compWidth;
+			src_height = vf->compHeight;
+		} else {
+			src_width = vf->width;
+			src_height = vf->height;
+		}
 		next_frame_par->vpp_3d_mode = VPP_3D_MODE_NULL;
 		next_frame_par->vpp_2pic_mode = 0;
 		next_frame_par->vpp_3d_scale = 0;
@@ -2307,7 +2321,8 @@ void vpp_set_3d_scale(bool enable)
 
 void vpp_super_scaler_support(void)
 {
-	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB)
+	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||
+		(get_cpu_type() == MESON_CPU_MAJOR_ID_TXL))
 		super_scaler = 1;
 	else
 		super_scaler = 0;

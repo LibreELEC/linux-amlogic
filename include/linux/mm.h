@@ -48,6 +48,17 @@ extern int sysctl_legacy_va_layout;
 #define sysctl_legacy_va_layout 0
 #endif
 
+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
+extern const int mmap_rnd_bits_min;
+extern const int mmap_rnd_bits_max;
+extern int mmap_rnd_bits __read_mostly;
+#endif
+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_COMPAT_BITS
+extern const int mmap_rnd_compat_bits_min;
+extern const int mmap_rnd_compat_bits_max;
+extern int mmap_rnd_compat_bits __read_mostly;
+#endif
+
 #ifdef CONFIG_CMA
 #define MIGRATE_CMA_HOLD  1
 #define MIGRATE_CMA_ALLOC 2
@@ -63,6 +74,9 @@ extern int migrate_status;
 extern int mutex_status;
 extern int migrate_refcount;
 extern wait_queue_head_t migrate_wq;
+extern int cma_alloc_ref(void);
+extern void get_cma_alloc_ref(void);
+extern void put_cma_alloc_ref(void);
 #endif
 #include <asm/page.h>
 #include <asm/pgtable.h>

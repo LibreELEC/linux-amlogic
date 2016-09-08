@@ -27,6 +27,7 @@
 #include <linux/of.h>
 #include <linux/reset.h>
 #include <linux/amlogic/vout/lcd_vout.h>
+#include <linux/amlogic/vout/lcd_notify.h>
 #include <linux/amlogic/vout/lcd_unifykey.h>
 #include "lcd_common.h"
 #include "lcd_reg.h"
@@ -237,20 +238,32 @@ void lcd_ttl_pinmux_set(int status)
 		index = 4;
 
 	if (status) {
-		switch (pconf->lcd_control.ttl_config->sync_valid) {
-		case 1: /* hvsync */
-			num = index + 0;
-			break;
-		case 2: /* DE */
-			num = index + 1;
-			break;
-		default:
-		case 3: /* DE + hvsync */
-			num = index + 2;
-			break;
+		if (pconf->pinmux_flag == 0) {
+			pconf->pinmux_flag = 1;
+			switch (pconf->lcd_control.ttl_config->sync_valid) {
+			case 1: /* hvsync */
+				num = index + 0;
+				break;
+			case 2: /* DE */
+				num = index + 1;
+				break;
+			default:
+			case 3: /* DE + hvsync */
+				num = index + 2;
+				break;
+			}
+		} else {
+			LCDPR("ttl pinmux is already selected\n");
+			return;
 		}
 	} else {
-		num = index + 3;
+		if (pconf->pinmux_flag) {
+			pconf->pinmux_flag = 0;
+			num = index + 3;
+		} else {
+			LCDPR("ttl pinmux is already released\n");
+			return;
+		}
 	}
 
 	/* request pinmux */
@@ -258,6 +271,48 @@ void lcd_ttl_pinmux_set(int status)
 		lcd_ttl_pinmux_str[num]);
 	if (IS_ERR(pconf->pin))
 		LCDERR("set ttl pinmux error\n");
+}
+
+/* set VX1_LOCKN && VX1_HTPDN */
+void lcd_vbyone_pinmux_set(int status)
+{
+	struct aml_lcd_drv_s *lcd_drv = aml_lcd_get_driver();
+	struct lcd_config_s *pconf;
+
+	if (lcd_debug_print_flag)
+		LCDPR("%s: %d\n", __func__, status);
+
+#if 1
+	pconf = lcd_drv->lcd_config;
+	if (status) {
+		if (pconf->pinmux_flag == 0) {
+			pconf->pinmux_flag = 1;
+			/* request pinmux */
+			pconf->pin = devm_pinctrl_get_select(lcd_drv->dev,
+				"vbyone");
+			if (IS_ERR(pconf->pin))
+				LCDERR("set vbyone pinmux error\n");
+		} else {
+			LCDPR("vbyone pinmux is already selected\n");
+		}
+	} else {
+		if (pconf->pinmux_flag) {
+			pconf->pinmux_flag = 0;
+			/* release pinmux */
+			devm_pinctrl_put(pconf->pin);
+		} else {
+			LCDPR("vbyone pinmux is already released\n");
+		}
+	}
+#else
+	if (status) {
+		lcd_pinmux_clr_mask(7,
+			((1 << 1) | (1 << 2) | (1 << 9) | (1 << 10)));
+		lcd_pinmux_set_mask(7, ((1 << 11) | (1 << 12)));
+	} else {
+		lcd_pinmux_clr_mask(7, ((1 << 11) | (1 << 12)));
+	}
+#endif
 }
 
 int lcd_power_load_from_dts(struct lcd_config_s *pconf,
@@ -378,7 +433,7 @@ int lcd_power_load_from_dts(struct lcd_config_s *pconf,
 	ret = of_property_read_u32(child, "backlight_index", &para[0]);
 	if (ret) {
 		LCDPR("failed to get backlight_index\n");
-		pconf->backlight_index = 0;
+		pconf->backlight_index = 0xff;
 	} else {
 		pconf->backlight_index = para[0];
 	}
@@ -557,6 +612,7 @@ void lcd_tcon_config(struct lcd_config_s *pconf)
 	}
 }
 
+#if 0
 /* change frame_rate for different vmode */
 int lcd_vmode_change(struct lcd_config_s *pconf)
 {
@@ -614,6 +670,162 @@ int lcd_vmode_change(struct lcd_config_s *pconf)
 	}
 
 	return 0;
+}
+#else
+int lcd_vmode_change(struct lcd_config_s *pconf)
+{
+	unsigned char type = pconf->lcd_timing.fr_adjust_type;
+	 /* use default value to avoid offset */
+	unsigned int pclk = pconf->lcd_timing.lcd_clk_dft;
+	unsigned int h_period = pconf->lcd_timing.h_period_dft;
+	unsigned int v_period = pconf->lcd_timing.v_period_dft;
+	unsigned int pclk_min = pconf->lcd_basic.lcd_clk_min;
+	unsigned int pclk_max = pconf->lcd_basic.lcd_clk_max;
+	unsigned int duration_num = pconf->lcd_timing.sync_duration_num;
+	unsigned int duration_den = pconf->lcd_timing.sync_duration_den;
+	char str[100];
+	int len = 0;
+
+	pconf->lcd_timing.clk_change = 0; /* clear clk flga */
+	switch (type) {
+	case 0: /* pixel clk adjust */
+		pclk = (h_period * v_period) / duration_den * duration_num;
+		if (pconf->lcd_timing.lcd_clk != pclk)
+			pconf->lcd_timing.clk_change = LCD_CLK_PLL_CHANGE;
+		break;
+	case 1: /* htotal adjust */
+		h_period = ((pclk / v_period) * duration_den * 10) /
+				duration_num;
+		h_period = (h_period + 5) / 10; /* round off */
+		if (pconf->lcd_basic.h_period != h_period) {
+			/* check clk frac update */
+			pclk = (h_period * v_period) / duration_den *
+				duration_num;
+			if (pconf->lcd_timing.lcd_clk != pclk) {
+				pconf->lcd_timing.clk_change =
+					LCD_CLK_FRAC_UPDATE;
+			}
+		}
+		break;
+	case 2: /* vtotal adjust */
+		v_period = ((pclk / h_period) * duration_den * 10) /
+				duration_num;
+		v_period = (v_period + 5) / 10; /* round off */
+		if (pconf->lcd_basic.v_period != v_period) {
+			/* check clk frac update */
+			pclk = (h_period * v_period) / duration_den *
+				duration_num;
+			if (pconf->lcd_timing.lcd_clk != pclk) {
+				pconf->lcd_timing.clk_change =
+					LCD_CLK_FRAC_UPDATE;
+			}
+		}
+		break;
+	case 3: /* free adjust, use min/max range to calculate */
+	default:
+		v_period = ((pclk / h_period) * duration_den * 10) /
+			duration_num;
+		v_period = (v_period + 5) / 10; /* round off */
+		if (v_period > pconf->lcd_basic.v_period_max) {
+			v_period = pconf->lcd_basic.v_period_max;
+			h_period = ((pclk / v_period) * duration_den * 10) /
+				duration_num;
+			h_period = (h_period + 5) / 10; /* round off */
+			if (h_period > pconf->lcd_basic.h_period_max) {
+				h_period = pconf->lcd_basic.h_period_max;
+				pclk = (h_period * v_period) / duration_den *
+					duration_num;
+				if (pconf->lcd_timing.lcd_clk != pclk) {
+					if (pclk > pclk_max) {
+						pclk = pclk_max;
+						LCDERR("invalid vmode\n");
+						return -1;
+					}
+					pconf->lcd_timing.clk_change =
+						LCD_CLK_PLL_CHANGE;
+				}
+			}
+		} else if (v_period < pconf->lcd_basic.v_period_min) {
+			v_period = pconf->lcd_basic.v_period_min;
+			h_period = ((pclk / v_period) * duration_den * 10) /
+				duration_num;
+			h_period = (h_period + 5) / 10; /* round off */
+			if (h_period < pconf->lcd_basic.h_period_min) {
+				h_period = pconf->lcd_basic.h_period_min;
+				pclk = (h_period * v_period) / duration_den *
+					duration_num;
+				if (pconf->lcd_timing.lcd_clk != pclk) {
+					if (pclk < pclk_min) {
+						pclk = pclk_min;
+						LCDERR("invalid vmode\n");
+						return -1;
+					}
+					pconf->lcd_timing.clk_change =
+						LCD_CLK_PLL_CHANGE;
+				}
+			}
+		}
+		/* check clk frac update */
+		if ((pconf->lcd_timing.clk_change & LCD_CLK_PLL_CHANGE) == 0) {
+			pclk = (h_period * v_period) / duration_den *
+				duration_num;
+			if (pconf->lcd_timing.lcd_clk != pclk) {
+				pconf->lcd_timing.clk_change =
+					LCD_CLK_FRAC_UPDATE;
+			}
+		}
+		break;
+	}
+
+	if (pconf->lcd_basic.v_period != v_period) {
+		len += sprintf(str+len, "v_period %u->%u",
+			pconf->lcd_basic.v_period, v_period);
+		/* update v_period */
+		pconf->lcd_basic.v_period = v_period;
+	}
+	if (pconf->lcd_basic.h_period != h_period) {
+		if (len > 0)
+			len += sprintf(str+len, ", ");
+		len += sprintf(str+len, "h_period %u->%u",
+			pconf->lcd_basic.h_period, h_period);
+		/* update h_period */
+		pconf->lcd_basic.h_period = h_period;
+	}
+	if (pconf->lcd_timing.lcd_clk != pclk) {
+		if (len > 0)
+			len += sprintf(str+len, ", ");
+		len += sprintf(str+len, "pclk %u.%03uMHz->%u.%03uMHz",
+			(pconf->lcd_timing.lcd_clk / 1000000),
+			((pconf->lcd_timing.lcd_clk / 1000) % 1000),
+			(pclk / 1000000), ((pclk / 1000) % 1000));
+		pconf->lcd_timing.lcd_clk = pclk;
+	}
+	if (len > 0)
+		LCDPR("%s: %s\n", __func__, str);
+
+	return 0;
+}
+#endif
+
+void lcd_venc_change(struct lcd_config_s *pconf)
+{
+	unsigned int htotal, vtotal;
+
+	htotal = lcd_vcbus_read(ENCL_VIDEO_MAX_PXCNT) + 1;
+	vtotal = lcd_vcbus_read(ENCL_VIDEO_MAX_LNCNT) + 1;
+	if (pconf->lcd_basic.h_period != htotal) {
+		lcd_vcbus_write(ENCL_VIDEO_MAX_PXCNT,
+			pconf->lcd_basic.h_period - 1);
+	}
+	if (pconf->lcd_basic.v_period != vtotal) {
+		lcd_vcbus_write(ENCL_VIDEO_MAX_LNCNT,
+			pconf->lcd_basic.v_period - 1);
+	}
+	LCDPR("venc changed: %d,%d\n",
+		pconf->lcd_basic.h_period, pconf->lcd_basic.v_period);
+
+	if (pconf->lcd_basic.v_period != vtotal)
+		aml_lcd_notifier_call_chain(LCD_EVENT_BACKLIGHT_UPDATE, NULL);
 }
 
 void lcd_clk_gate_switch(int status)

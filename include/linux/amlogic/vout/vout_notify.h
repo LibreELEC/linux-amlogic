@@ -60,6 +60,7 @@ extern struct vinfo_s *get_current_vinfo(void);
 extern enum vmode_e get_current_vmode(void);
 extern int set_current_vmode(enum vmode_e);
 extern enum vmode_e validate_vmode(char *);
+extern int get_vsource_fps(int duration);
 extern int set_vframe_rate_hint(int);
 extern int set_vframe_rate_end_hint(void);
 
@@ -108,5 +109,6 @@ extern int vout2_resume(void);
 extern void update_vout_mode_attr(const struct vinfo_s *vinfo);
 
 extern char *get_vout_mode_internal(void);
+extern char *get_vout_mode_uboot(void);
 
 #endif /* _VOUT_NOTIFY_H_ */

@@ -113,7 +113,7 @@ static unsigned int delay_line_num;
 module_param(delay_line_num, uint, 0644);
 MODULE_PARM_DESC(delay_line_num, "delay_line_num");
 
-bool enable_reset = 1;
+bool enable_reset;
 module_param(enable_reset, bool, 0664);
 MODULE_PARM_DESC(enable_reset, "enable_reset");
 static int vsync_reset_mask;
@@ -680,9 +680,14 @@ static inline void vdin_set_top(unsigned int offset,
 		wr_bits(offset, VDIN_ASFIFO_CTRL2, 0xe4,
 				VDI5_ASFIFO_CTRL_BIT, VDI5_ASFIFO_CTRL_WID);
 		break;
+	case 0xa0:
 	case 0xc0: /* viu */
 		vdin_mux = VDIN_MUX_VIU;
-		wr_bits(offset, VDIN_ASFIFO_CTRL3, 0xf4,
+		if (port == TVIN_PORT_VIDEO)
+			wr_bits(offset, VDIN_ASFIFO_CTRL3, 0xe4,
+				VDI6_ASFIFO_CTRL_BIT, VDI6_ASFIFO_CTRL_WID);
+		else
+			wr_bits(offset, VDIN_ASFIFO_CTRL3, 0xf4,
 				VDI6_ASFIFO_CTRL_BIT, VDI6_ASFIFO_CTRL_WID);
 		break;
 	case 0x100:/* mipi in mybe need modify base on truth */
@@ -777,6 +782,12 @@ void vdin_set_decimation(struct vdin_dev_s *devp)
 	wr_bits(offset, VDIN_INTF_WIDTHM1, (devp->h_active - 1),
 			VDIN_INTF_WIDTHM1_BIT, VDIN_INTF_WIDTHM1_WID);
 	return;
+}
+
+void vdin_fix_nonstd_vsync(struct vdin_dev_s *devp)
+{
+	unsigned int offset = devp->addr_offset;
+	wr_bits(offset, VDIN_INTF_WIDTHM1, 3, 24, 2);
 }
 
 /*
@@ -1274,7 +1285,8 @@ static inline void vdin_set_hist_mux(struct vdin_dev_s *devp)
 }
 
 static inline void vdin_set_wr_ctrl(unsigned int offset, unsigned int v,
-		unsigned int h, enum vdin_format_convert_e format_convert)
+		unsigned int h, enum vdin_format_convert_e format_convert,
+		unsigned int color_depth_mode, unsigned int source_bitdeth)
 {
 	unsigned int write_format444 = 0, swap_cbcr = 0;
 	/* unsigned int def_canvas_id = offset?
@@ -1299,6 +1311,13 @@ static inline void vdin_set_wr_ctrl(unsigned int offset, unsigned int v,
 		write_format444 = 1;
 		break;
 	}
+	/*yuv422 full pack mode for 10bit*/
+	if (((format_convert == VDIN_FORMAT_CONVERT_YUV_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_RGB_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_GBR_YUV422) ||
+		(format_convert == VDIN_FORMAT_CONVERT_BRG_YUV422)) &&
+		color_depth_mode && (source_bitdeth > 8))
+		write_format444 = 3;
 
 	/* win_he */
 	wr_bits(offset, VDIN_WR_H_START_END, (h - 1), WR_HEND_BIT, WR_HEND_WID);
@@ -1837,7 +1856,8 @@ void vdin_set_all_regs(struct vdin_dev_s *devp)
 	vdin_set_hist_mux(devp);
 	/* write sub-module */
 	vdin_set_wr_ctrl(devp->addr_offset, devp->v_active,
-			devp->h_active, devp->format_convert);
+			devp->h_active, devp->format_convert,
+			devp->color_depth_mode, devp->source_bitdepth);
 
 	/* top sub-module */
 	vdin_set_top(devp->addr_offset, devp->parm.port,
@@ -1988,7 +2008,7 @@ void vdin_set_default_regmap(unsigned int offset)
 	/* [11: 0]       write.lfifo_buf_size   = 0x100 */
 	if (is_meson_g9tv_cpu() || is_meson_m8_cpu() ||
 		is_meson_m8m2_cpu() || is_meson_m8b_cpu() ||
-		is_meson_gxtvbb_cpu())
+		is_meson_gxtvbb_cpu() || is_meson_txl_cpu())
 		wr(offset, VDIN_LFIFO_CTRL,     0x00000f00);
 	else
 		wr(offset, VDIN_LFIFO_CTRL,     0x00000780);
@@ -2033,6 +2053,12 @@ void vdin_set_default_regmap(unsigned int offset)
 		DISCARD_BEF_LINE_FIFO_BIT, DISCARD_BEF_LINE_FIFO_WID);
 	wr_bits(offset, VDIN_WR_CTRL2, vdin_wr_burst_mode,
 		VDIN_WR_BURST_MODE_BIT, VDIN_WR_BURST_MODE_WID);
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL)
+		wr_bits(offset, VDIN_WR_CTRL2, 1,
+			VDIN_WR_DATA_EXT_EN_BIT, VDIN_WR_DATA_EXT_EN_WID);
+	else
+		wr_bits(offset, VDIN_WR_CTRL2, 0,
+			VDIN_WR_DATA_EXT_EN_BIT, VDIN_WR_DATA_EXT_EN_WID);
 	/* [20:25] interger = 0 */
 	/* [0:19] fraction = 0 */
 	wr(offset, VDIN_VSC_PHASE_STEP, 0x0000000);
@@ -2253,7 +2279,7 @@ int vdin_vsync_reset_mif(int index)
 
 		vpu_reg_27af |= VDIN0_REQ_EN_BIT;
 	} else if (index == 1) {
-		W_VCBUS_BIT(VDIN1_WR_CTRL, 0, 25, 1); /* vdin->vdin mif wr en */
+		W_VCBUS_BIT(VDIN1_WR_CTRL2, 1, 8, 1); /* vdin->vdin mif wr en */
 		W_VCBUS_BIT(VDIN1_WR_CTRL, 1, 29, 1); /* clock gate */
 		/* wr req en */
 		W_VCBUS_BIT(VDIN1_WR_CTRL, 0, WR_REQ_EN_BIT, WR_REQ_EN_WID);
@@ -2278,7 +2304,7 @@ int vdin_vsync_reset_mif(int index)
 		vpu_reg_27af |= (1 << VDIN1_REQ_EN_BIT);
 		W_VCBUS_BIT(VDIN1_WR_CTRL, 1, WR_REQ_EN_BIT, WR_REQ_EN_WID);
 		W_VCBUS_BIT(VDIN1_WR_CTRL, 0, 29, 1);
-		W_VCBUS_BIT(VDIN1_WR_CTRL, 1, 25, 1);
+		W_VCBUS_BIT(VDIN1_WR_CTRL2, 0, 8, 1);
 	}
 #if 0 /* TODO: if start or end line > 0, should drop this frame! */
 	if ((aml_read_vcbus(VDIN_LCNT_STATUS) & 0xfff) > 0) {

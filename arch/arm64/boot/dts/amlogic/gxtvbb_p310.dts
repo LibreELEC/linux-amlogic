@@ -22,6 +22,7 @@
 	aliases {
 		serial0 = &uart_AO;
 		serial1 = &uart_A;
+		serial2 = &uart_B;
 	};
 
 	memory@00000000 {
@@ -37,6 +38,12 @@
 		secmon_reserved:linux,secmon {
 			compatible = "amlogic, aml_secmon_memory";
 			reg = <0x0 0x10000000 0x0 0x200000>;
+			no-map;
+		};
+		secos_reserved:linux,secos {
+			status = "disable";
+			compatible = "amlogic, aml_secos_memory";
+			reg = <0x0 0x05300000 0x0 0x2000000>;
 			no-map;
 		};
 		pstore:aml_pstore {
@@ -321,11 +328,20 @@
 		compatible = "amlogic, hdmirx";
 		dev_name = "hdmirx";
 		status = "ok";
-		pinctrl-names = "hdmirx_pins";
+		pinctrl-names = "hdmirx_pins","hu_det_none",
+				"hu_det_uart0","hu_det_uart1","hu_det_uart2";
 		pinctrl-0 = <&hdmirx_pins>;
+		pinctrl-1 = <&hu_det_none>;
+		pinctrl-2 = <&hdmirx_pins &cha_uart_in>;
+		pinctrl-3 = <&hdmirx_pins &chb_uart_in>;
+		pinctrl-4 = <&hdmirx_pins &chc_uart_in>;
 		rx_port_maps = <0x3120>;
+		hdmiuart_share_cfg = <7>;
 		repeat = <0>;
 		interrupts = <0 56 1>;
+		hdmirx_addr_port = <0xda83e000>;
+		hdmirx_data_port = <0xda83e004>;
+		hdmirx_ctrl_port = <0xda83e008>;
 		clocks = <&clock CLK_HDMIRX_MODET_CLK>,
 			<&clock CLK_HDMIRX_CFG_CLK>,
 			<&clock CLK_HDMIRX_ACR_REF_CLK>,
@@ -339,6 +355,9 @@
 			"xtal",
 			"fclk_div5";
 		hdmirx_id = <0>;
+		uart_scl_a_pin =  <&gpio       GPIOW_8       GPIO_ACTIVE_HIGH>;
+		uart_scl_b_pin =  <&gpio       GPIOW_12      GPIO_ACTIVE_HIGH>;
+		uart_scl_c_pin =  <&gpio       GPIOW_16      GPIO_ACTIVE_HIGH>;
  	};
 	tvafe {
 		compatible = "amlogic, tvafe";
@@ -423,6 +442,8 @@
 		pinctrl-0=<&atvdemod_agc>;
 		reg = <0x0 0xc8840000 0x0 0x2000>;
 		reg_23cf = <0x88188832>;/*default:0x88188832;r840 on haier:0x48188832*/
+		//audio_gain_val = <1024>; /*haier need this*/
+		video_gain_val = <0x5C8808C1>;
 	};
 	aml_local_dimming {
 		compatible = "amlogic, aml_local_dimming";
@@ -474,7 +495,33 @@
 		pinctrl-names = "wifi_32k_pins";
 		pinctrl-0 = <&wifi_32k_pins>;
 	};
-
+	emmc{
+		compatible = "amlogic, aml_sd_emmc";
+		dev_name = "aml_newsd.0";
+		status = "okay";
+		reg = <0x0 0xd0074000 0x0 0x2000>;
+		interrupts = <	0 218 1>;
+		pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
+		pinctrl-0 = <&emmc_clk_cmd_pins>;
+		pinctrl-1 = <&emmc_all_pins>;
+		emmc{
+			status = "okay";
+			pinname = "emmc";
+			ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
+			caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
+				 "MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
+				 "MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
+			caps2 = "MMC_CAP2_HS200";
+			f_min = <300000>;
+			f_max = <100000000>;
+			tx_phase = <1>;
+			max_req_size = <0x20000>;          /**256KB*/
+			//            gpio_dat3 = "BOOT_3"
+			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
+			hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
+			card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
+		};
+	};
     sd{
         compatible = "amlogic, aml_sd_emmc";
         dev_name = "aml_newsd.0";
@@ -496,33 +543,6 @@
 	   		max_req_size = <0x20000>;          /**128KB*/
 	   		card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
 		};
-    };
-    emmc{
-        compatible = "amlogic, aml_sd_emmc";
-        dev_name = "aml_newsd.0";
-        status = "okay";
-        reg = <0x0 0xd0074000 0x0 0x2000>;
-        interrupts = <	0 218 1>;
-        pinctrl-names = "emmc_clk_cmd_pins", "emmc_all_pins";
-        pinctrl-0 = <&emmc_clk_cmd_pins>;
-        pinctrl-1 = <&emmc_all_pins>;
-        emmc{
-            status = "okay";
-            pinname = "emmc";
-            ocr_avail = <0x200080>;          /**VDD voltage 3.3 ~ 3.4 */
-            caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED",
-				"MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE", "MMC_CAP_1_8V_DDR",
-				"MMC_CAP_ERASE", "MMC_CAP_HW_RESET", "MMC_CAP_CMD23";
-			caps2 = "MMC_CAP2_HS200";
-			f_min = <300000>;
-            f_max = <100000000>;
-			tx_phase = <1>;
-            max_req_size = <0x20000>;          /**256KB*/
-//            gpio_dat3 = "BOOT_3"
-			gpio_dat3 = <&gpio       BOOT_3      GPIO_ACTIVE_HIGH>;
-			hw_reset =  <&gpio       BOOT_9      GPIO_ACTIVE_HIGH>;
-            card_type = <1>; /* 1:mmc card(include eMMC), 2:sd card(include tSD), */
-	};
     };
 
 	nand{
@@ -821,6 +841,19 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&a_uart_pins>;
 	};
+
+	uart_B: serial@c11084dc {
+                compatible = "amlogic, meson-uart";
+                reg = <0x0 0xc11084dc 0x0 0x14>;
+                interrupts = <0 75 1>;
+                status = "okay";
+                clocks = <&clock CLK_XTAL>;
+                clock-names = "clk_uart";
+                fifosize = < 64 >;
+                pinctrl-names = "default";
+                pinctrl-0 = <&b_uart_pins_y>;
+                resets = <&clock GCLK_IDX_UART1>;
+        };
 
        dwc3: dwc3@c9000000 {
                compatible = "synopsys, dwc3";
@@ -1159,11 +1192,11 @@
 		pinctrl-0=<&a_i2c_master>;
 	};
 
-	&i2c_b {
+/*	&i2c_b {
 		status = "okay";
 		pinctrl-names="default";
 		pinctrl-0=<&b_i2c_master>;
-	};
+	};*/
 	&i2c_c {
 		status = "disabled";
 		pinctrl-names="default";
@@ -1206,6 +1239,34 @@ hdmirx_pins: hdmirx_pins {
                         "GPIOW_13","GPIOW_14","GPIOW_15","GPIOW_16",
                         "GPIOW_17","GPIOW_18","GPIOW_19","GPIOW_20";
         };
+	hu_det_none: hu_det_none {
+		amlogic,setmask = <6  0x3def780>,
+			<AO 0x3>;
+		amlogic,clrmask = <6  0x04210800>,
+			<10 0x0000001e>;
+		amlogic,pins = "GPIOW_5";
+	};
+	cha_uart_in: cha_uart_in {
+		amlogic,setmask = <6  0x00000800>,
+			<10  0x00000002>;
+		amlogic,clrmask = <6  0x00000600>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_7","GPIOW_8";
+	};
+	chb_uart_in: chb_uart_in {
+		amlogic,setmask = <6  0x00010000>,
+			<10  0x00000004>;
+		amlogic,clrmask = <6  0x0000c000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_11","GPIOW_12";
+	};
+	chc_uart_in: chc_uart_in {
+		amlogic,setmask = <6  0x00200000>,
+			<10  0x00000008>;
+		amlogic,clrmask = <6  0x00180000>,
+			<AO 0x33>;
+		amlogic,pins = "GPIOW_15","GPIOW_16";
+	};
 	/*PWM-A*/
 	/*pwm_a_pins:pwm_a_pins{
 		amlogic,setmask=<10 0x200000>;

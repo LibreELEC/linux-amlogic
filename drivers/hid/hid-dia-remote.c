@@ -32,7 +32,7 @@
 #include <sound/info.h>
 #include <sound/initval.h>
 #include <sound/pcm.h>
-
+#include <linux/delay.h>
 #include "hid-ids.h"
 
 MODULE_LICENSE("GPL v2");
@@ -1433,6 +1433,24 @@ __nodev:
 	return err;
 }
 
+static void input_dev_report(struct hid_report *report)
+{
+	struct input_dev *idev = report->field[0]->hidinput->input;
+	int key = KEY_SEARCH;
+	if (idev == NULL)
+		return;
+	input_event(idev, EV_KEY, key, 1);
+	input_sync(idev);
+
+
+	msleep(20);
+	input_event(idev, EV_KEY, key, 0);
+	input_sync(idev);
+
+	pr_info("%s key=%d reported\n", __func__,  key);
+}
+
+
 static int dia_raw_event(struct hid_device *hdev, struct hid_report *report,
 	u8 *data, int size)
 {
@@ -1452,6 +1470,8 @@ if (report->id == ADPCM_AUDIO_REPORT_ID_0 && data[2] == 0) {
 		struct snd_dialog *dia_snd = substream != NULL ?
 		snd_pcm_substream_chip(substream) : s_dia_snd;
 		snd_dialog_log("Stream Enable %d\n", data[1]);
+		if (data[1] == 1)			/*voice function begin*/
+			input_dev_report(report);
 		/* Mark stream enable/disable position */
 		if (data[1]) {
 			dia_snd->stream_enable_pos = dia_snd->num_bytes;
@@ -1474,7 +1494,6 @@ if (report->id == ADPCM_AUDIO_REPORT_ID_0 && data[2] == 0) {
 			}
 		}
 	}
-
 	if (report->id == ADPCM_AUDIO_REPORT_ID_1
 			|| report->id == ADPCM_AUDIO_REPORT_ID_2
 			|| report->id == ADPCM_AUDIO_REPORT_ID_3){
@@ -1484,11 +1503,14 @@ if (report->id == ADPCM_AUDIO_REPORT_ID_0 && data[2] == 0) {
 		/* pr_err("Report size %d", size); */
 		audio_dec(&data[1], PACKET_TYPE_ADPCM, size - 1);
 		/* we've handled the event */
-		return 1;
+		return -1;
 	}
 
-	/* let the event through for regular input processing */
-	return 0;
+
+	if (report->id == ADPCM_AUDIO_REPORT_ID_0)
+		return -1;
+	else
+		return 0;
 }
 
 static int dia_probe(struct hid_device *hdev, const struct hid_device_id *id)

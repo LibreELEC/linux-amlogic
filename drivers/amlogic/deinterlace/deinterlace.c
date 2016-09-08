@@ -151,8 +151,10 @@ MODULE_PARM_DESC(dnr_en, "enable/disable dnr in pre");
 
 #endif
 static unsigned int di_pre_rdma_enable;
-module_param(di_pre_rdma_enable, uint, 0664);
-MODULE_PARM_DESC(di_pre_rdma_enable, "enable/disable rdma in pre");
+
+static bool full_422_pack;
+static bool tff_bff_enable;
+
 #define CHECK_VDIN_BUF_ERROR
 
 #define DEVICE_NAME "deinterlace"
@@ -647,22 +649,48 @@ store_dbg(struct device *dev,
 		pre_run_flag = DI_RUN_FLAG_STEP;
 	} else if (strncmp(buf, "dumpreg", 7) == 0) {
 		unsigned int i = 0;
-		pr_dbg("----dump di reg----\n");
-		for (i = 0; i < 255; i++)
-			pr_dbg("[0x%x][0x%x]=0x%x\n",
+		pr_info("----dump di reg----\n");
+		for (i = 0; i < 255; i++) {
+			if (i == 0x45)
+				pr_info("----nr reg----");
+			if (i == 0x80)
+				pr_info("----3d reg----");
+			if (i == 0x9e)
+				pr_info("---nr reg done---");
+			if (i == 0x9c)
+				pr_info("---3d reg done---");
+			pr_info("[0x%x][0x%x]=0x%x\n",
 				0xd0100000 + ((0x1700 + i) << 2),
 				0x1700 + i, Rd(0x1700 + i));
-		pr_dbg("----dump mcdi reg----\n");
+		}
+		pr_info("----dump mcdi reg----\n");
 		for (i = 0; i < 201; i++)
-			pr_dbg("[0x%x][0x%x]=0x%x\n",
+			pr_info("[0x%x][0x%x]=0x%x\n",
 				0xd0100000 + ((0x2f00 + i) << 2),
 				0x2f00 + i, Rd(0x2f00 + i));
-		pr_dbg("----dump pulldown reg----\n");
+		pr_info("----dump pulldown reg----\n");
 		for (i = 0; i < 26; i++)
-			pr_dbg("[0x%x][0x%x]=0x%x\n",
+			pr_info("[0x%x][0x%x]=0x%x\n",
 				0xd0100000 + ((0x2fd0 + i) << 2),
 				0x2fd0 + i, Rd(0x2fd0 + i));
-		pr_dbg("----dump reg done----\n");
+		pr_info("----dump bit mode reg----\n");
+		for (i = 0; i < 4; i++)
+			pr_info("[0x%x][0x%x]=0x%x\n",
+				0xd0100000 + ((0x20a7 + i) << 2),
+				0x20a7 + i, Rd(0x20a7 + i));
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			0xd0100000 + (0x2022 << 2),
+			0x2022, Rd(0x2022));
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			0xd0100000 + (0x17c1 << 2),
+			0x17c1, Rd(0x17c1));
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			0xd0100000 + (0x17c2 << 2),
+			0x17c2, Rd(0x17c2));
+		pr_info("[0x%x][0x%x]=0x%x\n",
+			0xd0100000 + (0x1aa7 << 2),
+			0x1aa7, Rd(0x1aa7));
+		pr_info("----dump reg done----\n");
 	} else if (strncmp(buf, "robust_test", 11) == 0) {
 		recovery_flag = 1;
 	} else if (strncmp(buf, "recycle_buf", 11) == 0) {
@@ -1870,6 +1898,7 @@ static void dump_di_pre_stru(void)
 struct di_post_stru_s {
 	struct DI_MIF_s	di_buf0_mif;
 	struct DI_MIF_s	di_buf1_mif;
+	struct DI_MIF_s	di_buf2_mif;
 	struct DI_SIM_MIF_s di_diwr_mif;
 	struct DI_SIM_MIF_s	di_mtnprd_mif;
 	struct DI_MC_MIF_s	di_mcvecrd_mif;
@@ -2461,7 +2490,7 @@ static int di_get_canvas(void)
 		/* mem/chan2/nr/mtn/contrd/contrd2/
 		 * contw/mcinfrd/mcinfow/mcvecw */
 		pre_num = 10;
-		/* buf0/buf1/mtnp/mcvec */
+		/* buf0/buf1/buf2/mtnp/mcvec */
 		post_num = 6;
 	}
 	if (canvas_pool_alloc_canvas_table("di_pre",
@@ -2979,7 +3008,8 @@ static void dump_di_buf(struct di_buf_s *di_buf)
 	pr_dbg("cnt_adr 0x%lx, cnt_canvas_idx 0x%x\n",
 		di_buf->cnt_adr, di_buf->cnt_canvas_idx);
 #endif
-	pr_dbg("di_cnt %d\n", atomic_read(&di_buf->di_cnt));
+	pr_dbg("di_cnt %d, priveated %u.\n",
+			atomic_read(&di_buf->di_cnt), di_buf->privated);
 }
 
 static void dump_pool(int index)
@@ -3263,7 +3293,11 @@ config_di_wr_mif(struct DI_SIM_MIF_s *di_nrwr_mif,
 	di_nrwr_mif->start_x = 0;
 	di_nrwr_mif->end_x = in_vframe->width - 1;
 	di_nrwr_mif->start_y = 0;
-	di_nrwr_mif->bit_mode = (di_buf->vframe->bitdepth & BITDEPTH_Y10)?1:0;
+	if (di_buf->vframe->bitdepth & BITDEPTH_Y10)
+		di_nrwr_mif->bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:1;
+	else
+		di_nrwr_mif->bit_mode = 0;
 	if (di_pre_stru.prog_proc_type == 0)
 		di_nrwr_mif->end_y = in_vframe->height / 2 - 1;
 	else
@@ -3287,10 +3321,17 @@ static void config_di_mif(struct DI_MIF_s *di_mif, struct di_buf_s *di_buf)
 		(di_buf->vframe->canvas0Addr >> 8) & 0xff;
 	di_mif->canvas0_addr2 =
 		(di_buf->vframe->canvas0Addr >> 16) & 0xff;
-	di_mif->bit_mode = (di_buf->vframe->bitdepth & BITDEPTH_Y10)?1:0;
-	if ((di_buf->vframe->type & VIDTYPE_VIU_444) &&
-		(di_buf->vframe->bitdepth & BITDEPTH_Y10))
-		di_mif->bit_mode = 2;
+
+	if (di_buf->vframe->bitdepth & BITDEPTH_Y10) {
+		if (di_buf->vframe->type & VIDTYPE_VIU_444)
+			di_mif->bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:2;
+		else if (di_buf->vframe->type & VIDTYPE_VIU_422)
+			di_mif->bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:1;
+	} else {
+		di_mif->bit_mode = 0;
+	}
 	if (di_buf->vframe->type & VIDTYPE_VIU_422) {
 		/* from vdin or local vframe */
 		if ((!is_progressive(di_buf->vframe))
@@ -3322,8 +3363,10 @@ static void config_di_mif(struct DI_MIF_s *di_mif, struct di_buf_s *di_buf)
 				(di_buf->vframe->canvas0Addr >> 16) & 0xff;
 		}
 	} else {
-		/* from decoder */
-		di_mif->video_mode = 0;
+		if (di_buf->vframe->type & VIDTYPE_VIU_444)
+			di_mif->video_mode = 1;
+		else
+			di_mif->video_mode = 0;
 		if (di_buf->vframe->type & VIDTYPE_VIU_NV21)
 			di_mif->set_separate_en = 2;
 		else
@@ -3743,7 +3786,7 @@ static unsigned int combing_setting_masks[MAX_NUM_DI_REG] = {
 };
 
 static unsigned int combing_pure_still_setting[MAX_NUM_DI_REG] = {
-	0x00202018,
+	0x00141410,
 	0x1A1A3A62,
 	0x15200A0A,
 	0x01800880,
@@ -3752,8 +3795,8 @@ static unsigned int combing_pure_still_setting[MAX_NUM_DI_REG] = {
 	0x0A800480,
 	0x1A1A2662,
 	0x0D200302,
-	0x02020606,
-	0x05080304,
+	0x02020202,
+	0x06090708,
 	0x40020A04,
 	0x0001FF0C,
 	0x00400204,
@@ -3762,7 +3805,7 @@ static unsigned int combing_pure_still_setting[MAX_NUM_DI_REG] = {
 };
 
 static unsigned int combing_bias_static_setting[MAX_NUM_DI_REG] = {
-	0x00202015,
+	0x00141410,
 	0x1A1A3A62,
 	0x15200A0A,
 	0x01800880,
@@ -3771,8 +3814,8 @@ static unsigned int combing_bias_static_setting[MAX_NUM_DI_REG] = {
 	0x0A800480,
 	0x1A1A2662,
 	0x0D200302,
-	0x02020606,
-	0x05080304,
+	0x02020202,
+	0x06090708,
 	0x40020A04,
 	0x0001FF0C,
 	0x00400204,
@@ -3782,18 +3825,18 @@ static unsigned int combing_bias_static_setting[MAX_NUM_DI_REG] = {
 
 
 static unsigned int combing_normal_setting[MAX_NUM_DI_REG] = {
-	0x00141410,
-	0x141A2062,
-	0x15200101,
-	0x01200440,
-	0x52000000,
+	0x00202015,
+	0x1A1A3A62,
+	0x15200a0a,
+	0x01000880,
+	0x74000D0D,
 	0x0D5A1520,
 	0x0A0A0201,
 	0x1A1A2662,
 	0x0D200302,
-	0x020A060C,
-	0x03040508,
-	0x60000404,
+	0x02020606,
+	0x05080304,
+	0x40020a04,
 	0x0001FF0C,
 	0x00400204,
 	0x00016404,
@@ -3801,18 +3844,18 @@ static unsigned int combing_normal_setting[MAX_NUM_DI_REG] = {
 };
 
 static unsigned int combing_bias_motion_setting[MAX_NUM_DI_REG] = {
-	0x00141410,
-	0x141A2022,
+	0x00202015,
+	0x1A1A3A62,
 	0x15200101,
 	0x01200440,
-	0x52000000,
+	0x74000D0D,
 	0x0D5A1520,
 	0x0A0A0201,
 	0x1A1A2662,
 	0x0D200302,
-	0x020A060C,
-	0x03040508,
-	0x60000404,
+	0x02020606,
+	0x05080304,
+	0x40020a04,
 	0x0001ff0c, /* 0x0001FF12 */
 	0x00400204, /* 0x00200204 */
 	0x00016404, /* 0x00012002 */
@@ -3820,30 +3863,50 @@ static unsigned int combing_bias_motion_setting[MAX_NUM_DI_REG] = {
 };
 
 static unsigned int combing_very_motion_setting[MAX_NUM_DI_REG] = {
-	0x00101010,
-	0x10101022,
+	0x00202015,
+	0x1A1A3A62,
 	0x15200101,
 	0x01200440,
-	0x52000000,
+	0x74000D0D,
 	0x0D5A1520,
 	0x0A0A0201,
 	0x1A1A2662,
 	0x0D200302,
-	0x020A060C,
-	0x03040508,
-	0x60000404,
+	0x02020606,
+	0x05080304,
+	0x40020a04,  /* 0x60000404,*/
 	0x0001ff0c, /* 0x0001FF12 */
 	0x00400204, /* 0x00200204 */
 	0x00016404, /* 0x00012002 */
 	0x00000131
 };
+/*special for resolution test file*/
+static unsigned int combing_resolution_setting[MAX_NUM_DI_REG] = {
+	0x00202015,
+	0x141a3a62,
+	0x15200a0a,
+	0x01800880,
+	0x74000d0d,
+	0x0d5a1520,
+	0x0a800480,
+	0x1a1a2662,
+	0x0d200302,
+	0x01010101,
+	0x06090708,
+	0x40020a04,
+	0x0001ff0c,
+	0x00400204,
+	0x00016404,
+	0x00000131
+};
 
-static unsigned int (*combing_setting_values[5])[MAX_NUM_DI_REG] = {
+static unsigned int (*combing_setting_values[6])[MAX_NUM_DI_REG] = {
 	&combing_pure_still_setting,
 	&combing_bias_static_setting,
 	&combing_normal_setting,
 	&combing_bias_motion_setting,
-	&combing_very_motion_setting
+	&combing_very_motion_setting,
+	&combing_resolution_setting
 };
 
 /* decide the levels based on glb_mot[0:4]
@@ -3925,16 +3988,36 @@ static void combing_threshold_config(unsigned int  width)
 	}
 	combing_glb_mot_thr_LH[3] = width*13;
 }
-unsigned int adp_set_mtn_ctrl3(unsigned int diff)
+
+unsigned int adp_set_level(unsigned int diff)
+{
+	unsigned int rst = 0;
+	char tlog[] = "LHM";
+	if (diff <= combing_glb_mot_thr_LH[0])
+		rst = 0;
+	else if (diff >= combing_glb_mot_thr_LH[3])
+		rst = 1;
+	else
+		rst = 2;
+
+	if (cmb_adpset_cnt > 0) {
+		pr_info("\ndiff=%d lvl=%c\n", diff, tlog[rst]);
+		cmb_adpset_cnt--;
+	}
+
+	return rst;
+}
+
+unsigned int adp_set_mtn_ctrl3(unsigned int diff, unsigned int dlvel)
 {
 	int istp = 0;
 	int idats = 0;
 	int idatm = 0;
 	int idatr = 0;
 	unsigned int rst = 0;
-	if (diff <= combing_glb_mot_thr_LH[0])
+	if (dlvel == 0)
 		rst = combing_pure_still_setting[2];
-	else if (diff >= combing_glb_mot_thr_LH[3])
+	else if (dlvel == 1)
 		rst = combing_very_motion_setting[2];
 	else {
 		rst = 0x1520;
@@ -3952,24 +4035,36 @@ unsigned int adp_set_mtn_ctrl3(unsigned int diff)
 		idatm = (combing_very_motion_setting[2]) & 0xff;
 
 		idatr = ((idats - idatm) * istp >> 6) + idatm;
-		rst = rst | (idatr & 0xff);
+		rst = (rst<<8) | (idatr & 0xff);
 	}
-
-	if (cmb_adpset_cnt > 0) {
-		pr_info("diff=%d, mtn_ctrl3=%8x\n", diff, rst);
-		cmb_adpset_cnt--;
-	}
+/*
+	if (cmb_adpset_cnt > 0)
+		pr_info("mtn_ctrl3=%8x\n", rst); */
 
 	return rst;
 }
 
-unsigned int adp_set_mtn_ctrl4(unsigned int diff)
+int di_debug_new_en = 1;
+module_param(di_debug_new_en, int, 0644);
+MODULE_PARM_DESC(di_debug_new_en, "di_debug_new_en");
+
+int cmb_num_rat_ctl4 = 64; /* 0~255 */
+module_param(cmb_num_rat_ctl4, int, 0644);
+MODULE_PARM_DESC(cmb_num_rat_ctl4, "cmb_num_rat_ctl4");
+
+int cmb_rat_ctl4_minthd = 64;
+module_param(cmb_rat_ctl4_minthd, int, 0644);
+MODULE_PARM_DESC(cmb_rat_ctl4_minthd, "cmb_rat_ctl4_minthd");
+
+int tTCNm = 0; /* combing rows */
+unsigned int adp_set_mtn_ctrl4(unsigned int diff, unsigned int dlvel)
 {
+	int hHeight = di_pre_stru.di_nrwr_mif.end_y;
 	int istp = 0, idats = 0, idatm = 0, idatr = 0;
 	unsigned int rst = 0;
-	if (diff <= combing_glb_mot_thr_LH[0])
+	if (dlvel == 0)
 		rst = combing_pure_still_setting[3];
-	else if (diff >= combing_glb_mot_thr_LH[3])
+	else if (dlvel == 1)
 		rst = combing_very_motion_setting[3];
 	else {
 			rst = 1;
@@ -3981,6 +4076,8 @@ unsigned int adp_set_mtn_ctrl4(unsigned int diff)
 			idatm = (combing_very_motion_setting[3] >> 16) & 0xff;
 
 			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			if (di_debug_new_en)
+				idatr = idatr >> 1;
 			rst = (rst<<8) | (idatr & 0xff);
 
 			idats = (combing_pure_still_setting[3] >> 8) & 0xff;
@@ -3993,16 +4090,177 @@ unsigned int adp_set_mtn_ctrl4(unsigned int diff)
 			idatm = (combing_very_motion_setting[3]) & 0xff;
 
 			idatr = ((idats - idatm) * istp >> 6) + idatm;
-			rst = (rst<<8) | (idatr & 0xff);
+			rst = (rst << 8) | (idatr & 0xff);
 	}
-	if (cmb_adpset_cnt > 0) {
-		pr_info("diff=%d, mtn_ctrl4=%8x\n", diff, rst);
-		cmb_adpset_cnt--;
+
+	if (di_debug_new_en == 1) {
+		istp = ((cmb_num_rat_ctl4 * hHeight + 128) >> 8);
+		if (cmb_adpset_cnt > 0)
+			pr_info("mtn_ctrl4=%8x %03d (%03d)\n",
+				rst, istp, tTCNm);
+	if (tTCNm > istp) {
+		istp = 64 * (hHeight - tTCNm) / (hHeight - istp + 1);
+		if (istp < 4)
+			istp = 4;
+
+		idatm = 1;
+		idats = (rst >> 16) & 0xff;
+		idatr = ((idats * istp + 32) >> 6);
+				idatr = idatr >> 1; /*color*/
+		if (idatr < (cmb_rat_ctl4_minthd >> 1))
+			idatr = (cmb_rat_ctl4_minthd >> 1);
+		idatm = (idatm<<8) | (idatr & 0xff);
+
+		idats = (rst >> 8) & 0xff;
+		idatr = ((idats * istp + 32) >> 6);
+		if (idatr < 4)
+			idatr = 4;
+		idatm = (idatm<<8) | (idatr & 0xff);
+
+		idats = rst & 0xff;
+		idatr = ((idats * istp + 32) >> 6);
+		if (idatr < cmb_rat_ctl4_minthd)
+			idatr = cmb_rat_ctl4_minthd;
+		idatm = (idatm<<8) | (idatr & 0xff);
+
+		rst = idatm;
+
+		if (cmb_adpset_cnt > 0)
+			pr_info("%03d (%03d)=%8x\n",
+				tTCNm, hHeight, rst);
+	}
 	}
 	return rst;
 }
 
-void set_combing_regs(int lvl, unsigned int diff)
+unsigned int adp_set_mtn_ctrl7(unsigned int diff, unsigned int dlvel)
+{
+	int istp = 0, idats = 0, idatm = 0, idatr = 0;
+	unsigned int rst = 0;
+	if (dlvel == 0)
+		rst = combing_pure_still_setting[6];
+	else if (dlvel == 1)
+		rst = combing_very_motion_setting[6];
+	else {
+			rst = 10;
+			istp = 64 * (diff - combing_glb_mot_thr_LH[0]) /
+				(combing_glb_mot_thr_LH[3] -
+				combing_glb_mot_thr_LH[0] + 1);
+
+			idats = (combing_pure_still_setting[6] >> 16) & 0xff;
+			idatm = (combing_very_motion_setting[6] >> 16) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_pure_still_setting[6] >> 8) & 0xff;
+			idatm = (combing_very_motion_setting[6] >> 8) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_pure_still_setting[6]) & 0xff;
+			idatm = (combing_very_motion_setting[6]) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+	}
+	/*
+	if (cmb_adpset_cnt > 0) {
+		pr_info("mtn_ctrl7=%8x\n", rst);
+	}*/
+	return rst;
+}
+
+unsigned int adp_set_mtn_ctrl10(unsigned int diff, unsigned int dlvel)
+{
+	int istp = 0, idats = 0, idatm = 0, idatr = 0;
+	unsigned int rst = 0;
+	if (dlvel == 0)
+		rst = combing_pure_still_setting[9];
+	else if (dlvel == 1)
+		rst = combing_very_motion_setting[9];
+	else {
+			istp = 64 * (diff - combing_glb_mot_thr_LH[0]) /
+				(combing_glb_mot_thr_LH[3] -
+				combing_glb_mot_thr_LH[0] + 1);
+
+			idats = (combing_very_motion_setting[9] >> 24) & 0xff;
+			idatm = (combing_pure_still_setting[9] >> 24) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_very_motion_setting[9] >> 16) & 0xff;
+			idatm = (combing_pure_still_setting[9] >> 16) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_very_motion_setting[9] >> 8) & 0xff;
+			idatm = (combing_pure_still_setting[9] >> 8) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_very_motion_setting[9]) & 0xff;
+			idatm = (combing_pure_still_setting[9]) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+	}
+	/*
+	if (cmb_adpset_cnt > 0) {
+		pr_info("mtn_ctr10=%8x\n", rst);
+	}*/
+	return rst;
+}
+
+unsigned int adp_set_mtn_ctrl11(unsigned int diff, unsigned int dlvel)
+{
+	int istp = 0, idats = 0, idatm = 0, idatr = 0;
+	unsigned int rst = 0;
+	if (dlvel == 0)
+		rst = combing_pure_still_setting[10];
+	else if (dlvel == 1)
+		rst = combing_very_motion_setting[10];
+	else {
+			istp = 64 * (diff - combing_glb_mot_thr_LH[0]) /
+				(combing_glb_mot_thr_LH[3] -
+				combing_glb_mot_thr_LH[0] + 1);
+
+			idats = (combing_pure_still_setting[10] >> 24) & 0xff;
+			idatm = (combing_very_motion_setting[10] >> 24) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_pure_still_setting[10] >> 16) & 0xff;
+			idatm = (combing_very_motion_setting[10] >> 16) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_pure_still_setting[10] >> 8) & 0xff;
+			idatm = (combing_very_motion_setting[10] >> 8) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+
+			idats = (combing_pure_still_setting[10]) & 0xff;
+			idatm = (combing_very_motion_setting[10]) & 0xff;
+
+			idatr = ((idats - idatm) * istp >> 6) + idatm;
+			rst = (rst<<8) | (idatr & 0xff);
+	}
+	/*
+	if (cmb_adpset_cnt > 0) {
+		pr_info("mtn_ctr11=%8x\n", rst);
+	}*/
+	return rst;
+}
+
+void set_combing_regs(int lvl)
 {
 	int i;
 	unsigned int ndat = 0;
@@ -4023,17 +4281,7 @@ void set_combing_regs(int lvl, unsigned int diff)
 			/* TODO: need change to check if
 			register only in GCTVBB */
 			ndat = (*combing_setting_values[lvl])[i];
-			if (i == 2)
-				ndat = adp_set_mtn_ctrl3(diff);
-			else if (i == 3)
-				ndat = adp_set_mtn_ctrl4(diff);
-
-			DI_Wr(combing_setting_registers[i],
-				(ndat &
-				combing_setting_masks[i]) |
-				(Rd(
-					combing_setting_registers[i])
-				& ~combing_setting_masks[i]));
+			DI_Wr(combing_setting_registers[i], ndat);
 		} else if (is_meson_gxtvbb_cpu())
 			DI_Wr(combing_setting_registers[i],
 				((*combing_setting_values[lvl])[i] &
@@ -4044,15 +4292,57 @@ void set_combing_regs(int lvl, unsigned int diff)
 	}
 }
 
-int like_pulldown22_flag = 0;
+static int like_pulldown22_flag;
+
+int di_debug_readreg = 0;
+module_param(di_debug_readreg, int, 0644);
+MODULE_PARM_DESC(di_debug_readreg, "di_debug_readreg");
+
+static unsigned int field_diff_rate;
 
 static void adaptive_combing_fixing(
 	pulldown_detect_info_t *field_pd_info,
-	int frame_type)
+	int frame_type, int wWidth)
 {
 	unsigned int glb_mot_avg2;
 	unsigned int glb_mot_avg3;
 	unsigned int glb_mot_avg5;
+
+	unsigned int diff = 0;
+	unsigned int wt_dat = 0;
+	unsigned int dlvl = 0;
+	static unsigned int pre_dat[5];
+	bool prt_flg = (cmb_adpset_cnt > 0);
+	unsigned int i = 0;
+
+	static unsigned int pre_num;
+	unsigned int crt_num = field_pd_info->field_diff_num;
+	unsigned int drat = 0;
+	if (pre_num > crt_num)
+		diff = pre_num - crt_num;
+	else
+		diff = crt_num - pre_num;
+
+	if (diff >= wWidth)
+		field_diff_rate = 0;
+	else {
+		drat = (diff << 8) / (wWidth + 1);
+		if (drat > 255)
+			field_diff_rate = 0;
+		else
+			field_diff_rate = 256 - drat;
+	}
+	pre_num = crt_num;
+
+	if (di_debug_readreg > 1) {
+		for (i = 0; i < 12; i++) {
+			wt_dat = Rd(combing_setting_registers[i]);
+			pr_info("mtn_ctrl%02d = 0x%08x\n",
+				i+1, wt_dat);
+		}
+		pr_info("\n");
+		di_debug_readreg--;
+	}
 
 	if (!combing_fix_en)
 		return;
@@ -4085,15 +4375,67 @@ static void adaptive_combing_fixing(
 				cur_lev = max(cur_lev - 1, 1);
 		}
 	}
-	if ((force_lev >= 0) & (force_lev < 5))
+	if ((force_lev >= 0) & (force_lev < 6))
 		cur_lev = force_lev;
 	if (cur_lev != last_lev) {
-		set_combing_regs(cur_lev, glb_mot[0]);
+		set_combing_regs(cur_lev);
 		if (pr_pd & 0x400)
 			pr_dbg("\t%5d: from %d to %d: di_mtn_1_ctrl1 = %08x\n",
 				field_count, last_lev, cur_lev, di_mtn_1_ctrl1);
 
 		last_lev = cur_lev;
+	}
+
+	if ((force_lev > 5) && (di_debug_new_en == 1) &&
+		(glb_mot[1] != glb_mot[0])) {
+		dlvl = adp_set_level(glb_mot[0]);
+		diff = glb_mot[0];
+		pre_dat[0] = Rd(DI_MTN_1_CTRL3);
+		wt_dat = adp_set_mtn_ctrl3(diff, dlvl);
+		if (pre_dat[0] != wt_dat) {
+			DI_Wr(DI_MTN_1_CTRL3, wt_dat);
+			pre_dat[0] = wt_dat;
+			if (prt_flg)
+				pr_info("set mtn03 0x%08x.\n", wt_dat);
+		}
+
+		pre_dat[1] = Rd(DI_MTN_1_CTRL4);
+		wt_dat = adp_set_mtn_ctrl4(diff, dlvl);
+		if (pre_dat[1] != wt_dat) {
+			DI_Wr(DI_MTN_1_CTRL4, wt_dat);
+			if (prt_flg)
+				pr_info("set mtn04 %08x -> %08x (%d).\n",
+				pre_dat[1], wt_dat,
+				field_pd_info->field_diff_num);
+			pre_dat[1] = wt_dat;
+		}
+
+		pre_dat[2] = Rd(DI_MTN_1_CTRL7);
+		wt_dat = adp_set_mtn_ctrl7(diff, dlvl);
+		if (pre_dat[2] != wt_dat) {
+			DI_Wr(DI_MTN_1_CTRL7, wt_dat);
+			pre_dat[2] = wt_dat;
+			if (prt_flg)
+				pr_info("set mtn07 0x%08x.\n", wt_dat);
+		}
+
+		pre_dat[3] = Rd(DI_MTN_1_CTRL10);
+		wt_dat = adp_set_mtn_ctrl10(diff, dlvl);
+		if (pre_dat[3] != wt_dat) {
+			DI_Wr(DI_MTN_1_CTRL10, wt_dat);
+			pre_dat[3] = wt_dat;
+			if (prt_flg)
+				pr_info("set mtn10 0x%08x.\n", wt_dat);
+		}
+
+		pre_dat[4] = Rd(DI_MTN_1_CTRL11);
+		wt_dat = adp_set_mtn_ctrl11(diff, dlvl);
+		if (pre_dat[4] != wt_dat) {
+			DI_Wr(DI_MTN_1_CTRL11, wt_dat);
+			pre_dat[4] = wt_dat;
+			if (prt_flg)
+				pr_info("set mtn11 0x%08x.\n\n", wt_dat);
+		}
 	}
 
 	if (is_meson_gxtvbb_cpu() && dejaggy_enable) {
@@ -4162,8 +4504,6 @@ static void adaptive_combing_fixing(
 }
 
 static unsigned int flm22_sure_num = 100;
-module_param(flm22_sure_num, uint, 0644);
-MODULE_PARM_DESC(flm22_sure_num, "ture film-22/n");
 
 /*
 static unsigned int flmxx_sure_num = 50;
@@ -4177,14 +4517,38 @@ static unsigned int flmxx_sure_num[7] = {20, 20, 20, 20, 20, 20, 20};
 static unsigned int flmxx_snum_adr = 7;
 module_param_array(flmxx_sure_num, uint, &flmxx_snum_adr, 0664);
 
+static unsigned int flm22_glbpxlnum_rat = 4; /* 4/256 = 64 */
+
+static unsigned int flm22_glbpxl_maxrow = 16; /* 16/256 = 16 */
+module_param(flm22_glbpxl_maxrow, uint, 0644);
+MODULE_PARM_DESC(flm22_glbpxl_maxrow, "flm22_glbpxl_maxrow/n");
+
+static unsigned int flm22_glbpxl_minrow = 3; /* 4/256 = 64 */
+module_param(flm22_glbpxl_minrow, uint, 0644);
+MODULE_PARM_DESC(flm22_glbpxl_minrow, "flm22_glbpxl_minrow/n");
+
+static unsigned int cmb_3point_rnum;
+module_param(cmb_3point_rnum, uint, 0644);
+MODULE_PARM_DESC(cmb_3point_rnum, "cmb_3point_rnum/n");
+
+static unsigned int cmb_3point_rrat = 32;
+module_param(cmb_3point_rrat, uint, 0644);
+MODULE_PARM_DESC(cmb_3point_rrat, "cmb_3point_rrat/n");
+
 static void pre_de_done_buf_config(void)
 {
 	ulong flags = 0, fiq_flag = 0, irq_flag2 = 0;
 	bool dynamic_flag = false;
 	int hHeight = di_pre_stru.di_nrwr_mif.end_y;
+	int wWidth  = di_pre_stru.di_nrwr_mif.end_x;
+
 	bool flm32 = false;
 	bool flm22 = false;
 	bool flmxx = false;
+	int tb_chk_ret = 0;
+	unsigned int glb_mot = 0;
+	unsigned int mot_row = 0;
+	unsigned int mot_max = 0;
 
 	if (di_pre_stru.di_wr_buf) {
 		if (di_pre_stru.pre_throw_flag > 0) {
@@ -4202,6 +4566,16 @@ static void pre_de_done_buf_config(void)
 					di_pre_stru.di_wr_buf->vframe);
 		}
 #endif
+		if (!di_pre_rdma_enable)
+			di_pre_stru.di_post_wr_buf = di_pre_stru.di_wr_buf;
+
+		if (di_pre_stru.cur_source_type == VFRAME_SOURCE_TYPE_OTHERS &&
+				tff_bff_enable) {
+			tb_chk_ret = tff_bff_check((di_pre_stru.cur_height>>1),
+					di_pre_stru.cur_width);
+			di_pre_stru.di_post_wr_buf->privated &= (~0x3);
+			di_pre_stru.di_post_wr_buf->privated |=	tb_chk_ret;
+		}
 		if (di_pre_stru.di_post_wr_buf) {
 			dynamic_flag = read_pulldown_info(
 				&(di_pre_stru.di_post_wr_buf->field_pd_info),
@@ -4219,11 +4593,14 @@ static void pre_de_done_buf_config(void)
 				di_pre_stru.di_post_wr_buf->pulldown_mode =
 					PULL_DOWN_NORMAL;
 			}
-			adaptive_combing_fixing(&(di_pre_stru.di_post_wr_buf->
-				field_pd_info), di_pre_stru.cur_inp_type);
+			adaptive_combing_fixing(
+				&(di_pre_stru.di_post_wr_buf->field_pd_info),
+				di_pre_stru.cur_inp_type,
+				wWidth + 1);
 		}
 
-		if (is_meson_gxtvbb_cpu() && !di_pre_stru.cur_prog_flag) {
+		tTCNm = 0;
+		if (!di_pre_stru.cur_prog_flag) {
 			/* always read and print data */
 			read_new_pulldown_info(&flmreg);
 
@@ -4241,10 +4618,16 @@ static void pre_de_done_buf_config(void)
 					&(dectres.rFlmPstMod),
 					flmreg.rROFldDif01,
 					flmreg.rROFrmDif02,
-					flmreg.rROCmbInf, &pd_param,
+					flmreg.rROCmbInf,
+					&tTCNm,
+					&pd_param,
 					hHeight + 1,
-					di_pre_stru.di_nrwr_mif.end_x +
-					1);
+					wWidth  + 1);
+
+				if (hHeight >= 289) /*full hd */
+					tTCNm = tTCNm << 1;
+				if (tTCNm > hHeight)
+					tTCNm = hHeight;
 
 				prt_flg = ((pr_pd >> 1) & 0x1);
 				if (prt_flg) {
@@ -4257,7 +4640,8 @@ static void pre_de_done_buf_config(void)
 					dectres.rF22Flag);
 
 					sprintf(debug_str + strlen(debug_str),
-					"Wnd[%d~%d], [%d~%d], [%d~%d], [%d~%d]\n",
+					"N%03d: nd[%d~%d], [%d~%d], [%d~%d], [%d~%d]\n",
+					tTCNm,
 					dectres.rPstCYWnd0[0],
 					dectres.rPstCYWnd0[1],
 					dectres.rPstCYWnd1[0],
@@ -4296,10 +4680,51 @@ static void pre_de_done_buf_config(void)
 			else
 				like_pulldown22_flag = 0;
 
+			if (di_debug_new_en) {
+				if ((pr_pd >> 1) & 0x1)
+					pr_info("fld_dif_rat=%d\n",
+					field_diff_rate);
+
+				if ((dectres.rF22Flag >=
+					(cmb_3point_rnum + field_diff_rate)) &&
+					(tTCNm >
+					(hHeight * cmb_3point_rrat >> 8))) {
+					if ((pr_pd >> 1) & 0x1)
+						pr_info("coeff-3-point enabled\n");
+				}
+			}
 			if (pulldown_enable == 1 && dectres.rFlmPstMod != 0
 				&& di_pre_stru.di_post_wr_buf) {
 				flm32 = (dectres.rFlmPstMod == 2 &&
 					dectres.rFlmPstGCm == 0);
+
+				if (di_debug_new_en &&
+					(dectres.rFlmPstMod == 1)) {
+					glb_mot = di_pre_stru.di_post_wr_buf->
+						field_pd_info.frame_diff_num;
+					mot_row = glb_mot *
+					flm22_glbpxlnum_rat / (wWidth + 1);
+					mot_max = (flm22_glbpxl_maxrow *
+						hHeight + 128) >> 8;
+					if ((pr_pd >> 1) & 0x1)
+						pr_info("dejaggies level=%3d - (%02d - %02d)\n",
+							dectres.rF22Flag,
+							mot_max, mot_row);
+
+				if (mot_row < mot_max) {
+					if (dectres.rF22Flag >
+						(mot_max - mot_row))
+							dectres.rF22Flag -=
+							(mot_max - mot_row);
+					else
+							dectres.rF22Flag = 0;
+
+				if (mot_row <=
+							flm22_glbpxl_minrow)
+							dectres.rFlmPstMod = 0;
+					}
+				}
+
 				flm22 = (dectres.rFlmPstMod == 1  &&
 					dectres.rF22Flag >= flm22_sure_num);
 				if (dectres.rFlmPstMod >= 4)
@@ -4315,10 +4740,11 @@ static void pre_de_done_buf_config(void)
 						di_pre_stru.di_post_wr_buf
 						->pulldown_mode =
 							PULL_DOWN_BLEND_0;
-					else
+					else {
 						di_pre_stru.di_post_wr_buf
 						->pulldown_mode =
 							PULL_DOWN_BLEND_2;
+						}
 				} else if (pldn_mod == 1) {
 					if (dectres.rFlmSltPre == 1)
 						di_pre_stru.di_post_wr_buf
@@ -4507,7 +4933,7 @@ static void pre_de_done_buf_config(void)
 		}
 		field_count++;
 		if (field_count == 0x7fffffff)
-			field_count = 1;
+			field_count = 3;
 
 		if (di_pre_stru.cur_prog_flag) {
 			if (di_pre_stru.prog_proc_type == 0) {
@@ -4572,8 +4998,11 @@ static void pre_de_done_buf_config(void)
 				vframe_type_name[di_pre_stru.di_wr_buf->type],
 				di_pre_stru.di_wr_buf->index);
 			if (di_pre_stru.di_wr_buf) {
-				di_pre_stru.di_post_wr_buf =
-					di_pre_stru.di_wr_buf;
+				if (di_pre_rdma_enable)
+					di_pre_stru.di_post_wr_buf =
+				di_pre_stru.di_wr_buf;
+				else
+					di_pre_stru.di_post_wr_buf = NULL;
 				di_pre_stru.di_wr_buf = NULL;
 			}
 		} else {
@@ -4644,8 +5073,11 @@ static void pre_de_done_buf_config(void)
 				di_pre_stru.di_wr_buf->index);
 
 			if (di_pre_stru.di_wr_buf) {
-				di_pre_stru.di_post_wr_buf =
-					di_pre_stru.di_wr_buf;
+				if (di_pre_rdma_enable)
+					di_pre_stru.di_post_wr_buf =
+				di_pre_stru.di_wr_buf;
+				else
+					di_pre_stru.di_post_wr_buf = NULL;
 				di_pre_stru.di_wr_buf = NULL;
 			}
 		}
@@ -5316,9 +5748,12 @@ static unsigned char pre_de_buf_config(void)
 	di_buf->vframe->canvas1Addr = di_buf->nr_canvas_idx;
 	/* set vframe bit info */
 	di_buf->vframe->bitdepth &= ~(BITDEPTH_YMASK);
-	if (di_force_bit_mode == 10)
+	di_buf->vframe->bitdepth &= ~(FULL_PACK_422_MODE);
+	if (di_force_bit_mode == 10) {
 		di_buf->vframe->bitdepth |= (BITDEPTH_Y10);
-	else
+		if (full_422_pack)
+			di_buf->vframe->bitdepth |= (FULL_PACK_422_MODE);
+	} else
 		di_buf->vframe->bitdepth |= (BITDEPTH_Y8);
 
 	if (di_pre_stru.prog_proc_type) {
@@ -5922,6 +6357,56 @@ static int do_pre_only_fun(void *arg, vframe_t *disp_vf)
 	return 0;
 }
 
+static void config_fftffb_mode(struct di_buf_s *di_buf,
+	unsigned int *post_field_type, char fftffb_mode)
+{
+	switch (fftffb_mode) {
+	case 1:
+		*post_field_type =
+		(di_buf->di_buf_dup_p[0]->vframe->type &
+		 VIDTYPE_TYPEMASK)
+		== VIDTYPE_INTERLACE_TOP ? 0 : 1;
+		di_post_stru.di_buf0_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[0]->nr_canvas_idx;
+		di_post_stru.di_buf1_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[1]->nr_canvas_idx;
+		di_post_stru.di_buf2_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[2]->nr_canvas_idx;
+		di_post_stru.di_mtnprd_mif.canvas_num =
+		di_buf->di_buf_dup_p[1]->mtn_canvas_idx;
+		break;
+	case 2:
+		*post_field_type =
+		(di_buf->di_buf_dup_p[2]->vframe->type &
+		 VIDTYPE_TYPEMASK)
+		== VIDTYPE_INTERLACE_TOP ? 0 : 1;
+		di_post_stru.di_buf0_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[2]->nr_canvas_idx;
+		di_post_stru.di_buf1_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[0]->nr_canvas_idx;
+		di_post_stru.di_buf2_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[1]->nr_canvas_idx;
+		di_post_stru.di_mtnprd_mif.canvas_num =
+		di_buf->di_buf_dup_p[1]->mtn_canvas_idx;
+		break;
+	default:
+		*post_field_type =
+		(di_buf->di_buf_dup_p[1]->vframe->type &
+		 VIDTYPE_TYPEMASK)
+		== VIDTYPE_INTERLACE_TOP ? 0 : 1;
+		di_post_stru.di_buf0_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[1]->nr_canvas_idx;
+		di_post_stru.di_buf1_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[0]->nr_canvas_idx;
+		di_post_stru.di_buf2_mif.canvas0_addr0 =
+		di_buf->di_buf_dup_p[2]->nr_canvas_idx;
+		di_post_stru.di_mtnprd_mif.canvas_num =
+		di_buf->di_buf_dup_p[2]->mtn_canvas_idx;
+		break;
+	}
+
+}
+
 static void get_vscale_skip_count(unsigned par)
 {
 	di_vscale_skip_count_real = (par >> 24) & 0xff;
@@ -5930,8 +6415,7 @@ static void get_vscale_skip_count(unsigned par)
 #define get_vpp_reg_update_flag(par) ((par >> 16) & 0x1)
 
 static unsigned int pldn_dly = 1;
-module_param(pldn_dly, uint, 0644);
-MODULE_PARM_DESC(pldn_dly, "/n pulldonw field delay result./n");
+static unsigned int tbbtff_dly;
 
 static unsigned int pldn_wnd_flsh = 1;
 module_param(pldn_wnd_flsh, uint, 0644);
@@ -6030,17 +6514,34 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 			return 0;
 		/* bit mode config */
 		if (di_buf->vframe->bitdepth & BITDEPTH_Y10) {
-			if ((di_buf->vframe->type & VIDTYPE_VIU_444) &&
-				(di_buf->vframe->bitdepth & BITDEPTH_Y10)) {
-				di_post_stru.di_buf0_mif.bit_mode = 2;
-				di_post_stru.di_buf1_mif.bit_mode = 2;
+			if (di_buf->vframe->type & VIDTYPE_VIU_444) {
+				di_post_stru.di_buf0_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:2;
+				di_post_stru.di_buf1_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:2;
+				di_post_stru.di_buf2_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:2;
 			} else {
-				di_post_stru.di_buf0_mif.bit_mode = 1;
-				di_post_stru.di_buf1_mif.bit_mode = 1;
+				di_post_stru.di_buf0_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:1;
+				di_post_stru.di_buf1_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:1;
+				di_post_stru.di_buf2_mif.bit_mode =
+			(di_buf->vframe->bitdepth & FULL_PACK_422_MODE)?3:1;
 			}
 		} else {
 			di_post_stru.di_buf0_mif.bit_mode = 0;
 			di_post_stru.di_buf1_mif.bit_mode = 0;
+			di_post_stru.di_buf2_mif.bit_mode = 0;
+		}
+		if (di_buf->vframe->type & VIDTYPE_VIU_444) {
+			di_post_stru.di_buf0_mif.video_mode = 1;
+			di_post_stru.di_buf1_mif.video_mode = 1;
+			di_post_stru.di_buf2_mif.video_mode = 1;
+		} else {
+			di_post_stru.di_buf0_mif.video_mode = 0;
+			di_post_stru.di_buf1_mif.video_mode = 0;
+			di_post_stru.di_buf2_mif.video_mode = 0;
 		}
 		if (di_post_stru.buf_type == VFRAME_TYPE_IN &&
 		    !(di_buf->di_buf_dup_p[0]->vframe->type &
@@ -6048,27 +6549,34 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 			if (di_buf->vframe->type & VIDTYPE_VIU_NV21) {
 				di_post_stru.di_buf0_mif.set_separate_en = 1;
 				di_post_stru.di_buf1_mif.set_separate_en = 1;
+				di_post_stru.di_buf2_mif.set_separate_en = 1;
 			} else {
 				di_post_stru.di_buf0_mif.set_separate_en = 0;
 				di_post_stru.di_buf1_mif.set_separate_en = 0;
+				di_post_stru.di_buf2_mif.set_separate_en = 0;
 			}
 			di_post_stru.di_buf0_mif.luma_y_start0 = di_start_y;
 			di_post_stru.di_buf0_mif.luma_y_end0 = di_end_y;
 		} else { /* from vdin or local vframe process by di pre */
 			di_post_stru.di_buf0_mif.set_separate_en = 0;
-			di_post_stru.di_buf0_mif.luma_y_start0 = di_start_y >>
-								 1;
+			di_post_stru.di_buf0_mif.luma_y_start0 =
+				di_start_y >> 1;
 			di_post_stru.di_buf0_mif.luma_y_end0 = di_end_y >> 1;
-
 			di_post_stru.di_buf1_mif.set_separate_en = 0;
-			di_post_stru.di_buf1_mif.luma_y_start0 = di_start_y >>
-								 1;
+			di_post_stru.di_buf1_mif.luma_y_start0 =
+				di_start_y >> 1;
 			di_post_stru.di_buf1_mif.luma_y_end0 = di_end_y >> 1;
+			di_post_stru.di_buf2_mif.set_separate_en = 0;
+			di_post_stru.di_buf2_mif.luma_y_end0 = di_end_y >> 1;
+			di_post_stru.di_buf2_mif.luma_y_start0 =
+				di_start_y >> 1;
 		}
 		di_post_stru.di_buf0_mif.luma_x_start0 = di_start_x;
 		di_post_stru.di_buf0_mif.luma_x_end0 = di_end_x;
 		di_post_stru.di_buf1_mif.luma_x_start0 = di_start_x;
 		di_post_stru.di_buf1_mif.luma_x_end0 = di_end_x;
+		di_post_stru.di_buf2_mif.luma_x_start0 = di_start_x;
+		di_post_stru.di_buf2_mif.luma_x_end0 = di_end_x;
 
 		if ((post_wr_en && post_wr_surpport)) {
 			di_post_stru.di_diwr_mif.start_x = di_start_x;
@@ -6097,13 +6605,6 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 		if (di_buf->pulldown_mode != PULL_DOWN_BUF1)
 			di_buf->pulldown_mode = PULL_DOWN_EI;
 	}
-	/* if post size < MIN_POST_WIDTH, force ei */
-	if ((di_width < MIN_BLEND_WIDTH) &&
-		(di_buf->pulldown_mode == PULL_DOWN_BLEND_0 ||
-		di_buf->pulldown_mode == PULL_DOWN_BLEND_2 ||
-		di_buf->pulldown_mode == PULL_DOWN_NORMAL
-		))
-		di_buf->pulldown_mode = PULL_DOWN_BUF1;
 
 #ifdef DI_USE_FIXED_CANVAS_IDX
 #ifdef CONFIG_VSYNC_RDMA
@@ -6129,17 +6630,23 @@ de_post_process(void *arg, unsigned zoom_start_x_lines,
 		config_canvas_idx(
 			di_buf->di_buf_dup_p[0],
 			di_post_idx[di_post_stru.canvas_id][1], -1);
+		config_canvas_idx(
+			di_buf->di_buf_dup_p[2],
+			di_post_idx[di_post_stru.canvas_id][3], -1);
 		if (mcpre_en)
 			config_mcvec_canvas_idx(
 				di_buf->di_buf_dup_p[2],
-				di_post_idx[di_post_stru.canvas_id][3]);
+				di_post_idx[di_post_stru.canvas_id][4]);
 
 		/* for post_wr_en */
 		if ((post_wr_en && post_wr_surpport))
 			config_canvas_idx(
-di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
+			di_buf, di_post_idx[di_post_stru.canvas_id][5], -1);
 		break;
 	case PULL_DOWN_BLEND_2:
+		config_canvas_idx(
+			di_buf->di_buf_dup_p[0],
+			di_post_idx[di_post_stru.canvas_id][3], -1);
 		config_canvas_idx(
 			di_buf->di_buf_dup_p[1],
 			di_post_idx[di_post_stru.canvas_id][0], -1);
@@ -6152,10 +6659,10 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 		if (mcpre_en)
 			config_mcvec_canvas_idx(
 				di_buf->di_buf_dup_p[2],
-				di_post_idx[di_post_stru.canvas_id][3]);
+				di_post_idx[di_post_stru.canvas_id][4]);
 		if ((post_wr_en && post_wr_surpport))
 			config_canvas_idx(
-di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
+			di_buf, di_post_idx[di_post_stru.canvas_id][5], -1);
 		break;
 	case PULL_DOWN_MTN:
 		config_canvas_idx(
@@ -6207,16 +6714,8 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 	switch (di_buf->pulldown_mode) {
 	case PULL_DOWN_BLEND_0:
 	case PULL_DOWN_NORMAL:
-		post_field_num =
-			(di_buf->di_buf_dup_p[1]->vframe->type &
-			 VIDTYPE_TYPEMASK)
-			== VIDTYPE_INTERLACE_TOP ? 0 : 1;
-		di_post_stru.di_buf0_mif.canvas0_addr0 =
-			di_buf->di_buf_dup_p[1]->nr_canvas_idx;
-		di_post_stru.di_buf1_mif.canvas0_addr0 =
-			di_buf->di_buf_dup_p[0]->nr_canvas_idx;
-		di_post_stru.di_mtnprd_mif.canvas_num =
-			di_buf->di_buf_dup_p[2]->mtn_canvas_idx;
+		config_fftffb_mode(di_buf, &post_field_num,
+			(di_buf->di_buf_dup_p[tbbtff_dly]->privated&0x3));
 		if (mcpre_en)
 			di_post_stru.di_mcvecrd_mif.canvas_num =
 				di_buf->di_buf_dup_p[2]->mcvec_canvas_idx;
@@ -6237,6 +6736,8 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 			di_buf->di_buf_dup_p[1]->nr_canvas_idx;
 		di_post_stru.di_buf1_mif.canvas0_addr0 =
 			di_buf->di_buf_dup_p[2]->nr_canvas_idx;
+		di_post_stru.di_buf2_mif.canvas0_addr0 =
+			di_buf->di_buf_dup_p[0]->nr_canvas_idx;
 		di_post_stru.di_mtnprd_mif.canvas_num =
 			di_buf->di_buf_dup_p[2]->mtn_canvas_idx;
 		if (mcpre_en)
@@ -6326,6 +6827,18 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 		di_ddr_en = 0;
 	}
 
+	/* if post size < MIN_POST_WIDTH, force ei */
+	if ((di_width < MIN_BLEND_WIDTH) &&
+		(di_buf->pulldown_mode == PULL_DOWN_BLEND_0 ||
+		di_buf->pulldown_mode == PULL_DOWN_BLEND_2 ||
+		di_buf->pulldown_mode == PULL_DOWN_NORMAL
+		)) {
+		post_blend_mode = 1;
+		blend_mtn_en = 0;
+		post_ei = ei_en = 0;
+		post_blend_en = 0;
+	}
+
 	if (mcpre_en)
 		di_post_stru.di_mcvecrd_mif.blend_mode = post_blend_mode;
 
@@ -6334,6 +6847,7 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 		enable_di_post_2(
 			&di_post_stru.di_buf0_mif,
 			&di_post_stru.di_buf1_mif,
+			&di_post_stru.di_buf2_mif,
 			((post_wr_en && post_wr_surpport) ?
 				(&di_post_stru.di_diwr_mif):NULL),
 			&di_post_stru.di_mtnprd_mif,
@@ -6351,12 +6865,13 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 			enable_mc_di_post(
 				&di_post_stru.di_mcvecrd_mif, post_urgent,
 				overturn);
-		else if (is_meson_gxtvbb_cpu())
+		else if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu())
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, 0, 0, 2);
 	} else {
 		di_post_switch_buffer(
 			&di_post_stru.di_buf0_mif,
 			&di_post_stru.di_buf1_mif,
+			&di_post_stru.di_buf2_mif,
 ((post_wr_en && post_wr_surpport) ? (&di_post_stru.di_diwr_mif):NULL),
 			&di_post_stru.di_mtnprd_mif,
 			&di_post_stru.di_mcvecrd_mif,
@@ -6377,19 +6892,19 @@ di_buf, di_post_idx[di_post_stru.canvas_id][4], -1);
 		di_apply_reg_cfg(1);
 
 #endif
-	if (is_meson_gxtvbb_cpu())
+	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu())
 		di_post_read_reverse_irq(overturn);
 	if (mcpre_en) {
 		if (di_buf->di_buf_dup_p[2])
 			set_post_mcinfo(&di_buf->di_buf_dup_p[2]
 				->curr_field_mcinfo);
-	} else if (is_meson_gxtvbb_cpu())
+	} else if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu())
 			DI_VSYNC_WR_MPEG_REG_BITS(MCDI_MC_CRTL, 0, 0, 2);
 
 
 /* set pull down region (f(t-1) */
 
-	if (is_meson_gxtvbb_cpu() && pulldown_enable &&
+	if (di_pldn_buf && pulldown_enable &&
 		!di_pre_stru.cur_prog_flag) {
 		if (pldn_wnd_flsh == 1) {
 			DI_VSYNC_WR_MPEG_REG_BITS(DI_BLEND_REG0_Y,
@@ -6766,8 +7281,6 @@ static int pulldown_mode;
 static int debug_blend_mode = -1;
 
 static unsigned int pldn_dly1 = 1;
-module_param(pldn_dly1, uint, 0644);
-MODULE_PARM_DESC(pldn_dly1, "/n pulldonw field delay result./n");
 
 static unsigned int pldn_pst_wver = 5;
 module_param(pldn_pst_wver, uint, 0644);
@@ -6776,7 +7289,7 @@ MODULE_PARM_DESC(pldn_pst_wver, "/n pulldonw post-weaver for test./n");
 int set_pulldown_mode(int buffer_keep_count, struct di_buf_s *di_buf)
 {
 	int pulldown_mode_hise = 0;
-	if (is_meson_gxtvbb_cpu()) {
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB)) {
 		if (pulldown_enable && !di_pre_stru.cur_prog_flag)
 			di_buf->pulldown_mode =
 				di_buf->di_buf_dup_p[pldn_dly1]->pulldown_mode;
@@ -7394,7 +7907,7 @@ static void di_unreg_process_irq(void)
 /* stop rdma */
 	rdma_clear(de_devp->rdma_handle);
 #endif
-	if (is_meson_gxtvbb_cpu())
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
 		if (dejaggy_enable) {
 			dejaggy_flag = -1;
 			DI_Wr_reg_bits(SRSHARP0_SHARP_DEJ1_MISC, 0, 3, 1);
@@ -7405,8 +7918,7 @@ static void di_unreg_process_irq(void)
 	DI_Wr(DI_CLKG_CTRL, 0xff0000);
 /* di enable nr clock gate */
 #else
-	if (is_meson_gxtvbb_cpu() || is_meson_gxl_cpu() ||
-		is_meson_gxm_cpu())
+	if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXTVBB))
 		DI_Wr(DI_CLKG_CTRL, 0x80f60000);
 	else
 		DI_Wr(DI_CLKG_CTRL, 0xf60000);
@@ -7535,23 +8047,21 @@ static void di_reg_process_irq(void)
 			spin_lock_irqsave(&plist_lock, flags);
 #endif
 			di_lock_irqfiq_save(irq_flag2, fiq_flag);
-			if (is_meson_gxtvbb_cpu() || is_meson_gxl_cpu() ||
-				is_meson_gxm_cpu()) {
-				/* di_init_buf(vframe->width,
-				 * vframe->height, 1); */
-				 /*
-				 * 10 bit mode need 1.5 times buffer size of
-				 * 8 bit mode, init the buffer size as 10 bit
-				 * mode size, to make sure can switch bit mode
-				 * smoothly.
-				 */
-				if (nr10bit_surpport)
-					di_init_buf(default_width * 3 / 2,
+			/* di_init_buf(vframe->width,
+			 * vframe->height, 1); */
+			 /*
+			 * 10 bit mode need 1.5 times buffer size of
+			 * 8 bit mode, init the buffer size as 10 bit
+			 * mode size, to make sure can switch bit mode
+			 * smoothly.
+			 */
+			if (nr10bit_surpport) {
+				if (full_422_pack)
+					di_init_buf(default_width * 5 / 4,
 						default_height, 1);
 				else
-					di_init_buf(default_width,
+					di_init_buf(default_width * 3 / 2,
 						default_height, 1);
-
 			} else
 				di_init_buf(default_width, default_height, 1);
 
@@ -7565,21 +8075,20 @@ static void di_reg_process_irq(void)
 			spin_lock_irqsave(&plist_lock, flags);
 #endif
 			di_lock_irqfiq_save(irq_flag2, fiq_flag);
-			if (is_meson_gxtvbb_cpu() || is_meson_gxl_cpu() ||
-				is_meson_gxm_cpu()) {
-				/*
-				 * 10 bit mode need 1.5 times buffer size of
-				 * 8 bit mode, init the buffer size as 10 bit
-				 * mode size, to make sure can switch bit mode
-				 * smoothly.
-				 */
-				if (nr10bit_surpport)
-					di_init_buf(default_width * 3 / 2,
-						default_height, 0);
+			/*
+			 * 10 bit mode need 1.5 times buffer size of
+			 * 8 bit mode, init the buffer size as 10 bit
+			 * mode size, to make sure can switch bit mode
+			 * smoothly.
+			 */
+			if (nr10bit_surpport) {
+				if (cpu_after_eq(MESON_CPU_MAJOR_ID_TXL) &&
+					full_422_pack)
+					di_init_buf(
+				default_width * 3 / 2, default_height, 0);
 				else
-					di_init_buf(default_width,
-						default_height, 0);
-
+					di_init_buf(
+				default_width * 3 / 2, default_height, 0);
 			} else
 				di_init_buf(default_width, default_height, 0);
 
@@ -7592,6 +8101,11 @@ static void di_reg_process_irq(void)
 
 		reset_pulldown_state();
 		combing_threshold_config(vframe->width);
+		if (is_meson_txl_cpu()) {
+			combing_pd22_window_config(vframe->width,
+				(vframe->height>>1));
+			tbff_init();
+		}
 		init_flag = 1;
 		di_pre_stru.reg_req_flag_irq = 1;
 	}
@@ -8006,6 +8520,7 @@ light_unreg:
 #endif
 	} else if (type == VFRAME_EVENT_PROVIDER_REG) {
 		char *provider_name = (char *)data;
+		char *receiver_name = NULL;
 		bypass_state = 0;
 		di_pre_stru.reg_req_flag = 1;
 		pr_dbg("%s: vframe provider reg\n", __func__);
@@ -8024,14 +8539,19 @@ light_unreg:
 			vdin_source_flag = 0;
 			pre_urgent = 0;
 		}
-		if (strcmp(vf_get_receiver_name(VFM_NAME), "amvideo") == 0) {
-			di_post_stru.run_early_proc_fun_flag = 0;
-			receiver_is_amvideo = 1;
-			/* pr_info("set run_early_proc_fun_flag to 1\n"); */
+		receiver_name = vf_get_receiver_name(VFM_NAME);
+		if (receiver_name) {
+			if (strcmp(receiver_name, "amvideo") == 0) {
+				di_post_stru.run_early_proc_fun_flag = 0;
+				receiver_is_amvideo = 1;
+		/* pr_info("set run_early_proc_fun_flag to 1\n"); */
+			} else {
+				di_post_stru.run_early_proc_fun_flag = 1;
+				receiver_is_amvideo = 0;
+		/* pr_dbg("set run_early_proc_fun_flag to 1\n"); */
+			}
 		} else {
-			di_post_stru.run_early_proc_fun_flag = 1;
-			receiver_is_amvideo = 0;
-/* pr_dbg("set run_early_proc_fun_flag to 1\n"); */
+			pr_info("%s error receiver is null.\n", __func__);
 		}
 	}
 #ifdef DET3D
@@ -8473,9 +8993,11 @@ unsigned int RDMA_WR_BITS(unsigned int adr, unsigned int val,
 
 static void set_di_flag(void)
 {
-	if (is_meson_gxtvbb_cpu()) {
+	if (is_meson_gxtvbb_cpu() || is_meson_txl_cpu()) {
 		mcpre_en = true;
 		pulldown_mode = 1;
+		pulldown_enable = 1;
+		di_pre_rdma_enable = false;
 		di_vscale_skip_enable = 4;
 		use_2_interlace_buff = 1;
 		pre_hold_line = 12;
@@ -8483,13 +9005,31 @@ static void set_di_flag(void)
 			di_force_bit_mode = 10;
 		else
 			di_force_bit_mode = 8;
+		if (is_meson_txl_cpu()) {
+			full_422_pack = true;
+			tff_bff_enable = true;
+			dejaggy_enable = 0;
+		}
 	} else {
 		mcpre_en = false;
 		pulldown_mode = 0;
+		pulldown_enable = 0;
+		di_pre_rdma_enable = false;
 		di_vscale_skip_enable = 4;
 		use_2_interlace_buff = 0;
 		di_force_bit_mode = 8;
 	}
+
+	if (di_pre_rdma_enable) {
+		pldn_dly = 1;
+		pldn_dly1 = 1;
+		tbbtff_dly = 1;
+	} else {
+		pldn_dly = 2;
+		pldn_dly1 = 2;
+		tbbtff_dly = 0;
+	}
+
 	return;
 }
 
@@ -8653,7 +9193,7 @@ static int di_probe(struct platform_device *pdev)
 	init_pd_para();
 	di_hw_init();
 
-	if (is_meson_gxtvbb_cpu() && pulldown_enable)
+	if (pulldown_enable)
 		FlmVOFSftInt(&pd_param);
 
 	set_di_flag();
@@ -9150,3 +9690,19 @@ vframe_t *get_di_inp_vframe(void)
 		vframe = di_pre_stru.di_inp_buf->vframe;
 	return vframe;
 }
+
+module_param_named(full_422_pack, full_422_pack, bool, 0644);
+#ifdef DEBUG_SUPPORT
+module_param_named(di_pre_rdma_enable, di_pre_rdma_enable, uint, 0664);
+module_param_named(pldn_dly, pldn_dly, uint, 0644);
+module_param_named(tbbtff_dly, tbbtff_dly, uint, 0644);
+
+module_param(pldn_dly1, uint, 0644);
+MODULE_PARM_DESC(pldn_dly1, "/n pulldonw field delay result./n");
+
+module_param(flm22_sure_num, uint, 0644);
+MODULE_PARM_DESC(flm22_sure_num, "ture film-22/n");
+
+module_param(flm22_glbpxlnum_rat, uint, 0644);
+MODULE_PARM_DESC(flm22_glbpxlnum_rat, "flm22_glbpxlnum_rat/n");
+#endif

@@ -100,23 +100,57 @@ static struct workqueue_struct *ldim_read_queue;
 static struct work_struct   ldim_read_work;
 
 #if 1
+#define FRM_NUM_DBG 5
 static unsigned long fw_LD_ThSF_l = 1600;
 static unsigned long fw_LD_ThTF_l = 256;
 
-static unsigned long avg_gain_sf = 128;  /* [1~128~256] */
+static unsigned long cal_cur_en;  /* [1~128~256] */
 
 static unsigned long avg_gain_sf_l = 128;  /* [1~128~256] */
 unsigned long dif_gain_sf_l = 0;  /* [0~128] */
 
 unsigned long Debug = 0;
 static unsigned long LPF = 1;  /* [0~128] */
-
-static unsigned long  rgb_base = 128;  /* [1~128], norm 128 as 1 */
+/* static unsigned long slp_gain = 28;*/
+static unsigned long  transmit_gain = 1;
 static unsigned long  lpf_gain = 128;  /* [0~128~256], norm 128 as 1*/
 static unsigned long  lpf_res = 41;    /* 1024/9 = 113*/
-static unsigned long bl_remap_curve[16] = {272, 317, 392, 497, 632,
-	797, 991, 1216, 1471, 1756, 2071, 2416, 2791, 3195, 3630, 4095};
-		/*BL_matrix remap curve*/
+unsigned long  rgb_base = 127;
+unsigned long boost_gain = 380; /*256;*/
+unsigned long Dbprint_lv = 0;
+/* static unsigned long bl_remap_curve[16] = {272, 317, 392, 497, 632,
+	797, 991, 1216, 1471, 1756, 2071, 2416, 2791, 3195, 3630, 4095};*/
+static unsigned int bl_remap_curve[16] = {
+				436, 479, 551, 651, 780, 938, 1125, 1340,
+				1584, 1856, 2158, 2488, 2847, 3234, 3650, 4095
+				};/*BL_matrix remap curve*/
+static unsigned long Sf_bypass, Boost_light_bypass;
+static unsigned long Lpf_bypass, Ld_remap_bypass, Tf_bypass;
+static unsigned int  Tf_luma_avg_frm[FRM_NUM_DBG] = {0, 0, 0, 0, 0};
+static unsigned int  Tf_blkLuma_avg[FRM_NUM_DBG][8] = {
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0} };
+static unsigned int  Tf_bl_matrix[FRM_NUM_DBG][8] = {
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0} };
+static unsigned int  Map_bl_matrix[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned int  Tf_bl_matrix_map[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned int  Tf_diff_frm_luma[FRM_NUM_DBG] = {0, 0, 0, 0, 0};
+static unsigned int  Tf_diff_blk_luma[FRM_NUM_DBG][8] = {
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0} };
+static unsigned int  Map_bl_matrix_Compensate;
+static unsigned int  Map_bl_matrix_AVG;
+unsigned int  db_cnt = 0;
 #endif
 
 unsigned long ldim_frm_time = 0;
@@ -132,8 +166,10 @@ unsigned long ld_fw_alg_frm_start_time = 0;
 unsigned long ld_fw_alg_frm_end_time = 0;
 long ld_fw_alg_frm_time = 0;
 
+#define LD_DATA_MIN    10
+static unsigned int ldim_data_min;
+static unsigned int ldim_brightness_level;
 unsigned long litgain = LD_DATA_DEPTH; /* 0xfff */
-unsigned long boost_gain = 280; /*256;*/
 unsigned long avg_gain = LD_DATA_DEPTH; /* 0xfff */
 /*unsigned long Backlit_coeff_l = 4096;*/
 
@@ -196,12 +232,41 @@ static unsigned int ldim_top_en;
 module_param(ldim_top_en, uint, 0664);
 MODULE_PARM_DESC(ldim_top_en, "ldim_top_en");
 
+static unsigned int slp_gain = 28;
+module_param(slp_gain, uint, 0664);
+MODULE_PARM_DESC(slp_gain, "slp_gain");
+
+static unsigned int incr_con_en;
+module_param(incr_con_en, uint, 0664);
+MODULE_PARM_DESC(incr_con_en, "incr_con_en");
+
+static unsigned int ov_gain = 16;
+module_param(ov_gain, uint, 0664);
+MODULE_PARM_DESC(ov_gain, "ov_gain");
+
+static unsigned int incr_dif_gain = 16;
+module_param(incr_dif_gain, uint, 0664);
+MODULE_PARM_DESC(incr_dif_gain, "incr_dif_gain");
+
+
+static unsigned int logo_en;
+module_param(logo_en, uint, 0664);
+MODULE_PARM_DESC(logo_en, "logo_en");
+
+static unsigned int test_static_pic;
+module_param(test_static_pic, uint, 0664);
+MODULE_PARM_DESC(test_static_pic, "test_static_pic");
+
+
 static unsigned long  vs_time_record;
 
 static struct aml_ldim_driver_s ldim_driver;
 static void ldim_on_vs_arithmetic(void);
 static void ldim_update_setting(void);
-
+static void ldim_get_matrix_info_6(void);
+static void ldim_print_debug(void);
+static void ldim_bl_remap_curve(int slop_gain);
+static void ldim_bl_remap_curve_print(void);
 static struct ldim_config_s ldim_config = {
 	.hsize = 3840,
 	.vsize = 2160,
@@ -210,7 +275,8 @@ static struct ldim_config_s ldim_config = {
 
 static void ldim_stts_read_region(struct work_struct *work)
 {
-	ldim_read_region(ldim_hist_row, ldim_hist_col);
+	if (test_static_pic == 0)
+		ldim_read_region(ldim_hist_row, ldim_hist_col);
 	ldim_on_vs_arithmetic();
 	return;
 }
@@ -330,11 +396,39 @@ void LDIM_RD_BASE_LUT_2(unsigned int base, unsigned int *pData,
 		data = Rd(LDIM_BL_DATA_PORT);
 }
 
+
+static void ldim_bl_remap_curve(int slop_gain)
+{
+	int i = 0 , ii = 0;
+	int t_bl_remap_curve[16] = {0};
+	int bl_max = 0, mid_value = 0;
+	LDIMPR("%s:\n", __func__);
+	for (i = 0; i < 16; i++) {
+		ii = (i+1) * 256;
+		mid_value = ii*ii>>17;
+		t_bl_remap_curve[i] = mid_value*slop_gain + 512;
+	}
+	bl_max = t_bl_remap_curve[15];
+
+	for (i = 0; i < 16; i++)
+		bl_remap_curve[i] = t_bl_remap_curve[i]*4095/bl_max;
+}
+
+void ldim_bl_remap_curve_print(void)
+{
+	int i = 0;
+	LDIMPR("%s:\n", __func__);
+	pr_info("bl_remap_curve:");
+	for (i = 0; i < 16; i++)
+		pr_info("[%4d]\n", bl_remap_curve[i]);
+}
+
+
 static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 	unsigned int *max_matrix, unsigned int *hist_matrix)
 {
 	/* Notes, nPRM will be set here in SW algorithm too */
-	int dif, blkRow, blkCol, k, m, n;
+	int dif, blkRow, blkCol, k, m, n, i;
 	unsigned long sum;
 	unsigned int avg, adpt_alp, dif_RGB, alpha, Bmin, Bmax;
 	unsigned int bl_value, bl_valuex128;
@@ -367,7 +461,13 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
     kmalloc(Bsize*sizeof(unsigned int),GFP_KERNEL); */
 	int int_x, rmd_x, norm;
 	int left,  right, bl_value_map;
-
+	int Luma_avg = 0, blkLuma_avg = 0, lmh_avg = 0, blk_sum = 0;
+	int diff_frm_luma = 0, diff_blk_luma = 0;
+	int diff_blk_matrix = 0, remap_value = 0;
+	int dif_r = 0, dif_g = 0, dif_b = 0;
+	int tvalue = 0, min_diff = 0;
+	int Bmax_lpf = 0;
+	int frm_rgbmax = 0, black_blk_num = 0;
 	#if 1
 	int SF_avg = 0;
 	unsigned int SF_dif = 0;
@@ -375,38 +475,91 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 	fw_LD_ThSF = fw_LD_ThSF_l;
 	fw_LD_ThTF = fw_LD_ThTF_l;
 #endif
+	diff_frm_luma = 0;
+	diff_blk_luma = 0;
+	diff_blk_matrix = 0;
+	remap_value = 0;
 
 	tBL_matrix = FDat->TF_BL_matrix_2;
+	/* Luma_avg transmit */
+	for (i = 0; i < (FRM_NUM_DBG - 1); i++) {
+		for (blkRow = 0; blkRow < Vnum; blkRow++) {
+			for (blkCol = 0; blkCol < Hnum; blkCol++) {
+				Tf_blkLuma_avg[i][blkRow*Hnum + blkCol]   =
+				Tf_blkLuma_avg[i+1][blkRow*Hnum + blkCol];
+				Tf_bl_matrix[i][blkRow*Hnum + blkCol]     =
+				Tf_bl_matrix[i+1][blkRow*Hnum + blkCol];
+				Tf_diff_blk_luma[i][blkRow*Hnum + blkCol] =
+				Tf_diff_blk_luma[i+1][blkRow*Hnum + blkCol];
+			}
+		}
+		Tf_luma_avg_frm[i] = Tf_luma_avg_frm[i+1];
+		Tf_diff_frm_luma[i] = Tf_diff_frm_luma[i+1];
+	}
 
-	/* calculate the current frame */
+	frm_rgbmax = 0; black_blk_num = 0;
 	for (blkRow = 0; blkRow < Vnum; blkRow++) {
 		for (blkCol = 0; blkCol < Hnum; blkCol++) {
-			RGBmax = MAX(MAX(max_matrix[blkRow*3*stride +
-				blkCol*3 + 0],
-			max_matrix[blkRow*3*stride + blkCol*3 + 1]),
-			max_matrix[blkRow*3*stride + blkCol*3 + 2]);
+			RGBmax =
+			MAX(MAX(max_matrix[blkRow*3*stride + blkCol*3 + 0],
+				max_matrix[blkRow*3*stride + blkCol*3 + 1]),
+				max_matrix[blkRow*3*stride + blkCol*3 + 2]);
+			if ((RGBmax == 0) &&
+			(hist_matrix[blkRow*LD_STA_BIN_NUM*stride +
+			blkCol*LD_STA_BIN_NUM + 0] >= 1030800))
+				black_blk_num++;
+			frm_rgbmax = MAX(frm_rgbmax, RGBmax);
+		}
+	}
 
-			if (RGBmax < rgb_base)
-				RGBmax = rgb_base;
-
+	/* calculate the current frame */
+	sum = 0; Luma_avg = 0;
+	for (blkRow = 0; blkRow < Vnum; blkRow++) {
+		for (blkCol = 0; blkCol < Hnum; blkCol++) {
+			RGBmax =
+			MAX(MAX(max_matrix[blkRow*3*stride + blkCol*3 + 0],
+				max_matrix[blkRow*3*stride + blkCol*3 + 1]),
+				max_matrix[blkRow*3*stride + blkCol*3 + 2]);
+			if (frm_rgbmax != 0) {
+				if (RGBmax < rgb_base)
+					RGBmax = rgb_base;
+			}
 			/* Consider the sitrogram */
 			Histmx = 0;
+			blkLuma_avg = 0;
+			blk_sum = 0;
 			for (k = 0; k < 16; k++) {
-				Histmx += (hist_matrix[blkRow*LD_STA_BIN_NUM*
-					stride + blkCol*LD_STA_BIN_NUM + k] *
-					fw_LD_Whist[k]);
+				Histmx +=
+				(hist_matrix[blkRow*LD_STA_BIN_NUM*stride
+				+ blkCol*LD_STA_BIN_NUM + k] * fw_LD_Whist[k]);
+				blk_sum +=
+				hist_matrix[blkRow*LD_STA_BIN_NUM*stride
+				+ blkCol*LD_STA_BIN_NUM + k];
+				blkLuma_avg +=
+				hist_matrix[blkRow*LD_STA_BIN_NUM*stride
+				+ blkCol*LD_STA_BIN_NUM + k] * k * 32;
+				/*16-->512grads*/
 				a = 0;
 			}
+			/* sum += blk_sum;
+			Luma_avg += blkLuma_avg; */
+			Tf_blkLuma_avg[FRM_NUM_DBG - 1][blkRow*Hnum + blkCol] =
+			((blkLuma_avg + (blk_sum >> 1)) / (blk_sum + 1));
+			Luma_avg +=
+			Tf_blkLuma_avg[FRM_NUM_DBG - 1][blkRow*Hnum + blkCol];
 			fw_hist_mx =
 				((Histmx>>8)*fw_LD_Thist*2/(fw_pic_size>>8));
 			/* further debug */
 			tBL_matrix[blkRow*Hnum + blkCol] =
 				((BLmax*MIN(fw_hist_mx, RGBmax))>>10);
-			nPRM->BL_matrix[blkCol*Vnum + blkRow] =
-				tBL_matrix[blkRow*Hnum + blkCol];
+
 			a = 0;
 		}
 	}
+
+	/*To solve black/white woman flicker*/
+	lmh_avg = (Luma_avg  / (Vnum * Hnum));
+	Tf_luma_avg_frm[FRM_NUM_DBG - 1] = lmh_avg;
 
 	/* Spatial Filter the BackLits */
 	sum = 0;
@@ -417,21 +570,26 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 				for (n =  -1; n < 2; n++) {
 					if ((m == 0) && (n == 0)) {
 						curNB =
-						tBL_matrix[blkRow*Hnum +
-						blkCol];
+					tBL_matrix[blkRow*Hnum + blkCol];
 					} else if (((blkRow+m) >= 0) &&
 						((blkRow+m) < Vnum) &&
-						((blkCol+n) >= 0) &&
+						((blkCol + n) >= 0) &&
 						((blkCol+n) < Hnum)) {
-						maxNB = MAX(maxNB,
-						tBL_matrix[(blkRow+m)*Hnum +
-						blkCol+n]);
+						maxNB =
+					MAX(maxNB, tBL_matrix[(blkRow+m)*Hnum
+					+ blkCol + n]);
 					}
 				}
 			}
 			/* SF matrix */
-			FDat->SF_BL_matrix[blkRow*Hnum + blkCol] =
-					MAX(curNB, (maxNB-fw_LD_ThSF));
+			if (Sf_bypass == 1) {
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] =
+				tBL_matrix[blkRow*Hnum + blkCol];
+			} else {
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] =
+				MAX(curNB, (maxNB-fw_LD_ThSF));
+			}
+
 			sum += FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
 			/* for SF_BL_matrix average calculation */
 		}
@@ -442,25 +600,28 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 	for (blkRow = 0; blkRow < Vnum; blkRow++) {
 		for (blkCol = 0; blkCol < Hnum; blkCol++) {
 			dif = (FDat->SF_BL_matrix[blkRow*Hnum + blkCol] - avg);
-			#if 0
-			if (dif > 0)
-				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] +=
-							(4*dif);
-			#endif
 
 			#if 1
 			FDat->SF_BL_matrix[blkRow*Hnum + blkCol] += (0*dif);
-			FDat->SF_BL_matrix[blkRow*Hnum + blkCol]  =
-				(FDat->SF_BL_matrix[blkRow*Hnum + blkCol] *
-				boost_gain + 64)>>7;
+			if (Boost_light_bypass == 1) {
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol]  =
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
+			} else {
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol]  =
+	(FDat->SF_BL_matrix[blkRow*Hnum + blkCol] * boost_gain + 64)>>7;
+			}
+
 			#endif
 
 			if (FDat->SF_BL_matrix[blkRow*Hnum + blkCol] > 4095)
-				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] = 4095;
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] =
+				4095;
 		}
 	}
 
 #if 1
+	SF_sum = 0;
+	TF_sum = 0;
 	for (blkRow = 0; blkRow < Vnum; blkRow++) {
 		for (blkCol = 0; blkCol < Hnum; blkCol++) {
 			SF_sum += FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
@@ -480,14 +641,14 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 				if (FDat->SF_BL_matrix[blkRow*Hnum
 					+ blkCol] <= SF_avg) {
 					FDat->SF_BL_matrix[blkRow*Hnum + blkCol]
-						= ((SF_avg * avg_gain_sf + 64)
+						= ((SF_avg  + 64)
 						>> 7);
 					dif_gain_sf_l = 0;
 					avg_gain_sf_l = 0;
 				} else {
 					FDat->SF_BL_matrix[blkRow*Hnum
-						+ blkCol] = ((SF_avg *
-						avg_gain_sf + 64) >> 7)
+						+ blkCol] = ((SF_avg
+						 + 64) >> 7)
 						+ SF_dif; /* need optimize */
 				}
 				if (FDat->SF_BL_matrix[blkRow*Hnum
@@ -500,6 +661,7 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 #endif
 
 	/* LPF  Only for Xiaomi 8 Led ,here Vnum = 1;*/
+	Bmin = 4096; Bmax_lpf = 0;
 	if (LPF == 1) {
 		for (blkRow = 0; blkRow < Vnum; blkRow++) {
 			for (blkCol = 0; blkCol < Hnum; blkCol++) {
@@ -516,16 +678,108 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 						sum += FDat->SF_BL_matrix[num];
 					}
 				}
-				FDat->SF_BL_matrix[blkRow*Hnum + blkCol] =
-					(((sum * lpf_res >> 10) *
-					lpf_gain) >> 7); /*1024/9 = 113*/
-				if (FDat->SF_BL_matrix[blkRow*Hnum + blkCol] >
-					4095) {
+				if (Lpf_bypass == 1) {
 					FDat->SF_BL_matrix[blkRow*Hnum +
-						blkCol] = 4095;
+					blkCol] =
+	FDat->SF_BL_matrix[blkRow*Hnum + blkCol]; /*1024/9 = 113*/
+				} else {
+					FDat->SF_BL_matrix[blkRow*Hnum +
+					blkCol] =
+		(((sum * lpf_res >> 10) * lpf_gain) >> 7); /*1024/9 = 113*/
+				}
+
+				tvalue =
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
+				tvalue = (tvalue * ov_gain + 16) >> 4;
+				/*ov_gain[16, 32, 64, 128, 256]norm 16 as "1"*/
+				min_diff =
+			tvalue - FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
+				Bmin = MIN(Bmin, min_diff);
+
+				Bmax_lpf =
+				MAX(Bmax_lpf,
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol]);
+
+				if (FDat->SF_BL_matrix[blkRow*Hnum + blkCol] >
+									4095) {
+					FDat->SF_BL_matrix[blkRow*Hnum +
+							blkCol] = 4095;
 				}
 			}
 		}
+	}
+
+
+	if (incr_con_en == 1) {
+		for (blkRow = 0; blkRow < Vnum; blkRow++) {
+			for (blkCol = 0; blkCol < Hnum; blkCol++) {
+				tvalue =
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
+				tvalue = (tvalue * ov_gain + 16) >> 4;
+				/*ov_gain[16, 32, 64, 128, 256]norm 16 as "1"*/
+				tvalue =
+				tvalue - ((Bmin * incr_dif_gain + 8) >> 4);
+				/* incr_dif_gain [1~16]*/
+
+				FDat->SF_BL_matrix[blkRow*Hnum +
+					blkCol] = tvalue;
+
+				if (FDat->SF_BL_matrix[blkRow*Hnum +
+							blkCol] > 4095)
+					FDat->SF_BL_matrix[blkRow*Hnum +
+							blkCol] = 4095;
+
+			}
+		}
+	}
+
+
+
+	if (logo_en == 1) {
+		/*
+		for (blkRow = 0; blkRow < Vnum; blkRow++) {
+			for (blkCol = 0; blkCol < Hnum; blkCol++) {
+				if (Dbprint_lv == 1) {
+					if ((db_cnt%4) == 0) {
+						pr_info(
+				"0_FDat->SF_BL_matrix[%4d] = [%4d]\n",
+				(blkRow*Hnum + blkCol),
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol]);
+					}
+				}
+
+				maxNB = 0;
+				for (m =  -1; m < 2; m++) {
+					for (n =  -1; n < 2; n++) {
+						if ((m == 0) && (n == 0)) {
+							curNB =
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol];
+						} else if (((blkRow+m) >= 0)
+						&& ((blkRow+m) < Vnum)
+						&& ((blkCol+n) >= 0)
+						&& ((blkCol+n) < Hnum)) {
+							maxNB =
+		MAX(maxNB, FDat->SF_BL_matrix[(blkRow+m)*Hnum + blkCol+n]);
+						}
+					}
+				}
+				dif = maxNB - curNB;
+				tvalue = ((curNB + 1) > 1);
+				if (dif > 500)
+					FDat->SF_BL_matrix[blkRow*Hnum +
+					blkCol] = ((maxNB * 3 + 2) >> 2);
+
+				if (Dbprint_lv == 1) {
+					if ((db_cnt%4) == 0) {
+						pr_info(
+				"1_FDat->SF_BL_matrix[%4d] = [%4d]\n",
+				(blkRow*Hnum + blkCol),
+				FDat->SF_BL_matrix[blkRow*Hnum + blkCol]);
+					}
+				}
+			}
+		}
+		*/
 	}
 
 	/* Temperary filter */
@@ -533,48 +787,65 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 	for (blkRow = 0; blkRow < Vnum; blkRow++) {
 		for (blkCol = 0; blkCol < Hnum; blkCol++) {
 			/* Optimization needed here */
-			dif_RGB = MAX(MAX(ABS(FDat->last_STA1_MaxRGB
-				[blkRow*3*stride + blkCol*3 + 0] -
-				max_matrix[blkRow*3*stride + blkCol*3 + 0]),
-				ABS(FDat->last_STA1_MaxRGB[blkRow*3*
-				stride + blkCol*3 + 1] -
-				max_matrix[blkRow*3*stride +
-				blkCol*3 + 1])),
-				ABS(FDat->last_STA1_MaxRGB
-				[blkRow*3*stride + blkCol*3 + 2] -
-				max_matrix[blkRow*3*stride +
-				blkCol*3 + 2]));
+			/* dif_RGB =
+MAX(MAX(ABS(FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 0] -
+max_matrix[blkRow*3*stride + blkCol*3 + 0]),
+ABS(FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 1] -
+max_matrix[blkRow*3*stride + blkCol*3 + 1])),
+ABS(FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 2] -
+max_matrix[blkRow*3*stride + blkCol*3 + 2]));*/
+			dif_r =
+			FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 0] -
+				max_matrix[blkRow*3*stride + blkCol*3 + 0];
+			dif_r = ABS(dif_r);
+			dif_g =
+			FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 1] -
+				max_matrix[blkRow*3*stride + blkCol*3 + 1];
+			dif_g = ABS(dif_g);
+			dif_b =
+			FDat->last_STA1_MaxRGB[blkRow*3*stride + blkCol*3 + 2] -
+				max_matrix[blkRow*3*stride + blkCol*3 + 2];
+			dif_b = ABS(dif_b);
+			dif_RGB = MAX(MAX(dif_r, dif_g), dif_b);
+			adpt_alp =
+			(FDat->SF_BL_matrix[blkRow*Hnum + blkCol]) -
+				(FDat->TF_BL_matrix[blkRow*Hnum + blkCol]);
+			adpt_alp = ABS(adpt_alp);
 
-			adpt_alp = ABS((FDat->SF_BL_matrix[blkRow*Hnum +
-					blkCol]) -
-				(FDat->TF_BL_matrix[blkRow*Hnum + blkCol]));
 			#if 0
-			alpha = MIN(256, fw_LD_ThTF +
-				(MAX(adpt_alp, dif_RGB)));
+			alpha = MIN(256, fw_LD_ThTF + (MAX(adpt_alp, dif_RGB)));
+			SF_sum = 0;
+			TF_sum = 0;
+			dif_sum = 0;
+			bl_valuex128 = 0;
 			#endif
 
 			#if 1
-			dif_sum = ABS(SF_sum - TF_sum);
+			dif_sum = SF_sum - TF_sum;
+			dif_sum = ABS(dif_sum);
 			if (dif_sum > 32760)
 				alpha = 256;
 			else
 				alpha = MIN(256, fw_LD_ThTF);
+			bl_valuex128 = 0;
 			#endif
 
 			FDat->TF_BL_alpha[blkRow*Hnum + blkCol] = alpha;
 			/* 256 normalized as "1" */
 
 			/* get the temporary filtered BL_value */
-			/* bl_value = (((256-alpha) * (FDat->TF_BL_matrix
-				[blkRow*Hnum + blkCol]) + alpha*
-				(FDat->SF_BL_matrix[blkRow*Hnum
-				+ blkCol]) + 128) >> 8); */
-			bl_valuex128 = (FDat->TF_BL_matrix[blkRow*Hnum +
-				blkCol]) + (alpha*((
-				FDat->SF_BL_matrix[blkRow*Hnum + blkCol]<<7) -
-				FDat->TF_BL_matrix[blkRow*Hnum + blkCol] + 128)
-				>>8);  /* 7 more bits precison kept */
-			bl_value = (bl_valuex128 + 64)>>7;  /* u12 */
+			 bl_value =
+			(((256-alpha) *
+			(FDat->TF_BL_matrix[blkRow*Hnum + blkCol]) +
+			alpha *
+			(FDat->SF_BL_matrix[blkRow*Hnum + blkCol]) + 128) >> 8);
+			/* bl_valuex128 =
+			(FDat->TF_BL_matrix[blkRow*Hnum +blkCol]) +
+			(alpha*
+			((FDat->SF_BL_matrix[blkRow*Hnum + blkCol]<<7) -
+			FDat->TF_BL_matrix[blkRow*Hnum + blkCol] + 128)>>8); */
+			/* 7 more bits precison kept */
+			/* bl_value = (bl_valuex128 + 64)>>7;*//* u12 */
 			if (bl_value > 4095)
 				bl_value = 4095;
 
@@ -589,24 +860,134 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 
 			right = bl_remap_curve[int_x];
 
-			bl_value_map = left + (((right-left)*rmd_x + 128)>>8);
+			if (Ld_remap_bypass == 1) {
+				bl_value_map = bl_value;
+			} else {
+				bl_value_map = left +
+				(((right-left)*rmd_x + 128)>>8);
+			}
 			bl_value_map = (bl_value_map > 4095) ? 4095 :
 				bl_value_map;
 				/*clip to u12: debug 20150728  output u12*/
 
-			if (bl_value_map < 127)
-				bl_value_map = 127;
+			Tf_bl_matrix_map[blkRow*Hnum + blkCol] = bl_value_map;
 
-			if (nPRM->reg_LD_BackLit_mode == 1)
-				nPRM->BL_matrix[blkCol*Vnum + blkRow]
-					= bl_value_map;
-			else
-				nPRM->BL_matrix[blkRow*Hnum + blkCol]
-					= bl_value_map;
+			diff_frm_luma = Tf_luma_avg_frm[FRM_NUM_DBG - 1] -
+					Tf_luma_avg_frm[FRM_NUM_DBG - 2];
+			diff_frm_luma = ABS(diff_frm_luma);
+			Tf_diff_frm_luma[FRM_NUM_DBG - 1] = diff_frm_luma;
+
+
+			 /* if (Tf_luma_avg_frm[FRM_NUM_DBG - 1] == 0)
+				bl_value_map =
+				Tf_bl_matrix[FRM_NUM_DBG -
+				3][blkRow*Hnum + blkCol];
+
+			if (diff_frm_luma > 20 &&
+				(Tf_luma_avg_frm[FRM_NUM_DBG - 1] == 0))
+				bl_value_map =
+				Tf_bl_matrix[FRM_NUM_DBG -
+				3][blkRow*Hnum + blkCol];
+			*/
+
+			if (Tf_luma_avg_frm[FRM_NUM_DBG - 1] <= 1) {
+				Tf_bl_matrix[FRM_NUM_DBG - 2][blkRow*Hnum +
+							blkCol] = Bmax_lpf>>1;
+			}
+
+
+			if (diff_frm_luma < 10) {/*same video scene*/
+				diff_blk_luma =
+			Tf_blkLuma_avg[FRM_NUM_DBG - 1][blkRow*Hnum + blkCol] -
+			Tf_blkLuma_avg[FRM_NUM_DBG - 2][blkRow*Hnum + blkCol];
+
+				diff_blk_matrix =
+				bl_value_map -
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol];
+				diff_blk_matrix = ABS(diff_blk_matrix);
+				Tf_diff_blk_luma[FRM_NUM_DBG -
+				1][blkRow*Hnum + blkCol] = diff_blk_matrix;
+
+				/*Debug print local value*/
+				if (Dbprint_lv == 1) {
+					if ((db_cnt%4) == 0) {
+						/*4 frames print once*/
+						pr_info(
+"diff_blk_matrix[%4d], bl_value_map[%4d], Tf_bl_matrix[%4d], frm_luma[%4d]\n",
+			diff_blk_matrix,
+			bl_value_map,
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol],
+			Tf_luma_avg_frm[FRM_NUM_DBG - 1]);
+					}
+				}
+				if ((diff_blk_matrix > 50)) {
+					/*
+					if (Dbprint_lv == 1) {
+						if ((db_cnt%4) == 0) {
+							pr_info(
+			"if(diff_blk_matrix > 20){...}\n");
+						}
+					}
+					*/
+					if (bl_value_map >=
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol]) {
+						bl_value_map =
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol] +
+			((diff_blk_matrix + 16) >> 5); /*1/32*/
+
+						/*if (Dbprint_lv == 1) {
+							if ((db_cnt%4) == 0) {
+								pr_info(
+		"bl_value_map[%4d]((diff_blk_matrix + 16) >> 5)[%4d]\n",
+		bl_value_map, ((diff_blk_matrix + 16) >> 5));
+								}
+							}*/
+
+					} else {
+							bl_value_map =
+			Tf_bl_matrix[FRM_NUM_DBG-2][blkRow*Hnum + blkCol] -
+						((diff_blk_matrix + 16) >> 5);
+					}
+				} else {
+					bl_value_map = bl_value_map;
+				}
+				 if (bl_value_map > 4095)
+					bl_value_map = 4095;
+				 if (bl_value_map <= 0)
+					bl_value_map = 0;
+			}
+
+			/*Debug print local value*/
+			if (Dbprint_lv == 1) {
+				if ((db_cnt%4) == 0) {  /*4 frames print once*/
+					pr_info("Aftert bl_value_map[%4d]\n",
+						bl_value_map);
+				}
+			}
+
+			/* if (Tf_luma_avg_frm[FRM_NUM_DBG - 1] == 0)
+					bl_value_map = 0;
+			if (bl_value_map <= lit_base)
+				bl_value_map = lit_base; *//*default 127*/
+
+			remap_value = bl_value_map;
+			if (remap_value > 4095)
+				remap_value = 4095;
+			if (nPRM->reg_LD_BackLit_mode == 1) {
+				nPRM->BL_matrix[blkCol*Vnum + blkRow]  =
+								bl_value_map;
+			    Map_bl_matrix[blkCol*Vnum + blkRow] = remap_value;
+			} else {
+				nPRM->BL_matrix[blkRow*Hnum + blkCol]  =
+								bl_value_map;
+			    Map_bl_matrix[blkRow*Hnum + blkCol] = remap_value;
+			}
+
 
 			/* Get the TF_BL_matrix */
-			FDat->TF_BL_matrix[blkRow*Hnum + blkCol]
-				= bl_value_map;
+			FDat->TF_BL_matrix[blkRow*Hnum + blkCol] = bl_value_map;
+			Tf_bl_matrix[FRM_NUM_DBG-1][blkRow*Hnum + blkCol] =
+								bl_value_map;
 
 			/* leave the Delayed version for next frame */
 			for (k = 0; k < 3; k++) {
@@ -621,14 +1002,31 @@ static void ld_fw_alg_frm(struct LDReg *nPRM, struct FW_DAT *FDat,
 			Bmax = MAX(Bmax, bl_value_map);
 		}
 	}
+	/*Debug print local value*/
+	if (Dbprint_lv == 1) {
+		if ((db_cnt%4) == 0) {  /*5 frames print once*/
+			for (i = 0; i < 8; i++)
+				pr_info("Tf_bl_matrix[blk_%d][%4d]\n", i,
+					Tf_bl_matrix[FRM_NUM_DBG-1][i]);
+				ldim_print_debug();
+		}
+	}
+	db_cnt++;
+	if (db_cnt > 4095)
+		db_cnt = 0;
 
 	/* set the DC reduction for the BL_modeling */
 	if (fw_LD_BLEst_ACmode == 0)
 		nPRM->reg_BL_matrix_AVG = 0;
-	else if (fw_LD_BLEst_ACmode == 1)
+	else if (fw_LD_BLEst_ACmode == 1) {
 		/*nPRM->reg_BL_matrix_AVG = (sum/fw_blk_num);*/
 		nPRM->reg_BL_matrix_AVG = ((sum/fw_blk_num) *
 			avg_gain + 2048)>>12;
+		Map_bl_matrix_AVG = ((sum/fw_blk_num) *
+			avg_gain + 2048)>>12;
+		Map_bl_matrix_Compensate = ((sum/fw_blk_num) *
+			avg_gain + 2048)>>12;
+	}
 	else if (fw_LD_BLEst_ACmode == 2)
 		nPRM->reg_BL_matrix_AVG = Bmin;
 	else if (fw_LD_BLEst_ACmode == 3)
@@ -1176,13 +1574,13 @@ static void ldim_update_matrix(unsigned int mode)
 
 static unsigned short ldim_test_matrix[LD_BLKREGNUM];
 static unsigned short local_ldim_matrix[LD_BLKREGNUM] = {0};
-/*static unsigned short local_ldim_matrix_2_spi[LD_BLKREGNUM] = {0};*/
 
 static void ldim_on_vs_spi(unsigned long data)
 {
 	unsigned int size;
 	unsigned short *mapping;
 	unsigned int i;
+	int ret;
 
 	if (ldim_on_flag == 0)
 		return;
@@ -1200,7 +1598,7 @@ static void ldim_on_vs_spi(unsigned long data)
 				local_ldim_matrix[i] =
 					(unsigned short)
 					nPRM.BL_matrix[mapping[i]];
-				ldim_driver.ldim_matrix_2_spi[i] =
+				ldim_driver.ldim_matrix_buf[i] =
 					ldim_test_matrix[mapping[i]];
 			}
 		} else {
@@ -1208,7 +1606,7 @@ static void ldim_on_vs_spi(unsigned long data)
 				local_ldim_matrix[i] =
 					(unsigned short)
 					nPRM.BL_matrix[mapping[i]];
-				ldim_driver.ldim_matrix_2_spi[i] =
+				ldim_driver.ldim_matrix_buf[i] =
 					(unsigned short)
 					(((nPRM.BL_matrix[mapping[i]] * litgain)
 					+ (LD_DATA_MAX / 2)) >> LD_DATA_DEPTH);
@@ -1221,20 +1619,37 @@ static void ldim_on_vs_spi(unsigned long data)
 				LDIMPR("%s: level update: 0x%lx\n",
 					__func__, litgain);
 			}
-		} else
+			for (i = 0; i < size; i++) {
+				local_ldim_matrix[i] =
+					(unsigned short)
+					nPRM.BL_matrix[mapping[i]];
+				ldim_driver.ldim_matrix_buf[i] =
+					(unsigned short)(litgain);
+			}
+		} else {
+			if (ldim_driver.device_bri_check) {
+				ret = ldim_driver.device_bri_check();
+				if (ret) {
+					if (ldim_debug_print) {
+						LDIMERR(
+						"%s: device_bri_check error\n",
+						__func__);
+					}
+					ldim_level_update = 1;
+				}
+			}
 			return;
-		for (i = 0; i < size; i++) {
-			local_ldim_matrix[i] =
-				(unsigned short)nPRM.BL_matrix[mapping[i]];
-			ldim_driver.ldim_matrix_2_spi[i] =
-				(unsigned short)(litgain);
 		}
 	}
 
-	/* set_bri_for_channels(ldim_driver.ldim_matrix_2_spi); */
+	/* set_bri_for_channels(ldim_driver.ldim_matrix_buf); */
 	if (ldim_driver.device_bri_update) {
-		ldim_driver.device_bri_update(ldim_driver.ldim_matrix_2_spi,
+		ldim_driver.device_bri_update(ldim_driver.ldim_matrix_buf,
 			size);
+		if (ldim_driver.static_pic_flag == 1) {
+			ldim_get_matrix_info_6();
+			ldim_dump_histgram();
+		}
 	} else {
 		LDIMERR("%s: device_bri_update is null\n", __func__);
 	}
@@ -1380,7 +1795,7 @@ static void ldim_on_vs(void)
 		for (i = 0; i < (ldim_blk_row * ldim_blk_col); i++) {
 			local_ldim_matrix[i] = nPRM.BL_matrix[
 				ldim_config.bl_mapping[i]];
-			ldim_driver.ldim_matrix_2_spi[i] = (unsigned short)
+			ldim_driver.ldim_matrix_buf[i] = (unsigned short)
 				(((nPRM.BL_matrix[ldim_config.bl_mapping[i]] *
 				litgain) + 2048) >> 12);
 		}
@@ -1388,7 +1803,7 @@ static void ldim_on_vs(void)
 		/* set_bri_for_channels(local_ldim_matrix_2_spi); */
 		if (ldim_driver.device_bri_update) {
 			ldim_driver.device_bri_update(
-				ldim_driver.ldim_matrix_2_spi,
+				ldim_driver.ldim_matrix_buf,
 				(ldim_blk_row * ldim_blk_col));
 		} else {
 			LDIMPR("%s: device_bri_update is null\n", __func__);
@@ -1403,23 +1818,46 @@ static void ldim_on_vs(void)
 }
 #endif
 
-static void ldim_get_matrix_info_1(void)
+static void ldim_print_debug(void)
 {
-	unsigned int i, j;
+	unsigned int k, i, j;
 	unsigned int local_ldim_matrix_t[LD_BLKREGNUM] = {0};
 
 	LDIMPR("%s:\n", __func__);
+	pr_info("512step:[luma_avg_frm][Diff_avg_frm:]\n");
+	for (i = 0; i < FRM_NUM_DBG; i++)
+		pr_info("Tf_luma_avg_frm[%4d] =[%4d][%4d]\n", i,
+			Tf_luma_avg_frm[i], Tf_diff_frm_luma[i]);
+
 	memcpy(&local_ldim_matrix_t[0], &FDat.TF_BL_matrix_2[0],
 		ldim_blk_col*ldim_blk_row*sizeof(unsigned int));
 
-	for (i = 0; i < ldim_blk_row; i++) {
-		for (j = 0; j < ldim_blk_col; j++) {
-			pr_info("0x%x\t",
-				local_ldim_matrix_t[ldim_blk_col*i+j]);
+	pr_info("512step: ");
+	for (k = 0; k < FRM_NUM_DBG; k++) {
+		pr_info("Frame[%d][Luma_avg][Diff_blk_luma][bl_matrix]:\n", k);
+		for (i = 0; i < ldim_blk_row; i++) {
+			for (j = 0; j < ldim_blk_col; j++) {
+				pr_info("[%4d][%4d][%4d]\n",
+					Tf_blkLuma_avg[k][ldim_blk_col*i+j],
+					Tf_diff_blk_luma[k][ldim_blk_col*i+j],
+					Tf_bl_matrix[k][ldim_blk_col*i+j]);
+			}
+			pr_info("\n");
+			udelay(10000);
 		}
-		pr_info("\n");
-		udelay(10000);
 	}
+	/* for (k = 0; k < FRM_NUM_DBG; k++) {
+		pr_info("Frame[%d][bl_matrix_map][bl_matrix]:\n", k);
+		for (i = 0; i < ldim_blk_row; i++) {
+			for (j = 0; j < ldim_blk_col; j++) {
+				pr_info("[%4d][%4d]\n",
+					Tf_bl_matrix_map[k][ldim_blk_col*i+j],
+					Tf_bl_matrix[k][ldim_blk_col*i+j]);
+			 }
+			pr_info("\n");
+			udelay(10000);
+		 }
+	 }*/
 }
 static void ldim_get_matrix_info_2(void)
 {
@@ -1527,7 +1965,7 @@ static void ldim_get_matrix(unsigned int *data, unsigned int reg_sel)
 	if (reg_sel == 0)
 		LDIM_RD_BASE_LUT(REG_LD_BLK_VIDX_BASE, data , 16, 32);
 	else if (reg_sel == 2)
-		ldim_get_matrix_info_1();
+		ldim_print_debug();
 	else if (reg_sel == 3)
 		ldim_get_matrix_info_2();
 	else if (reg_sel == 4)
@@ -1553,13 +1991,10 @@ static void ldim_get_matrix_info(void)
 	unsigned short local_ldim_matrix_spi_t[LD_BLKREGNUM] = {0};
 
 	memcpy(&local_ldim_matrix_t[0], &local_ldim_matrix[0],
-		ldim_blk_col*ldim_blk_row*sizeof(unsigned int));
-	/*memcpy(&local_ldim_matrix_spi_t[0],
-		&local_ldim_matrix_2_spi[0],
-		ldim_blk_col*ldim_blk_row*sizeof(unsigned int));*/
+		ldim_blk_col*ldim_blk_row*sizeof(unsigned short));
 	memcpy(&local_ldim_matrix_spi_t[0],
-		&ldim_driver.ldim_matrix_2_spi[0],
-		ldim_blk_col*ldim_blk_row*sizeof(unsigned int));
+		&ldim_driver.ldim_matrix_buf[0],
+		ldim_blk_col*ldim_blk_row*sizeof(unsigned short));
 	/*printk("%s and spi info:\n", __func__);*/
 	LDIMPR("%s and spi info:\n", __func__);
 	for (i = 0; i < ldim_blk_row; i++) {
@@ -1570,7 +2005,15 @@ static void ldim_get_matrix_info(void)
 		pr_info("\n");
 		udelay(10000);
 	}
-	pr_info("\n");
+	LDIMPR("%s: transfer_matrix:\n", __func__);
+	for (i = 0; i < ldim_blk_row; i++) {
+		for (j = 0; j < ldim_blk_col; j++) {
+			pr_info("0x%x\t", local_ldim_matrix_spi_t
+				[ldim_blk_col*i+j]);
+		}
+		pr_info("\n");
+		udelay(10000);
+	}
 	pr_info("\n");
 
 	/*printk("ldim_stts_start_time = %d, ldim_stts_end_time = %d, :\n",);*/
@@ -1624,12 +2067,16 @@ static void ldim_func_ctrl(int status)
 		ldim_alg_en = 0;
 		/* disable remap */
 		/*ldim_remap_ctrl(0);*/
+
+		/* refresh system brightness */
+		ldim_level_update = 1;
 	}
 }
 
 static int ldim_on_init(void)
 {
 	int ret = 0;
+	struct aml_ldim_driver_s *ldim_drv = aml_ldim_get_driver();
 
 	LDIMPR("%s\n", __func__);
 
@@ -1642,7 +2089,7 @@ static int ldim_on_init(void)
 	ldim_func_ctrl(0); /* default disable ldim function */
 
 	if (ldim_driver.pinmux_ctrl)
-		ldim_driver.pinmux_ctrl(1);
+		ldim_driver.pinmux_ctrl(ldim_drv->ldev_conf->pinmux_name, 1);
 	ldim_on_flag = 1;
 	ldim_level_update = 1;
 
@@ -1685,71 +2132,17 @@ static int ldim_set_level(unsigned int level)
 	struct aml_bl_drv_s *bl_drv = aml_bl_get_driver();
 	unsigned int level_max, level_min;
 
+	ldim_brightness_level = level;
 	level_max = bl_drv->bconf->level_max;
 	level_min = bl_drv->bconf->level_min;
 
-	level = ((level - level_min) * LD_DATA_MAX) / (level_max - level_min);
-	level &= LD_DATA_MAX;
+	level = ((level - level_min) * (LD_DATA_MAX - ldim_data_min)) /
+		(level_max - level_min) + ldim_data_min;
+	level &= 0xfff;
 	litgain = (unsigned long)level;
 	ldim_level_update = 1;
 
 	return ret;
-}
-
-static void ldim_config_print(void)
-{
-	struct bl_pwm_config_s *ld_pwm;
-
-	LDIMPR("%s:\n", __func__);
-	pr_info("valid_flag            = %d\n"
-		"dev_index             = %d\n",
-		ldim_driver.valid_flag,
-		ldim_driver.dev_index);
-	if (ldim_driver.ldev_conf) {
-		ld_pwm = &ldim_driver.ldev_conf->pwm_config;
-		pr_info("dev_name              = %s\n"
-			"cs_hold_delay         = %d\n"
-			"cs_clk_delay          = %d\n"
-			"en_gpio               = %d\n"
-			"en_gpio_on            = %d\n"
-			"en_gpio_off           = %d\n"
-			"lamp_err_gpio         = %d\n"
-			"fault_check           = %d\n"
-			"write_check           = %d\n"
-			"dim_min               = 0x%03x\n"
-			"dim_max               = 0x%03x\n"
-			"cmd_size              = %d\n",
-			ldim_driver.ldev_conf->name,
-			ldim_driver.ldev_conf->cs_hold_delay,
-			ldim_driver.ldev_conf->cs_clk_delay,
-			ldim_driver.ldev_conf->en_gpio,
-			ldim_driver.ldev_conf->en_gpio_on,
-			ldim_driver.ldev_conf->en_gpio_off,
-			ldim_driver.ldev_conf->lamp_err_gpio,
-			ldim_driver.ldev_conf->fault_check,
-			ldim_driver.ldev_conf->write_check,
-			ldim_driver.ldev_conf->dim_min,
-			ldim_driver.ldev_conf->dim_max,
-			ldim_driver.ldev_conf->cmd_size);
-		if (ld_pwm->pwm_port < BL_PWM_MAX) {
-			pr_info("pwm_port              = %d\n"
-				"pwm_pol               = %d\n"
-				"pwm_freq              = %d\n"
-				"pwm_duty              = %d%%\n"
-				"pinmux_flag           = %d\n",
-				ld_pwm->pwm_port, ld_pwm->pwm_method,
-				ld_pwm->pwm_freq, ld_pwm->pwm_duty,
-				ld_pwm->pinmux_flag);
-		}
-	} else {
-		pr_info("device config is null\n");
-	}
-	pr_info("ldim_on_flag          = %d\n"
-		"ldim_func_en          = %d\n"
-		"ldim_remap_en         = %d\n"
-		"ldim_test_en          = %d\n\n",
-		ldim_on_flag, ldim_func_en,
-		ldim_matrix_update_en, ldim_test_en);
 }
 
 static void ldim_test_ctrl(int flag)
@@ -1764,18 +2157,21 @@ static void ldim_test_ctrl(int flag)
 static struct aml_ldim_driver_s ldim_driver = {
 	.valid_flag = 0, /* default invalid, active when bl_ctrl_method=ldim */
 	.dev_index = 0,
+	.static_pic_flag = 0,
 	.ldev_conf = NULL,
-	.ldim_matrix_2_spi = NULL,
+	.ldim_matrix_buf = NULL,
 	.init = ldim_on_init,
 	.power_on = ldim_power_on,
 	.power_off = ldim_power_off,
 	.set_level = ldim_set_level,
-	.config_print = ldim_config_print,
 	.test_ctrl = ldim_test_ctrl,
+	.config_print = NULL,
 	.pinmux_ctrl = NULL,
+	.pwm_vs_update = NULL,
 	.device_power_on = NULL,
 	.device_power_off = NULL,
 	.device_bri_update = NULL,
+	.device_bri_check = NULL,
 };
 
 struct aml_ldim_driver_s *aml_ldim_get_driver(void)
@@ -1817,9 +2213,17 @@ static ssize_t ldim_attr_show(struct class *cla,
 	len += sprintf(buf+len,
 	"echo fw_LD_ThTF_l 32 > /sys/class/aml_ldim/attr\n");
 	len += sprintf(buf+len,
-	"echo avg_gain_sf 128 > /sys/class/aml_ldim/attr\n");
+	"echo cal_cur_en 0 > /sys/class/aml_ldim/attr\n");
+	len += sprintf(buf+len,
+	"echo transmit_gain 1 > /sys/class/aml_ldim/attr\n");
+	/* len += sprintf(buf+len,
+	"echo slp_gain 28 > /sys/class/aml_ldim/attr\n");*/
+
 	len += sprintf(buf+len,
 	"echo rgb_base 128 > /sys/class/aml_ldim/attr\n");
+
+	len += sprintf(buf+len,
+	"echo Dbprint_lv 128 > /sys/class/aml_ldim/attr\n");
 
 	len += sprintf(buf+len,
 	"echo avg_gain_sf_l 128 > /sys/class/aml_ldim/attr\n");
@@ -1833,6 +2237,19 @@ static ssize_t ldim_attr_show(struct class *cla,
 	"echo lpf_gain 0 > /sys/class/aml_ldim/attr\n");
 	len += sprintf(buf+len,
 	"echo lpf_res 0 > /sys/class/aml_ldim/attr\n");
+
+	len += sprintf(buf+len,
+	"echo Sf_bypass 0 > /sys/class/aml_ldim/attr\n");
+	len += sprintf(buf+len,
+	"echo Boost_light_bypass 0 > /sys/class/aml_ldim/attr\n");
+	len += sprintf(buf+len,
+	"echo Lpf_bypass 0 > /sys/class/aml_ldim/attr\n");
+	len += sprintf(buf+len,
+	"echo Tf_bypass 0 > /sys/class/aml_ldim/attr\n");
+	len += sprintf(buf+len,
+	"echo Ld_remap_bypass 0 > /sys/class/aml_ldim/attr\n");
+
+
 #endif
 	len += sprintf(buf+len,
 	"echo litgain 4096 > /sys/class/aml_ldim/attr\n");
@@ -2018,6 +2435,14 @@ static ssize_t ldim_attr_store(struct class *cla,
 		ldim_func_en = 0;
 		ldim_func_ctrl(0);
 		pr_info("**************ldim disable ok*************\n");
+	} else if (!strcmp(parm[0], "data_min")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		ldim_data_min = (unsigned int)val1;
+		ldim_set_level(ldim_brightness_level);
+		pr_info("**********ldim brightness data_min update*********\n");
 	} else if (!strcmp(parm[0], "ldim_info")) {
 		pr_info("ldim_on_flag          = %d\n"
 			"ldim_func_en          = %d\n"
@@ -2026,10 +2451,13 @@ static ssize_t ldim_attr_store(struct class *cla,
 			"ldim_matrix_update_en = %d\n"
 			"ldim_alg_en           = %d\n"
 			"ldim_top_en           = %d\n"
-			"ldim_hist_en          = %d\n",
+			"ldim_hist_en          = %d\n"
+			"ldim_data_min         = %d\n"
+			"ldim_data_max         = %d\n",
 			ldim_on_flag, ldim_func_en, ldim_test_en,
 			ldim_avg_update_en, ldim_matrix_update_en,
-			ldim_alg_en, ldim_top_en, ldim_hist_en);
+			ldim_alg_en, ldim_top_en, ldim_hist_en,
+			ldim_data_min, LD_DATA_MAX);
 		pr_info("nPRM.reg_LD_BLK_Hnum   = %d\n"
 			"nPRM.reg_LD_BLK_Vnum   = %d\n"
 			"nPRM.reg_LD_pic_RowMax = %d\n"
@@ -2121,12 +2549,18 @@ static ssize_t ldim_attr_store(struct class *cla,
 				return -EINVAL;
 		}
 		pr_info("set fw_LD_ThTF_l=%ld\n", fw_LD_ThTF_l);
-	} else if (!strcmp(parm[0], "avg_gain_sf")) {
+	} else if (!strcmp(parm[0], "cal_cur_en")) {
 		if (parm[1] != NULL) {
-			if (kstrtoul(parm[1], 10, &avg_gain_sf) < 0)
+			if (kstrtoul(parm[1], 10, &cal_cur_en) < 0)
 				return -EINVAL;
 		}
-		pr_info("set avg_gain_sf=%ld\n", avg_gain_sf);
+		pr_info("set cal_cur_en=%ld\n", cal_cur_en);
+	} else if (!strcmp(parm[0], "transmit_gain")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &transmit_gain) < 0)
+				return -EINVAL;
+		}
+		pr_info("set transmit_gain=%ld\n", transmit_gain);
 	} else if (!strcmp(parm[0], "rgb_base")) {
 		if (parm[1] != NULL) {
 			if (kstrtoul(parm[1], 10, &rgb_base) < 0)
@@ -2169,8 +2603,82 @@ static ssize_t ldim_attr_store(struct class *cla,
 				return -EINVAL;
 		}
 		pr_info("set lpf_res=%ld\n", lpf_res);
+	} else if (!strcmp(parm[0], "Sf_bypass")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Sf_bypass) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Sf_bypass=%ld\n", Sf_bypass);
+	} else if (!strcmp(parm[0], "Boost_light_bypass")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Boost_light_bypass) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Boost_light_bypass=%ld\n", Boost_light_bypass);
+	} else if (!strcmp(parm[0], "Lpf_bypass")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Lpf_bypass) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Lpf_bypass=%ld\n", Lpf_bypass);
+	} else if (!strcmp(parm[0], "Tf_bypass")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Tf_bypass) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Tf_bypass=%ld\n", Tf_bypass);
+	} else if (!strcmp(parm[0], "Ld_remap_bypass")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Ld_remap_bypass) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Ld_remap_bypass=%ld\n", Ld_remap_bypass);
+	} else if (!strcmp(parm[0], "slp_gain")) {
+		unsigned int slop_gain;
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		slop_gain = (unsigned int)val1;
+		ldim_bl_remap_curve(slop_gain);
+		ldim_bl_remap_curve_print();
+		pr_info("set slp_gain=%d\n", slop_gain);
+	} else if (!strcmp(parm[0], "incr_con_en")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		incr_con_en = (unsigned int)val1;
+		pr_info("set incr_con_en=%d\n", incr_con_en);
+	} else if (!strcmp(parm[0], "ov_gain")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		ov_gain = (unsigned int)val1;
+		pr_info("set ov_gain=%d\n", ov_gain);
+	} else if (!strcmp(parm[0], "incr_dif_gain")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		incr_dif_gain = (unsigned int)val1;
+		pr_info("set incr_dif_gain=%d\n", incr_dif_gain);
+	} else if (!strcmp(parm[0], "logo_en")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		logo_en = (unsigned int)val1;
+		pr_info("set logo_en=%d\n", logo_en);
+	} else if (!strcmp(parm[0], "test_static_pic")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &val1) < 0)
+				return -EINVAL;
+		}
+		test_static_pic = (unsigned int)val1;
+		pr_info("set test_static_pic=%d\n", test_static_pic);
 	}
-
 #endif
 	else if (!strcmp(parm[0], "litgain")) {
 		if (parm[1] != NULL) {
@@ -2184,6 +2692,12 @@ static ssize_t ldim_attr_store(struct class *cla,
 				return -EINVAL;
 		}
 		pr_info("set boost_gain=%ld\n", boost_gain);
+	} else if (!strcmp(parm[0], "Dbprint_lv")) {
+		if (parm[1] != NULL) {
+			if (kstrtoul(parm[1], 10, &Dbprint_lv) < 0)
+				return -EINVAL;
+		}
+		pr_info("set Dbprint_lv=%ld\n", Dbprint_lv);
 	} else if (!strcmp(parm[0], "avg_gain")) {
 		if (parm[1] != NULL) {
 			if (kstrtoul(parm[1], 10, &avg_gain) < 0)
@@ -2580,7 +3094,13 @@ static ssize_t ldim_attr_store(struct class *cla,
 		LDIM_Initial(3840, 2160, 16, 24, 2, 1, 0);
 		pr_info("**************ldim curve_15 ok*************\n");
 	} else if (!strcmp(parm[0], "info")) {
-		ldim_config_print();
+		ldim_driver.config_print();
+		pr_info("ldim_on_flag          = %d\n"
+			"ldim_func_en          = %d\n"
+			"ldim_remap_en         = %d\n"
+			"ldim_test_en          = %d\n\n",
+			ldim_on_flag, ldim_func_en,
+			ldim_matrix_update_en, ldim_test_en);
 	} else
 		pr_info("no support cmd!!!\n");
 
@@ -2708,6 +3228,8 @@ int aml_ldim_probe(struct platform_device *pdev)
 	unsigned int ret = 0;
 	unsigned int i;
 
+	ldim_brightness_level = 0;
+	ldim_data_min = LD_DATA_MIN;
 	ldim_on_flag = 0;
 	ldim_func_en = 0;
 	ldim_func_bypass = 0;
@@ -2728,10 +3250,10 @@ int aml_ldim_probe(struct platform_device *pdev)
 	nPRM.bin_2 = &bin_2[0];
 	aml_ldim_get_config(&ldim_config, &pdev->dev);
 
-	ldim_driver.ldim_matrix_2_spi = kzalloc(
-		(sizeof(unsigned char) * LD_BLKREGNUM), GFP_KERNEL);
-	if (ldim_driver.ldim_matrix_2_spi == NULL) {
-		LDIMERR("ldim_driver ldim_matrix_2_spi malloc error\n");
+	ldim_driver.ldim_matrix_buf = kzalloc(
+		(sizeof(unsigned short) * LD_BLKREGNUM), GFP_KERNEL);
+	if (ldim_driver.ldim_matrix_buf == NULL) {
+		LDIMERR("ldim_driver ldim_matrix_buf malloc error\n");
 		return -1;
 	}
 
@@ -2834,7 +3356,7 @@ int aml_ldim_remove(void)
 	kfree(FDat.TF_BL_matrix_2);
 	kfree(FDat.last_STA1_MaxRGB);
 	kfree(FDat.TF_BL_alpha);
-	kfree(ldim_driver.ldim_matrix_2_spi);
+	kfree(ldim_driver.ldim_matrix_buf);
 
 	free_irq(RDMA_LDIM_INT, (void *)"rdma_ldim");
 	free_irq(VIU_VSYNC_INT, (void *)"ldim_vsync");

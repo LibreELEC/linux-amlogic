@@ -33,6 +33,7 @@
 			compatible = "arm,cortex-a53","arm,armv8";
 			reg = <0x0 0x0>;
 			enable-method = "psci";
+			/*cpu-idle-states = <&CPU_SLEEP_0>;*/
 		};
 
 		cpu1:cpu@1 {
@@ -40,12 +41,14 @@
 			compatible = "arm,cortex-a53","arm,armv8";
 			reg = <0x0 0x1>;
 			enable-method = "psci";
+			/*cpu-idle-states = <&CPU_SLEEP_0>;*/
 		};
 		cpu2:cpu@2 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53","arm,armv8";
 			reg = <0x0 0x2>;
 			enable-method = "psci";
+			/*cpu-idle-states = <&CPU_SLEEP_0>;*/
 		};
 
 		cpu3:cpu@3 {
@@ -53,8 +56,22 @@
 			compatible = "arm,cortex-a53","arm,armv8";
 			reg = <0x0 0x3>;
 			enable-method = "psci";
+			/*cpu-idle-states = <&CPU_SLEEP_0>;*/
 		};
 
+/*
+		idle-states {
+			entry-method = "arm,psci";
+			CPU_SLEEP_0: cpu-sleep-0 {
+				compatible = "arm, idle-state";
+				arm,psci-suspend-param = <0x0010000>;
+				local-timer-stop;
+				entry-latency-us = <3000>;
+				exit-latency-us = <3000>;
+				min-residency-us = <8000>;
+			};
+		};
+*/
 	};
 
 	timer {
@@ -63,6 +80,18 @@
 				<GIC_PPI 14 0xff01>,
 			        <GIC_PPI 11 0xff01>,
 			        <GIC_PPI 10 0xff01>;
+	};
+	timer_bc {
+		compatible = "arm, meson-bc-timer";
+		reg=   <0x0 0xc1109990 0x0 0x4 0x0 0xc1109994 0x0 0x4>;
+		timer_name = "Meson TimerF";
+		clockevent-rating=<300>;
+		clockevent-shift=<20>;
+		clockevent-features=<0x23>;
+		interrupts = <0 60 1>;
+		bit_enable=<16>;
+		bit_mode=<12>;
+		bit_resolution=<0>;
 	};
 	arm_pmu {
 		compatible = "arm,armv8-pmuv3";

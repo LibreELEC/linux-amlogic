@@ -27,6 +27,7 @@
 #include <linux/amlogic/iomap.h>
 #include <linux/amlogic/sound/aiu_regs.h>
 #include <linux/amlogic/sound/audin_regs.h>
+#include <linux/amlogic/cpu_version.h>
 #include "aml_audio_hw.h"
 
 /* i2s mode 0: master 1: slave */
@@ -146,16 +147,32 @@ int audio_clock_config_table[][13][2] = {
 
 void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
 {
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+	aml_write_cbus(AIU_MEM_I2S_START_PTR, addr & 0xffffff00);
+	aml_write_cbus(AIU_MEM_I2S_RD_PTR, addr & 0xffffff00);
+#else
 	aml_write_cbus(AIU_MEM_I2S_START_PTR, addr & 0xffffffc0);
 	aml_write_cbus(AIU_MEM_I2S_RD_PTR, addr & 0xffffffc0);
+#endif
+
 	if (channel == 8) {
 		aml_cbus_update_bits(AIU_CLK_CTRL_MORE, 1 << 6, 1 << 6);
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+		aml_write_cbus(AIU_MEM_I2S_END_PTR,
+			(addr & 0xffffff00) + (size & 0xffffff00) - 256);
+#else
 		aml_write_cbus(AIU_MEM_I2S_END_PTR,
 			       (addr & 0xffffffc0) + (size & 0xffffffc0) - 256);
+#endif
 	} else {
 		aml_cbus_update_bits(AIU_CLK_CTRL_MORE, 1 << 6, 0 << 6);
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+		aml_write_cbus(AIU_MEM_I2S_END_PTR,
+			(addr & 0xffffff00) + (size & 0xffffff00) - 256);
+#else
 		aml_write_cbus(AIU_MEM_I2S_END_PTR,
 			       (addr & 0xffffffc0) + (size & 0xffffffc0) - 64);
+#endif
 	}
 	/* Hold I2S */
 	aml_write_cbus(AIU_I2S_MISC, 0x0004);
@@ -176,12 +193,19 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
 		*  Each bit indicates which channels are READ from memory
 		*/
 			       (0xff << 0));
-	} else
+	} else {
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+		/* [31:16] IRQ block. */
+		aml_write_cbus(AIU_MEM_I2S_MASKS, (24 << 16) |
+			(0xff << 8) |
+			(0xff << 0));
+#else
 		/* [31:16] IRQ block. */
 		aml_write_cbus(AIU_MEM_I2S_MASKS, (24 << 16) |
 			       (0x3 << 8) |
 			       (0x3 << 0));
-
+#endif
+	}
 	/* 16 bit PCM mode */
 	/* aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1, 6, 1); */
 	/* Set init high then low to initilize the I2S memory logic */
@@ -207,17 +231,32 @@ void audio_set_958outbuf(u32 addr, u32 size, int flag)
 				       addr & 0xffffffc0);
 		if (flag == 0) {
 			/* this is for 16bit 2 channel */
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+			aml_write_cbus(AIU_MEM_IEC958_END_PTR,
+				(addr & 0xffffffc0) +
+				(size & 0xffffffc0) - 8);
+#else
 			aml_write_cbus(AIU_MEM_IEC958_END_PTR,
 				       (addr & 0xffffffc0) +
 				       (size & 0xffffffc0) - 64);
+#endif
 		} else {
 			/* this is for RAW mode */
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+			aml_write_cbus(AIU_MEM_IEC958_END_PTR,
+						(addr & 0xffffffc0) +
+						(size & 0xffffffc0) - 8);
+#else
 			aml_write_cbus(AIU_MEM_IEC958_END_PTR,
 				       (addr & 0xffffffc0) +
 				       (size & 0xffffffc0) - 1);
+#endif
 		}
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+		aml_cbus_update_bits(AIU_MEM_IEC958_MASKS, 0xffff, 0xffff);
+#else
 		aml_cbus_update_bits(AIU_MEM_IEC958_MASKS, 0xffff, 0x303);
-
+#endif
 		aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1, 1);
 		aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1, 0);
 
@@ -265,14 +304,25 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size, u32 i2s_mode, u32 i2s_sync)
 		       | 0 << 0);	/* fifo0_din_pos */
 
 	if (audio_in_source == 0) {
-		aml_write_cbus(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
-			       | (3 << I2SIN_SIZE)
-			       | (1 << I2SIN_LRCLK_INVT)
-			       | (1 << I2SIN_LRCLK_SKEW)
-			       | (sync_mode << I2SIN_POS_SYNC)
-			       | (!mode << I2SIN_LRCLK_SEL)
-			       | (!mode << I2SIN_CLK_SEL)
-			       | (!mode << I2SIN_DIR));
+		if (is_meson_txl_cpu()) {
+			aml_write_cbus(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
+					| (3 << I2SIN_SIZE)
+					| (1 << I2SIN_LRCLK_INVT)
+					| (1 << I2SIN_LRCLK_SKEW)
+					| (0 << I2SIN_POS_SYNC)
+					| (0 << I2SIN_LRCLK_SEL)
+					| (0 << I2SIN_CLK_SEL)
+					| (0 << I2SIN_DIR));
+		} else {
+			aml_write_cbus(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
+					| (3 << I2SIN_SIZE)
+					| (1 << I2SIN_LRCLK_INVT)
+					| (1 << I2SIN_LRCLK_SKEW)
+					| (sync_mode << I2SIN_POS_SYNC)
+					| (!mode << I2SIN_LRCLK_SEL)
+					| (!mode << I2SIN_CLK_SEL)
+					| (!mode << I2SIN_DIR));
+		}
 	} else if (audio_in_source == 1) {
 		aml_write_cbus(AUDIN_I2SIN_CTRL, (1 << I2SIN_CHAN_EN)
 			       | (0 << I2SIN_SIZE)
@@ -474,6 +524,77 @@ void audio_in_spdif_set_wrptr(unsigned int val)
 	aml_write_cbus(AUDIN_FIFO1_RDPTR, val);
 }
 
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+void audio_set_i2s_mode(u32 mode, unsigned int channel)
+{
+	aml_write_cbus(AIU_I2S_SOURCE_DESC, 0x800);
+
+	aml_cbus_update_bits(AIU_CLK_CTRL_MORE, 0x1f, 0);
+
+	if (8 == channel) {
+		aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 0, 1);
+
+		if (mode == AIU_I2S_MODE_PCM32) {
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6, 0);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 9,
+						1 << 9);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 7 << 6,
+						7 << 6);
+		} else if (mode == AIU_I2S_MODE_PCM24) {
+			/* todo: to verify it */
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6, 0);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 9,
+						1 << 9);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 7 << 6,
+						7 << 6);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 5,
+						1 << 5);
+
+		} else if (mode == AIU_I2S_MODE_PCM16) {
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6,
+						1 << 6);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 2 << 3,
+						2 << 3);
+
+			aml_cbus_update_bits(AIU_CLK_CTRL_MORE, 0x1f, 0x5);
+		}
+	} else if (2 == channel) {
+		aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 0, 0);
+
+		if (mode == AIU_I2S_MODE_PCM16) {
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6,
+						1 << 6);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 2 << 3,
+						2 << 3);
+		} else if (mode == AIU_I2S_MODE_PCM24) {
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6, 0);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 5,
+						1 << 5);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 2 << 3,
+						2 << 3);
+		} else if (mode == AIU_I2S_MODE_PCM32) {
+			aml_cbus_update_bits(AIU_MEM_I2S_CONTROL, 1 << 6, 0);
+
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 1 << 9,
+						1 << 9);
+			aml_cbus_update_bits(AIU_I2S_SOURCE_DESC, 7 << 6,
+						7 << 6);
+		}
+	}
+
+	/* In split mode, there are not mask control,
+	so aiu_mem_i2s_mask[15:0] must set 8'hffff_ffff. */
+	/*aml_write_cbus(AIU_MEM_I2S_MASKS,
+		(16 << 16) |
+		(0xff << 8) |
+		(0xff << 0));*/
+}
+#else
 void audio_set_i2s_mode(u32 mode)
 {
 	const unsigned short mask[4] = {
@@ -504,6 +625,7 @@ void audio_set_i2s_mode(u32 mode)
 		aml_cbus_update_bits(AIU_MEM_I2S_MASKS, 0xffff, mask[mode]);
 	}
 }
+#endif
 
 /*
  *  if normal clock, i2s clock is twice of 958 clock,
@@ -593,7 +715,11 @@ void audio_util_set_dac_i2s_format(unsigned format)
 		aml_write_cbus(AIU_I2S_DAC_CFG, 0x0007);
 
 	/* four 2-channel */
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+	aml_write_cbus(AIU_I2S_SOURCE_DESC, (1 << 11));
+#else
 	aml_write_cbus(AIU_I2S_SOURCE_DESC, 0x0001);
+#endif
 }
 
 /* set sclk and lrclk, mclk = 256fs. */
@@ -791,9 +917,16 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 	} else if (mode == AIU_958_MODE_PCM32) {
 		audio_hw_set_958_pcm24(set);
 		if (ENABLE_IEC958) {
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+			aml_write_cbus(AIU_958_MISC, 0x3480);
+			/* pcm */
+			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8,
+						1 << 8);
+#else
 			aml_write_cbus(AIU_958_MISC, 0x2020 | (1 << 7));
 			/* pcm */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8, 0);
+#endif
 			/* 16bit */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 7, 0);
 			/* endian */
@@ -804,9 +937,16 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 	} else if (mode == AIU_958_MODE_PCM24) {
 		audio_hw_set_958_pcm24(set);
 		if (ENABLE_IEC958) {
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+			aml_write_cbus(AIU_958_MISC, 0x3480);
+			/* pcm */
+			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8,
+						1 << 8);
+#else
 			aml_write_cbus(AIU_958_MISC, 0x2020 | (1 << 7));
 			/* pcm */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8, 0);
+#endif
 			/* 16bit */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 7, 0);
 			/* endian */
@@ -820,7 +960,12 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 		if (ENABLE_IEC958) {
 			aml_write_cbus(AIU_958_MISC, 0x2042);
 			/* pcm */
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8,
+						1 << 8);
+#else
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 1 << 8, 0);
+#endif
 			/* 16bit */
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL,
 					     1 << 7, 1 << 7);
@@ -832,6 +977,11 @@ void audio_set_958_mode(unsigned mode, struct _aiu_958_raw_setting_t *set)
 	}
 
 	audio_hw_958_reset(0, 1);
+
+#ifdef CONFIG_SND_AML_SPLIT_MODE
+	if (mode == AIU_958_MODE_PCM32)
+		aml_cbus_update_bits(AIU_958_DCU_FF_CTRL, 1 << 8, 1 << 8);
+#endif
 
 	aml_write_cbus(AIU_958_FORCE_LEFT, 1);
 }
@@ -863,6 +1013,8 @@ void audio_hw_958_enable(unsigned flag)
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 0x3 << 1,
 					     0x3 << 1);
 		} else {
+			aml_write_cbus(AIU_RST_SOFT, 0x04);
+			aml_write_cbus(AIU_958_FORCE_LEFT, 0);
 			aml_write_cbus(AIU_958_DCU_FF_CTRL, 0);
 			aml_cbus_update_bits(AIU_MEM_IEC958_CONTROL, 0x3 << 1,
 					     0);

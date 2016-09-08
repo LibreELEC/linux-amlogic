@@ -38,13 +38,13 @@
 /* #include <linux/amlogic/amports/canvas.h> */
 /* #include <mach/am_regs.h> */
 #include <linux/amlogic/amports/vframe.h>
+#include <linux/of_gpio.h>
 
 /* Local include */
 
 #include "hdmirx_drv.h"
 #include "hdmi_rx_reg.h"
 #include "hdmi_rx_eq.h"
-#include "uart_hdmi.h"
 
 #define TVHDMI_NAME				"hdmirx"
 #define TVHDMI_DRIVER_NAME		"hdmirx"
@@ -64,9 +64,10 @@ static dev_t	hdmirx_devno;
 static struct class	*hdmirx_clsp;
 /* static int open_flage; */
 struct hdmirx_dev_s *devp_hdmirx_suspend;
-
-struct delayed_work     hpd_dwork;
-struct workqueue_struct *hpd_wq;
+unsigned int hu_share_choise;
+struct device *hdmirx_dev;
+struct delayed_work     eq_dwork;
+struct workqueue_struct *eq_wq;
 DECLARE_WAIT_QUEUE_HEAD(query_wait);
 unsigned int pwr_sts;
 
@@ -97,6 +98,11 @@ module_param(force_color_range, int, 0664);
 int pc_mode_en;
 MODULE_PARM_DESC(pc_mode_en, "\n pc_mode_en\n");
 module_param(pc_mode_en, int, 0664);
+
+unsigned int hdmirx_addr_port;
+unsigned int hdmirx_data_port;
+unsigned int hdmirx_ctrl_port;
+struct gpio_desc *g_uart_pin[3];
 
 struct reg_map {
 	unsigned int phy_addr;
@@ -130,6 +136,10 @@ static struct reg_map reg_maps[] = {
 		.phy_addr = 0xc8834400,
 		.size = 0x2000,
 	},
+	{
+		.phy_addr = 0xda846000,
+		.size = 0x57ba000,
+	},
 };
 
 static int in_reg_maps_idx(unsigned int addr)
@@ -153,11 +163,11 @@ void rx_init_reg_map(void)
 	for (i = 0; i < ARRAY_SIZE(reg_maps); i++) {
 		reg_maps[i].p = ioremap(reg_maps[i].phy_addr, reg_maps[i].size);
 		if (!reg_maps[i].p) {
-			rx_print("hdmirx: failed Mapped PHY: 0x%x\n",
+			rx_pr("hdmirx: failed Mapped PHY: 0x%x\n",
 				reg_maps[i].phy_addr);
 		} else {
 			reg_maps[i].flag = 1;
-			rx_print("hdmirx: Mapped PHY: 0x%x\n",
+			rx_pr("hdmirx: Mapped PHY: 0x%x\n",
 				reg_maps[i].phy_addr);
 		}
 	}
@@ -182,7 +192,7 @@ unsigned int rd_reg(unsigned int addr)
 	if ((idx != -1) && check_regmap_flag(addr))
 		val = readl(reg_maps[idx].p + (addr - reg_maps[idx].phy_addr));
 	else
-		rx_print("rd reg %x error\n");
+		rx_pr("rd reg %x error\n");
 	return val;
 }
 
@@ -193,7 +203,7 @@ void wr_reg(unsigned int addr, unsigned int val)
 	if ((idx != -1) && check_regmap_flag(addr))
 		writel(val, reg_maps[idx].p + (addr - reg_maps[idx].phy_addr));
 	else
-		rx_print("wr reg %x err\n", addr);
+		rx_pr("wr reg %x err\n", addr);
 }
 
 
@@ -222,8 +232,13 @@ uint32_t set(uint32_t data, uint32_t mask, uint32_t value)
 void hdmirx_timer_handler(unsigned long arg)
 {
 	struct hdmirx_dev_s *devp = (struct hdmirx_dev_s *)arg;
-
-	hdmirx_hw_monitor();
+	uart_plugin_monitor();
+	rx_5v_det();
+	rx_check_repeat();
+	if (edid_update_flag)
+		edid_update();
+	if ((rx.open_fg) && (!edid_update_flag))
+		hdmirx_hw_monitor();
 	devp->timer.expires = jiffies + TIMER_STATE_CHECK;
 	add_timer(&devp->timer);
 }
@@ -231,7 +246,7 @@ void hdmirx_timer_handler(unsigned long arg)
 int hdmirx_dec_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
 	if ((port >= TVIN_PORT_HDMI0) && (port <= TVIN_PORT_HDMI7)) {
-		rx_print("hdmirx support\n");
+		rx_pr("hdmirx support\n");
 		return 0;
 	} else
 		return -1;
@@ -245,15 +260,20 @@ int hdmirx_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	devp_hdmirx_suspend = container_of(fe, struct hdmirx_dev_s, frontend);
 	devp->param.port = port;
 
+	/* should enable the adc ref signal for audio pll */
+	vdac_enable(1, 0x10);
+
 	hdmirx_hw_init(port);
 	/* timer */
+	#if 0
 	init_timer(&devp->timer);
 	devp->timer.data = (ulong)devp;
 	devp->timer.function = hdmirx_timer_handler;
 	devp->timer.expires = jiffies + TIMER_STATE_CHECK;
 	add_timer(&devp->timer);
+	#endif
 	rx.open_fg = 1;
-	rx_print("%s port:%x ok nosignal:%d\n", __func__, port, rx.no_signal);
+	rx_pr("%s port:%x ok nosignal:%d\n", __func__, port, rx.no_signal);
 	return 0;
 }
 
@@ -267,7 +287,7 @@ void hdmirx_dec_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 	parm = &devp->param;
 	parm->info.fmt = fmt;
 	parm->info.status = TVIN_SIG_STATUS_STABLE;
-	rx_print("%s fmt:%d ok\n", __func__, fmt);
+	rx_pr("%s fmt:%d ok\n", __func__, fmt);
 }
 
 void hdmirx_dec_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
@@ -280,7 +300,7 @@ void hdmirx_dec_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	/* parm->info.fmt = TVIN_SIG_FMT_NULL; */
 	/* parm->info.status = TVIN_SIG_STATUS_NULL; */
 	to_init_state();
-	rx_print("%s ok\n", __func__);
+	rx_pr("%s ok\n", __func__);
 }
 
 void hdmirx_dec_close(struct tvin_frontend_s *fe)
@@ -288,17 +308,20 @@ void hdmirx_dec_close(struct tvin_frontend_s *fe)
 	struct hdmirx_dev_s *devp;
 	struct tvin_parm_s *parm;
 
+	/* should disable the adc ref signal for audio pll */
+	vdac_enable(0, 0x10);
+
 	/* open_flage = 0; */
 	rx.open_fg = 0;
 	devp = container_of(fe, struct hdmirx_dev_s, frontend);
 	parm = &devp->param;
-	del_timer_sync(&devp->timer);
+	/*del_timer_sync(&devp->timer);*/
 	hdmirx_hw_uninit();
 	hdmirx_hw_disable(0);
 	parm->info.fmt = TVIN_SIG_FMT_NULL;
 	parm->info.status = TVIN_SIG_STATUS_NULL;
 	to_init_state();
-	rx_print("%s ok\n", __func__);
+	rx_pr("%s ok\n", __func__);
 }
 
 /* interrupt handler */
@@ -373,7 +396,7 @@ bool hdmirx_fmt_chg(struct tvin_frontend_s *fe)
 	else {
 		fmt = hdmirx_hw_get_fmt();
 		if (fmt != parm->info.fmt) {
-			rx_print("hdmirx fmt: %d --> %d\n",
+			rx_pr("hdmirx fmt: %d --> %d\n",
 				parm->info.fmt, fmt);
 			parm->info.fmt = fmt;
 			ret = true;
@@ -449,10 +472,7 @@ void hdmirx_get_sig_property(struct tvin_frontend_s *fe,
 	prop->trans_fmt = TVIN_TFMT_2D;
 	if (hdmirx_hw_get_3d_structure(&_3d_structure,
 		&_3d_ext_data) >= 0) {
-		if (_3d_structure == 0x0) {
-			/* frame packing */
-			prop->trans_fmt = TVIN_TFMT_3D_FP;
-		} else if (_3d_structure == 0x1) {
+		if (_3d_structure == 0x1) {
 			/* field alternative */
 			prop->trans_fmt = TVIN_TFMT_3D_FA;
 		} else if (_3d_structure == 0x2) {
@@ -617,56 +637,57 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		hdcp_enable = 1;
 		hdmirx_hw_config();
 		hdmirx_set_hpd(rx.port, 0);
-		rx.state = FSM_HDMI5V_LOW;
-		rx.pre_state = FSM_HDMI5V_LOW;
+		rx.state = FSM_HPD_LOW;
+		rx.pre_state = FSM_HPD_LOW;
 		break;
 	case HDMI_IOC_HDCP_OFF:
 		hdcp_enable = 0;
 		hdmirx_hw_config();
 		hdmirx_set_hpd(rx.port, 0);
-		rx.state = FSM_HDMI5V_LOW;
-		rx.pre_state = FSM_HDMI5V_LOW;
+		rx.state = FSM_HPD_LOW;
+		rx.pre_state = FSM_HPD_LOW;
 		break;
 	case HDMI_IOC_EDID_UPDATE:
-		hdmi_rx_ctrl_edid_update();
-		hdmirx_set_hpd(rx.port, 0);
+		/* hdmi_rx_ctrl_edid_update(); */
+		/* hdmirx_set_hpd(rx.port, 0); */
+		/* force_reset_hpd = true; */
 		do_hpd_reset_flag = 1;
-		rx.state = FSM_HDMI5V_LOW;
-		rx.pre_state = FSM_HDMI5V_LOW;
+		/* rx.state = FSM_HDMI5V_LOW; */
+		/* rx.pre_state = FSM_HDMI5V_LOW; */
 		break;
 	case HDMI_IOC_PC_MODE_ON:
 		pc_mode_en = 1;
 		/* hdmirx_set_hpd(rx.port, 0); */
 		/* rx.state = FSM_HDMI5V_HIGH; */
 		/* rx.pre_state = FSM_HDMI5V_HIGH; */
-		rx_print("pc mode on\n");
+		rx_pr("pc mode on\n");
 		break;
 	case HDMI_IOC_PC_MODE_OFF:
 		pc_mode_en = 0;
 		/* hdmirx_set_hpd(rx.port, 0); */
 		/* rx.state = FSM_HDMI5V_HIGH; */
 		/* rx.pre_state = FSM_HDMI5V_HIGH; */
-		rx_print("pc mode off\n");
+		rx_pr("pc mode off\n");
 		break;
 	case HDMI_IOC_HDCP22_AUTO:
 		hdmirx_set_hpd(rx.port, 0);
-		hdcp_22_on = 1;
+		hdcp22_on = 1;
 		force_hdcp14_en = 0;
 		hdmirx_hw_config();
 		hpd_to_esm = 1;
-		rx.state = FSM_HDMI5V_HIGH;
-		rx.pre_state = FSM_HDMI5V_HIGH;
-		rx_print("hdcp22 auto\n");
+		rx.state = FSM_HPD_HIGH;
+		rx.pre_state = FSM_HPD_HIGH;
+		rx_pr("hdcp22 auto\n");
 		break;
 	case HDMI_IOC_HDCP22_FORCE14:
 		hdmirx_set_hpd(rx.port, 0);
 		force_hdcp14_en = 1;
-		hdcp_22_on = 0;
+		hdcp22_on = 0;
 		hdmirx_wr_dwc(DWC_HDCP22_CONTROL, 0x2);
-		video_stable_to_esm = 0;
-		rx.state = FSM_HDMI5V_HIGH;
-		rx.pre_state = FSM_HDMI5V_HIGH;
-		rx_print("force hdcp1.4\n");
+		esm_set_stable(0);
+		rx.state = FSM_HPD_HIGH;
+		rx.pre_state = FSM_HPD_HIGH;
+		rx_pr("force hdcp1.4\n");
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -731,7 +752,7 @@ static unsigned char *hdmirx_log_buf;
 static unsigned int  hdmirx_log_wr_pos;
 static unsigned int  hdmirx_log_rd_pos;
 static unsigned int  hdmirx_log_buf_size;
-static DEFINE_SPINLOCK(rx_print_lock);
+static DEFINE_SPINLOCK(rx_pr_lock);
 #define DEF_LOG_BUF_SIZE (1024*128)
 #define PRINT_TEMP_BUF_SIZE 128
 
@@ -751,11 +772,11 @@ void hdmirx_powerdown(const char *buf, int size)
 			/* wr_reg(IO_APB_BUS_BASE,
 				HHI_HDMIRX_CLK_CNTL, 0x0); */
 		}
-		rx_print("[hdmirx]: hdmirx power down\n");
+		rx_pr("[hdmirx]: hdmirx power down\n");
 	}
 }
 
-int rx_print_buf(char *buf, int len)
+int rx_pr_buf(char *buf, int len)
 {
 	unsigned long flags;
 	int pos;
@@ -763,7 +784,7 @@ int rx_print_buf(char *buf, int len)
 
 	if (hdmirx_log_buf_size == 0)
 		return 0;
-	spin_lock_irqsave(&rx_print_lock, flags);
+	spin_lock_irqsave(&rx_pr_lock, flags);
 	hdmirx_log_rd_pos_ = hdmirx_log_rd_pos;
 	if (hdmirx_log_wr_pos >= hdmirx_log_rd_pos)
 		hdmirx_log_rd_pos_ += hdmirx_log_buf_size;
@@ -778,21 +799,37 @@ int rx_print_buf(char *buf, int len)
 	}
 	if (hdmirx_log_wr_pos >= hdmirx_log_buf_size)
 		hdmirx_log_wr_pos -= hdmirx_log_buf_size;
-	spin_unlock_irqrestore(&rx_print_lock, flags);
+	spin_unlock_irqrestore(&rx_pr_lock, flags);
 	return pos;
 }
 
-int rx_print(const char *fmt, ...)
+int rx_pr(const char *fmt, ...)
 {
 	va_list args;
 	int avail = PRINT_TEMP_BUF_SIZE;
 	char buf[PRINT_TEMP_BUF_SIZE];
 	int pos = 0;
 	int len = 0;
+	static bool last_break = 1;
 
+	if (last_break == 1) {
+		strcpy(buf, "[RX]-");
+		for (len = 0; len < strlen(fmt); len++)
+			if (fmt[len] == '\n')
+				pos++;
+			else
+				break;
+
+		strcpy(buf + 5, fmt + pos);
+	} else
+		strcpy(buf, fmt);
+	if (fmt[strlen(fmt) - 1] == '\n')
+		last_break = 1;
+	else
+		last_break = 0;
 	if (log_flag & LOG_EN) {
 		va_start(args, fmt);
-		vprintk(fmt, args);
+		vprintk(buf, args);
 		va_end(args);
 		return 0;
 	}
@@ -807,7 +844,7 @@ int rx_print(const char *fmt, ...)
 	if ((avail-len) <= 0)
 		buf[PRINT_TEMP_BUF_SIZE - 1] = '\0';
 
-	pos = rx_print_buf(buf, len);
+	pos = rx_pr_buf(buf, len);
 	return pos;
 }
 
@@ -841,7 +878,7 @@ static ssize_t show_log(struct device *dev,
 
 	if (hdmirx_log_buf_size == 0)
 		return 0;
-	spin_lock_irqsave(&rx_print_lock, flags);
+	spin_lock_irqsave(&rx_pr_lock, flags);
 	if (hdmirx_log_rd_pos < hdmirx_log_wr_pos)
 		read_size = hdmirx_log_wr_pos-hdmirx_log_rd_pos;
 	else if (hdmirx_log_rd_pos > hdmirx_log_wr_pos)
@@ -854,7 +891,7 @@ static ssize_t show_log(struct device *dev,
 	hdmirx_log_rd_pos += read_size;
 	if (hdmirx_log_rd_pos >= hdmirx_log_buf_size)
 		hdmirx_log_rd_pos = 0;
-	spin_unlock_irqrestore(&rx_print_lock, flags);
+	spin_unlock_irqrestore(&rx_pr_lock, flags);
 	return read_size;
 }
 
@@ -868,13 +905,13 @@ static ssize_t store_log(struct device *dev,
 	if (strncmp(buf, "bufsize", 7) == 0) {
 		if (kstrtoul(buf + 7, 10, &tmp) < 0)
 			return -EINVAL;
-		spin_lock_irqsave(&rx_print_lock, flags);
+		spin_lock_irqsave(&rx_pr_lock, flags);
 		log_init(tmp);
-		spin_unlock_irqrestore(&rx_print_lock, flags);
-		rx_print("hdmirx_store:set bufsize tmp %ld %d\n",
+		spin_unlock_irqrestore(&rx_pr_lock, flags);
+		rx_pr("hdmirx_store:set bufsize tmp %ld %d\n",
 			tmp, hdmirx_log_buf_size);
 	} else {
-		rx_print(0, "%s", buf);
+		rx_pr(0, "%s", buf);
 	}
 	return 16;
 }
@@ -988,7 +1025,6 @@ static void hdmirx_delete_device(int minor)
 }
 
 unsigned char *pEdid_buffer;
-
 static int hdmirx_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -1003,11 +1039,11 @@ static int hdmirx_probe(struct platform_device *pdev)
 
 	log_init(DEF_LOG_BUF_SIZE);
 	pEdid_buffer = (unsigned char *) pdev->dev.platform_data;
-
+	hdmirx_dev = &pdev->dev;
 	/* allocate memory for the per-device structure */
 	hdevp = kmalloc(sizeof(struct hdmirx_dev_s), GFP_KERNEL);
 	if (!hdevp) {
-		rx_print("hdmirx:allocate memory failed\n");
+		rx_pr("hdmirx:allocate memory failed\n");
 		ret = -ENOMEM;
 		goto fail_kmalloc_hdev;
 	}
@@ -1032,57 +1068,57 @@ static int hdmirx_probe(struct platform_device *pdev)
 	/* create cdev and reigser with sysfs */
 	ret = hdmirx_add_cdev(&hdevp->cdev, &hdmirx_fops, hdevp->index);
 	if (ret) {
-		rx_print("%s: failed to add cdev\n", __func__);
+		rx_pr("%s: failed to add cdev\n", __func__);
 		goto fail_add_cdev;
 	}
 	/* create /dev nodes */
 	hdevp->dev = hdmirx_create_device(&pdev->dev, hdevp->index);
 	if (IS_ERR(hdevp->dev)) {
-		rx_print("hdmirx: failed to create device node\n");
+		rx_pr("hdmirx: failed to create device node\n");
 		ret = PTR_ERR(hdevp->dev);
 		goto fail_create_device;
 	}
 	/*create sysfs attribute files*/
 	ret = device_create_file(hdevp->dev, &dev_attr_debug);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create debug attribute file\n");
+		rx_pr("hdmirx: fail to create debug attribute file\n");
 		goto fail_create_debug_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_edid);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create edid attribute file\n");
+		rx_pr("hdmirx: fail to create edid attribute file\n");
 		goto fail_create_edid_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_key);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create key attribute file\n");
+		rx_pr("hdmirx: fail to create key attribute file\n");
 		goto fail_create_key_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_log);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create log attribute file\n");
+		rx_pr("hdmirx: fail to create log attribute file\n");
 		goto fail_create_log_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_reg);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create reg attribute file\n");
+		rx_pr("hdmirx: fail to create reg attribute file\n");
 		goto fail_create_reg_file;
 	}
 	ret = device_create_file(hdevp->dev, &dev_attr_cec);
 	if (ret < 0) {
-		rx_print("hdmirx: fail to create cec attribute file\n");
+		rx_pr("hdmirx: fail to create cec attribute file\n");
 		goto fail_create_cec_file;
 	}
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
-		rx_print("%s: can't get irq resource\n", __func__);
+		rx_pr("%s: can't get irq resource\n", __func__);
 		ret = -ENXIO;
 		/* goto fail_get_resource_irq; */
 	}
 	hdevp->irq = res->start;
 	snprintf(hdevp->irq_name, sizeof(hdevp->irq_name),
 			"hdmirx%d-irq", hdevp->index);
-	rx_print("hdevpd irq: %d, %d\n", hdevp->index,
+	rx_pr("hdevpd irq: %d, %d\n", hdevp->index,
 			hdevp->irq);
 	if (pdev->dev.of_node) {
 		ret = of_property_read_u32(pdev->dev.of_node,
@@ -1105,7 +1141,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 			IRQF_SHARED,
 			hdevp->irq_name,
 			(void *)&rx))
-		rx_print(__func__, "RX IRQ request");
+		rx_pr(__func__, "RX IRQ request");
 	/* frontend */
 	tvin_frontend_init(&hdevp->frontend,
 		&hdmirx_dec_ops,
@@ -1113,7 +1149,19 @@ static int hdmirx_probe(struct platform_device *pdev)
 		hdevp->index);
 	sprintf(hdevp->frontend.name, "%s", TVHDMI_NAME);
 	if (tvin_reg_frontend(&hdevp->frontend) < 0)
-		rx_print("hdmirx: driver probe error!!!\n");
+		rx_pr("hdmirx: driver probe error!!!\n");
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"hdmiuart_share_cfg", &(hu_share_choise));
+	if (ret) {
+		pr_err("%s:don't find hu_cfg.\n", __func__);
+		hu_share_choise = 0;
+	} else if (hu_share_choise == 0) {
+		pr_err("%s:hu_cfg = 0.\n", __func__);
+		hu_share_choise = 0;
+	}
+	hu_share_choise &= share_with_uart_cfg;
+	rx_pr("hu_share_choise = %d\n", hu_share_choise);
 
 	/* pinmux set */
 	if (pdev->dev.of_node) {
@@ -1122,10 +1170,9 @@ static int hdmirx_probe(struct platform_device *pdev)
 					    0, &pin_name);
 		if (!ret) {
 			pin = devm_pinctrl_get_select(&pdev->dev, pin_name);
-			rx_print("hdmirx: pinmux:%p, name:%s\n", pin, pin_name);
+			rx_pr("hdmirx: pinmux:%p, name:%s\n", pin, pin_name);
 		}
 	}
-
 	if (pdev->dev.of_node) {
 		ret = of_property_read_u32(pdev->dev.of_node,
 				"rx_port_maps", &real_port_map);
@@ -1134,18 +1181,39 @@ static int hdmirx_probe(struct platform_device *pdev)
 			real_port_map = 0x3120;
 		}
 	}
+	if (pdev->dev.of_node) {
+		ret = of_property_read_u32(pdev->dev.of_node,
+				"hdmirx_addr_port", &hdmirx_addr_port);
+		if (ret)
+			pr_err("get hdmirx_addr_port fail.\n");
+		ret = of_property_read_u32(pdev->dev.of_node,
+				"hdmirx_data_port", &hdmirx_data_port);
+		if (ret)
+			pr_err("get hdmirx_data_port fail.\n");
+		ret = of_property_read_u32(pdev->dev.of_node,
+				"hdmirx_ctrl_port", &hdmirx_ctrl_port);
+		if (ret)
+			pr_err("get hdmirx_ctrl_port fail.\n");
+		ret = of_property_read_u32(pdev->dev.of_node,
+				"repeat", &repeat_function);
+		if (ret) {
+			pr_err("get repeat_function fail.\n");
+			repeat_function = 0;
+		}
+	}
 
-	/* hdmirx_hw_enable(); */
+	g_uart_pin[0] = of_get_named_gpiod_flags(pdev->dev.of_node,
+			"uart_scl_a_pin", 0, NULL);
+	g_uart_pin[1] = of_get_named_gpiod_flags(pdev->dev.of_node,
+			"uart_scl_b_pin", 0, NULL);
+	g_uart_pin[2] = of_get_named_gpiod_flags(pdev->dev.of_node,
+			"uart_scl_c_pin", 0, NULL);
 
 	dev_set_drvdata(hdevp->dev, hdevp);
 
-	/*create eq thread*/
-	if (hdmirx_phy_probe() != 0)
-		rx_print("create eq thread error\n");
-
 	xtal_clk = clk_get(&pdev->dev, "xtal");
 	if (IS_ERR(xtal_clk))
-		rx_print("get xtal err\n");
+		rx_pr("get xtal err\n");
 	else {
 		clk_rate = clk_get_rate(xtal_clk);
 		pr_info("%s: xtal_clk is %d MHZ\n", __func__,
@@ -1153,7 +1221,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	}
 	fclk_div5_clk = clk_get(&pdev->dev, "fclk_div5");
 	if (IS_ERR(fclk_div5_clk))
-		rx_print("get fclk_div5_clk err\n");
+		rx_pr("get fclk_div5_clk err\n");
 	else {
 		clk_rate = clk_get_rate(fclk_div5_clk);
 		pr_info("%s: fclk_div5_clk is %d MHZ\n", __func__,
@@ -1161,7 +1229,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	}
 	hdevp->modet_clk = clk_get(&pdev->dev, "hdmirx_modet_clk");
 	if (IS_ERR(hdevp->modet_clk))
-		rx_print("get modet_clk err\n");
+		rx_pr("get modet_clk err\n");
 	else {
 		clk_set_parent(hdevp->modet_clk, xtal_clk);
 		clk_set_rate(hdevp->modet_clk, 24000000);
@@ -1172,7 +1240,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 
 	hdevp->cfg_clk = clk_get(&pdev->dev, "hdmirx_cfg_clk");
 	if (IS_ERR(hdevp->cfg_clk))
-		rx_print("get cfg_clk err\n");
+		rx_pr("get cfg_clk err\n");
 	else {
 		clk_set_parent(hdevp->cfg_clk, fclk_div5_clk);
 		clk_set_rate(hdevp->cfg_clk, 133333333);
@@ -1184,7 +1252,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	/*
 	hdevp->acr_ref_clk = clk_get(&pdev->dev, "hdmirx_acr_ref_clk");
 	if (IS_ERR(hdevp->acr_ref_clk))
-		rx_print("get acr_ref_clk err\n");
+		rx_pr("get acr_ref_clk err\n");
 	else {
 		clk_set_parent(hdevp->acr_ref_clk, fclk_div5_clk);
 		clk_set_rate(hdevp->acr_ref_clk, 24000000);
@@ -1195,7 +1263,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	*/
 	hdevp->audmeas_clk = clk_get(&pdev->dev, "hdmirx_audmeas_clk");
 	if (IS_ERR(hdevp->audmeas_clk))
-		rx_print("get audmeas_clk err\n");
+		rx_pr("get audmeas_clk err\n");
 	else {
 		clk_set_parent(hdevp->audmeas_clk, fclk_div5_clk);
 		clk_set_rate(hdevp->audmeas_clk, 200000000);
@@ -1205,14 +1273,19 @@ static int hdmirx_probe(struct platform_device *pdev)
 	}
 
 	/* create for hot plug function */
-	hpd_wq = create_singlethread_workqueue(hdevp->frontend.name);
-	INIT_DELAYED_WORK(&hpd_dwork, hdmirx_plug_det);
-
-	queue_delayed_work(hpd_wq, &hpd_dwork, msecs_to_jiffies(5));
+	eq_wq = create_singlethread_workqueue(hdevp->frontend.name);
+	INIT_DELAYED_WORK(&eq_dwork, eq_algorithm);
+	/* queue_delayed_work(eq_wq, &eq_dwork, msecs_to_jiffies(5)); */
 
 	hdmirx_hw_probe();
 
-	rx_print("hdmirx: driver probe ok\n");
+	init_timer(&hdevp->timer);
+	hdevp->timer.data = (ulong)hdevp;
+	hdevp->timer.function = hdmirx_timer_handler;
+	hdevp->timer.expires = jiffies + TIMER_STATE_CHECK;
+	add_timer(&hdevp->timer);
+
+	rx_pr("hdmirx: driver probe ok\n");
 
 	return 0;
 fail_create_cec_file:
@@ -1245,8 +1318,8 @@ static int hdmirx_remove(struct platform_device *pdev)
 
 	hdevp = platform_get_drvdata(pdev);
 
-	cancel_delayed_work(&hpd_dwork);
-	destroy_workqueue(hpd_wq);
+	cancel_delayed_work(&eq_dwork);
+	destroy_workqueue(eq_wq);
 
 	device_remove_file(hdevp->dev, &dev_attr_debug);
 	device_remove_file(hdevp->dev, &dev_attr_edid);
@@ -1254,12 +1327,11 @@ static int hdmirx_remove(struct platform_device *pdev)
 	device_remove_file(hdevp->dev, &dev_attr_log);
 	device_remove_file(hdevp->dev, &dev_attr_reg);
 	device_remove_file(hdevp->dev, &dev_attr_cec);
-	hdmirx_phy_exit();
 	tvin_unreg_frontend(&hdevp->frontend);
 	hdmirx_delete_device(hdevp->index);
 	cdev_del(&hdevp->cdev);
 	kfree(hdevp);
-	rx_print("hdmirx: driver removed ok.\n");
+	rx_pr("hdmirx: driver removed ok.\n");
 	return 0;
 }
 
@@ -1268,8 +1340,7 @@ static int hdmirx_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	int i = 0;
 
-	rx_print("[hdmirx]: hdmirx_suspend\n");
-	hdmirx_phy_suspend_eq();
+	rx_pr("[hdmirx]: hdmirx_suspend\n");
 	if (rx.open_fg == 1) {
 		if (resume_flag == 0)
 			del_timer_sync(&devp_hdmirx_suspend->timer);
@@ -1278,7 +1349,7 @@ static int hdmirx_suspend(struct platform_device *pdev, pm_message_t state)
 	}
 	/*hdmirx_phy_pddq(1);*/
 	/*clk_off();*/
-	rx_print("[hdmirx]: suspend success\n");
+	rx_pr("[hdmirx]: suspend success\n");
 	return 0;
 }
 
@@ -1291,7 +1362,7 @@ static int hdmirx_resume(struct platform_device *pdev)
 		;
 	if ((resume_flag == 0) && (rx.open_fg == 1))
 		add_timer(&devp_hdmirx_suspend->timer);
-	rx_print("hdmirx: resume module---end,rx.open_fg:%d\n", rx.open_fg);
+	rx_pr("hdmirx: resume module---end,rx.open_fg:%d\n", rx.open_fg);
 	pre_port = 0xff;
 	return 0;
 
@@ -1301,7 +1372,7 @@ static int hdmirx_resume(struct platform_device *pdev)
 #ifdef CONFIG_HIBERNATION
 static int hdmirx_restore(struct device *dev)
 {
-	queue_delayed_work(hpd_wq, &hpd_dwork, msecs_to_jiffies(5));
+	/* queue_delayed_work(eq_wq, &eq_dwork, msecs_to_jiffies(5)); */
 	return 0;
 }
 static int hdmirx_pm_suspend(struct device *dev)
@@ -1357,13 +1428,13 @@ static int __init hdmirx_init(void)
 
 	ret = alloc_chrdev_region(&hdmirx_devno, 0, 1, TVHDMI_NAME);
 	if (ret < 0) {
-		rx_print("hdmirx: failed to allocate major number\n");
+		rx_pr("hdmirx: failed to allocate major number\n");
 		goto fail_alloc_cdev_region;
 	}
 
 	hdmirx_clsp = class_create(THIS_MODULE, TVHDMI_NAME);
 	if (IS_ERR(hdmirx_clsp)) {
-		rx_print("hdmirx: can't get hdmirx_clsp\n");
+		rx_pr("hdmirx: can't get hdmirx_clsp\n");
 		ret = PTR_ERR(hdmirx_clsp);
 		goto fail_class_create;
 	}
@@ -1371,24 +1442,24 @@ static int __init hdmirx_init(void)
 	#if 0
 	pdev = platform_device_alloc(TVHDMI_NAME, 0);
 	if (IS_ERR(pdev)) {
-		rx_print("%s alloc platform device error.\n",
+		rx_pr("%s alloc platform device error.\n",
 			__func__);
 		goto fail_class_create;
 	}
 	if (platform_device_add(pdev)) {
-		rx_print("%s failed register platform device.\n",
+		rx_pr("%s failed register platform device.\n",
 			__func__);
 		goto fail_class_create;
 	}
 	#endif
 	ret = platform_driver_register(&hdmirx_driver);
 	if (ret != 0) {
-		rx_print("register hdmirx module failed, error %d\n",
+		rx_pr("register hdmirx module failed, error %d\n",
 			ret);
 		ret = -ENODEV;
 		goto fail_pdrv_register;
 	}
-	rx_print("hdmirx: hdmirx_init.\n");
+	rx_pr("hdmirx: hdmirx_init.\n");
 
 	return 0;
 
@@ -1406,7 +1477,7 @@ static void __exit hdmirx_exit(void)
 	class_destroy(hdmirx_clsp);
 	unregister_chrdev_region(hdmirx_devno, 1);
 	platform_driver_unregister(&hdmirx_driver);
-	rx_print("hdmirx: hdmirx_exit.\n");
+	rx_pr("hdmirx: hdmirx_exit.\n");
 }
 
 module_init(hdmirx_init);

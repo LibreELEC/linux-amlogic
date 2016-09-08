@@ -125,8 +125,7 @@ static void set_tvmode_misc(enum tvmode_e mode)
 	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_M8) ||
 	    (get_cpu_type() == MESON_CPU_MAJOR_ID_M8M2) ||
 	    (get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB) ||
-	    (get_cpu_type() == MESON_CPU_MAJOR_ID_GXL) ||
-	    (get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)) {
+	    (get_cpu_type() >= MESON_CPU_MAJOR_ID_GXL)) {
 		if ((mode == TVMODE_480CVBS) || (mode == TVMODE_576CVBS))
 			set_vmode_clk(mode);
 	} else
@@ -175,9 +174,8 @@ static void cvbs_cntl_output(unsigned int open)
 		/* must enable adc bandgap, the adc ref signal for demod */
 		vdac_enable(0, 0x8);
 	} else if (open == 1) { /* open */
-		if (is_meson_gxl_cpu() ||
-			is_meson_gxm_cpu())
-			cntl0 = 0xf0001;
+		if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXL))
+			cntl0 = 0xb0001;
 		else
 			cntl0 = 0x1;
 		cntl1 = (vdac_cfg_valid == 0) ? 0 : vdac_cfg_value;
@@ -229,8 +227,7 @@ static void cvbs_performance_enhancement(enum tvmode_e mode)
 		index = (index >= max) ? 0 : index;
 		s = tvregs_576cvbs_performance_m8[index];
 		type = 3;
-	} else if ((check_cpu_type(MESON_CPU_MAJOR_ID_GXBB)) ||
-			   (check_cpu_type(MESON_CPU_MAJOR_ID_GXM))) {
+	} else if (check_cpu_type(MESON_CPU_MAJOR_ID_GXBB)) {
 		max = sizeof(tvregs_576cvbs_performance_gxbb)
 			/ sizeof(struct reg_s *);
 		index = (index >= max) ? 0 : index;
@@ -242,19 +239,25 @@ static void cvbs_performance_enhancement(enum tvmode_e mode)
 		index = (index >= max) ? 0 : index;
 		s = tvregs_576cvbs_performance_gxtvbb[index];
 		type = 5;
-	} else if (is_meson_gxl_package_905X() ||
-		is_meson_gxm_cpu()) {
-		max = sizeof(tvregs_576cvbs_performance_905x)
-			/ sizeof(struct reg_s *);
-		index = (index >= max) ? 0 : index;
-		s = tvregs_576cvbs_performance_905x[index];
-		type = 6;
-	} else if (is_meson_gxl_package_905L()) {
-		max = sizeof(tvregs_576cvbs_performance_905l)
-			/ sizeof(struct reg_s *);
-		index = (index >= max) ? 0 : index;
-		s = tvregs_576cvbs_performance_905l[index];
-		type = 7;
+	} else if (cpu_after_eq(MESON_CPU_MAJOR_ID_GXL)) {
+		if (is_meson_gxl_package_905L()) {
+			max = sizeof(tvregs_576cvbs_performance_905l)
+				/ sizeof(struct reg_s *);
+			index = (index >= max) ? 0 : index;
+			s = tvregs_576cvbs_performance_905l[index];
+			type = 7;
+		} else {
+			max = sizeof(tvregs_576cvbs_performance_905x)
+				/ sizeof(struct reg_s *);
+			index = (index >= max) ? 0 : index;
+			s = tvregs_576cvbs_performance_905x[index];
+			type = 6;
+		}
+	}
+
+	if (s == NULL) {
+		vout_log_err("can't find performance table!\n");
+		return;
 	}
 
 	vout_log_info("cvbs performance type = %d, table = %d\n", type, index);
@@ -829,42 +832,6 @@ static char *get_name_from_vmode(enum vmode_e mode)
 	return tv_info[i].name;
 }
 
-/* frame_rate = 9600/duration/100 hz */
-static int get_vsource_frame_rate(int duration)
-{
-	int frame_rate = 0;
-	switch (duration) {
-	case 1600:
-		frame_rate = 6000;
-		break;
-	case 1601:
-	case 1602:
-		frame_rate = 5994;
-		break;
-	case 1920:
-		frame_rate = 5000;
-		break;
-	case 3200:
-		frame_rate = 3000;
-		break;
-	case 3203:
-		frame_rate = 2997;
-		break;
-	case 3840:
-		frame_rate = 2500;
-		break;
-	case 4000:
-		frame_rate = 2400;
-		break;
-	case 4004:
-		frame_rate = 2397;
-		break;
-	default:
-		break;
-	}
-	return frame_rate;
-}
-
 static int (*hdmi_edid_supported_func)(char *mode_name);
 void register_hdmi_edid_supported_func(int (*pfunc)(char *mode_name))
 {
@@ -1116,7 +1083,7 @@ static int framerate_automation_process(int duration)
 		vout_log_info("vout frame rate automation disabled!\n");
 		return 1;
 	}
-	fr_vsource = get_vsource_frame_rate(duration);
+	fr_vsource = get_vsource_fps(duration);
 	fps_playing_flag = 0;
 	if ((fr_vsource == 5994)
 		|| (fr_vsource == 2997)

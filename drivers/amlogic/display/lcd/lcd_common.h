@@ -35,6 +35,7 @@ extern void lcd_cpu_gpio_register(unsigned int index);
 extern void lcd_cpu_gpio_set(unsigned int index, int value);
 extern unsigned int lcd_cpu_gpio_get(unsigned int index);
 extern void lcd_ttl_pinmux_set(int status);
+extern void lcd_vbyone_pinmux_set(int status);
 extern int lcd_power_load_from_dts(struct lcd_config_s *pconf,
 		struct device_node *child);
 extern int lcd_power_load_from_unifykey(struct lcd_config_s *pconf,
@@ -42,6 +43,7 @@ extern int lcd_power_load_from_unifykey(struct lcd_config_s *pconf,
 
 extern void lcd_tcon_config(struct lcd_config_s *pconf);
 extern int lcd_vmode_change(struct lcd_config_s *pconf);
+extern void lcd_venc_change(struct lcd_config_s *pconf);
 extern void lcd_clk_gate_switch(int status);
 
 /* lcd debug */
@@ -50,11 +52,14 @@ extern int lcd_class_remove(void);
 
 /* lcd driver */
 #ifdef CONFIG_AML_LCD_TV
+extern void lcd_vbyone_interrupt_enable(int flag);
+extern void lcd_tv_clk_update(struct lcd_config_s *pconf);
 extern void lcd_tv_vout_server_init(void);
 extern int lcd_tv_probe(struct device *dev);
 extern int lcd_tv_remove(struct device *dev);
 #endif
 #ifdef CONFIG_AML_LCD_TABLET
+extern void lcd_tablet_clk_update(struct lcd_config_s *pconf);
 extern void lcd_tablet_vout_server_init(void);
 extern int lcd_tablet_probe(struct device *dev);
 extern int lcd_tablet_remove(struct device *dev);

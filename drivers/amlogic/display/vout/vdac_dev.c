@@ -54,6 +54,7 @@ static struct amvdac_dev_s amvdac_dev;
 #define VDAC_MODULE_DTV_DEMOD 0x2
 #define VDAC_MODULE_TVAFE     0x4
 #define VDAC_MODULE_CVBS_OUT  0x8
+#define VDAC_MODULE_AUDIO_OUT  0x10
 
 void __iomem *vdac_hiu_reg_base;/* = *ioremap(0xc883c000, 0x2000); */
 
@@ -128,7 +129,7 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 {
 	bool enable = 0;
 
-	switch (module_sel & 0xf) {
+	switch (module_sel & 0x1f) {
 	case VDAC_MODULE_ATV_DEMOD: /* dtv demod */
 		if (on)
 			vdac_cntl0_bit9 |= VDAC_MODULE_ATV_DEMOD;
@@ -153,19 +154,27 @@ void ana_ref_cntl0_bit9(bool on, unsigned int module_sel)
 		else
 			vdac_cntl0_bit9 &= ~VDAC_MODULE_CVBS_OUT;
 		break;
+	case VDAC_MODULE_AUDIO_OUT: /* audio out ctrl*/
+		if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+			if (on)
+				vdac_cntl0_bit9 |= VDAC_MODULE_AUDIO_OUT;
+			else
+				vdac_cntl0_bit9 &= ~VDAC_MODULE_AUDIO_OUT;
+		}
+		break;
 	default:
 		pr_err("module_sel: 0x%x wrong module index !! ", module_sel);
 		break;
 	}
 	/* pr_info("\nvdac_cntl0_bit9: 0x%x\n", vdac_cntl0_bit9); */
 
-	if ((vdac_cntl0_bit9 & 0xf) == 0)
+	if ((vdac_cntl0_bit9 & 0x1f) == 0)
 		enable = 0;
 	else
 		enable = 1;
 
-	if (is_meson_gxtvbb_cpu() &&
-		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR)))
+	if (is_meson_txl_cpu() || (is_meson_gxtvbb_cpu() &&
+		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL0, enable, 9, 1);
 	else
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL0, ~enable, 9, 1);
@@ -317,8 +326,8 @@ void vdac_out_cntl1_bit3(bool on, unsigned int module_sel)
 	else
 		enable = 1;
 
-	if (is_meson_gxtvbb_cpu() &&
-		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR)))
+	if (is_meson_txl_cpu() || (is_meson_gxtvbb_cpu() &&
+		(0xa != get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR))))
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL1, enable, 3, 1);
 	else
 		vdac_hiu_reg_setb(HHI_VDAC_CNTL1, ~enable, 3, 1);
@@ -397,10 +406,10 @@ void vdac_enable(bool on, unsigned int module_sel)
 			vdac_out_cntl1_bit3(1, VDAC_MODULE_CVBS_OUT);
 			vdac_out_cntl0_bit0(1, VDAC_MODULE_CVBS_OUT);
 			ana_ref_cntl0_bit9(1, VDAC_MODULE_CVBS_OUT);
-			vdac_out_cntl0_bit10(1, VDAC_MODULE_CVBS_OUT);
+			vdac_out_cntl0_bit10(0, VDAC_MODULE_CVBS_OUT);
 			pri_flag |= VDAC_MODULE_CVBS_OUT;
 		} else {
-			vdac_out_cntl0_bit10(0, VDAC_MODULE_CVBS_OUT);
+			/*vdac_out_cntl0_bit10(0, VDAC_MODULE_CVBS_OUT);*/
 			ana_ref_cntl0_bit9(0, VDAC_MODULE_CVBS_OUT);
 			vdac_out_cntl0_bit0(0, VDAC_MODULE_CVBS_OUT);
 			vdac_out_cntl1_bit3(0, VDAC_MODULE_CVBS_OUT);
@@ -413,6 +422,14 @@ void vdac_enable(bool on, unsigned int module_sel)
 				vdac_out_cntl1_bit3(0, VDAC_MODULE_TVAFE);
 				vdac_out_cntl0_bit10(1, VDAC_MODULE_TVAFE);
 			}
+		}
+		break;
+	case VDAC_MODULE_AUDIO_OUT: /* audio demod */
+		if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL) {
+			if (on)
+				ana_ref_cntl0_bit9(1, VDAC_MODULE_AUDIO_OUT);
+			else
+				ana_ref_cntl0_bit9(0, VDAC_MODULE_AUDIO_OUT);
 		}
 		break;
 	default:

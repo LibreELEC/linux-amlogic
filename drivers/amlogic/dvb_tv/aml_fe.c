@@ -256,6 +256,8 @@ struct dvb_frontend *get_si2177_tuner(void)
 
 	for (i = 0; i < FE_DEV_COUNT; i++) {
 		dev = &fe_man.tuner[i];
+		if (dev == NULL || dev->drv == NULL || dev->fe == NULL)
+			continue;
 #if (defined CONFIG_AM_SI2177)
 		if (!strcmp(dev->drv->name, "si2177_tuner"))
 			return dev->fe->fe;
@@ -267,6 +269,8 @@ struct dvb_frontend *get_si2177_tuner(void)
 			return dev->fe->fe;
 #else
 #endif
+		if (!strcmp(dev->drv->name, "r842_tuner"))
+			return dev->fe->fe;
 		return dev->fe->fe;
 	}
 	pr_error("can not find out tuner drv\n");
@@ -669,7 +673,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 					      p->frequency + ATV_AFC_500KHZ, 1)
 				== 0) {
 				try_ntsc = 0;
-				get_vfmt_maxcnt = 100;
+				get_vfmt_maxcnt = 200;
 				p->analog.std =
 					(V4L2_COLOR_STD_PAL | V4L2_STD_PAL_I);
 				p->frequency += 1;
@@ -685,7 +689,8 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 						varify_cnt++;
 					if (varify_cnt > 3)
 						break;
-					if (i == (get_vfmt_maxcnt/2)) {
+					if (i == (get_vfmt_maxcnt/3) ||
+						(i == (get_vfmt_maxcnt/3)*2)) {
 						p->analog.std =
 							(V4L2_COLOR_STD_NTSC
 							| V4L2_STD_NTSC_M);
@@ -940,7 +945,7 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 			if (aml_fe_afc_closer(fe, minafcfreq,
 				maxafcfreq + ATV_AFC_500KHZ, 1) == 0) {
 				try_ntsc = 0;
-				get_vfmt_maxcnt = 100;
+				get_vfmt_maxcnt = 200;
 			while (1) {
 				for (i = 0; i < get_vfmt_maxcnt; i++) {
 					if (aml_fe_hook_get_fmt == NULL)
@@ -954,7 +959,8 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 				}
 					if (varify_cnt > 3)
 						break;
-					if (i == get_vfmt_maxcnt/2) {
+					if (i == (get_vfmt_maxcnt/3) ||
+						(i == (get_vfmt_maxcnt/3)*2)) {
 						p->analog.std =
 							(V4L2_COLOR_STD_NTSC
 							| V4L2_STD_NTSC_M);
@@ -963,6 +969,9 @@ static enum dvbfe_search aml_fe_analog_search(struct dvb_frontend *fe)
 					}
 					usleep_range(20*1000, 20*1000+100);
 				}
+				if (debug_fe & 0x2)
+					pr_err("get std_bk cnt:%d\n", i);
+
 				if (std_bk == 0) {
 					pr_err("%s, failed to get v fmt !!\n",
 						__func__);

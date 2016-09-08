@@ -50,7 +50,7 @@
 #include "vdin_vf.h"
 #include "vdin_regs.h"
 
-#define VDIN_VER "Ref.2016/06/17a"
+#define VDIN_VER "Ref.2016/08/12a"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
@@ -97,6 +97,8 @@
 #define VDIN_WR_COLOR_DEPTH_9BIT	(1 << 1)
 #define VDIN_WR_COLOR_DEPTH_10BIT	(1 << 2)
 #define VDIN_WR_COLOR_DEPTH_12BIT	(1 << 3)
+/*TXL new add*/
+#define VDIN_WR_COLOR_DEPTH_10BIT_FULL_PCAK_MODE	(1 << 4)
 
 static inline const char *vdin_fmt_convert_str(
 		enum vdin_format_convert_e fmt_cvt)
@@ -252,7 +254,8 @@ struct vdin_dev_s {
 	*bit0:support 8bit
 	*bit1:support 9bit
 	*bit2:support 10bit
-	*bit3:support 12bit*/
+	*bit3:support 12bit
+	*bit4:support yuv422 10bit full pack mode (from txl new add)*/
 	unsigned int			color_depth_support;
 	/*color depth config
 	*0:auto config as frontend
@@ -260,6 +263,10 @@ struct vdin_dev_s {
 	*10:force config as 10bit
 	*12:force config as 12bit*/
 	unsigned int			color_depth_config;
+	/* new add from txl:color depth mode for 10bit
+	*1: full pack mode;config 10bit as 10bit
+	*0: config 10bit as 12bit*/
+	unsigned int			color_depth_mode;
 };
 
 
@@ -271,6 +278,7 @@ int vdin_ctrl_start_fe(int no, struct vdin_parm_s *para);
 int vdin_ctrl_stop_fe(int no);
 enum tvin_sig_fmt_e vdin_ctrl_get_fmt(int no);
 #endif
+extern bool enable_reset;
 extern unsigned int max_buf_num;
 extern unsigned int   vdin_ldim_max_global[100];
 extern struct vframe_provider_s *vf_get_provider_by_name(

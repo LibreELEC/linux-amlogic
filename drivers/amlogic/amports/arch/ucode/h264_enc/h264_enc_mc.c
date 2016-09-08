@@ -64,6 +64,10 @@
 #define MicroCode h264_enc_mc_gxtv
 #include "h264_enc_gxtv.h"
 
+#undef MicroCode
+#define MicroCode h264_enc_mc_txl
+#include "h264_enc_txl.h"
+
 
 #define CODEC_VERSION "0.0.0.1"
 #define FOR_VFORMAT VFORMAT_H264_ENC
@@ -100,6 +104,10 @@
 	REGISTER_FIRMARE_PER_CPU_VER(MESON_CPU_MAJOR_ID_GXM, \
 				FOR_VFORMAT, n, CODEC_VERSION)
 
+#define DEF_FIRMEARE_FOR_TXL(n) \
+	REGISTER_FIRMARE_PER_CPU_VER(MESON_CPU_MAJOR_ID_TXL, \
+				FOR_VFORMAT, n, CODEC_VERSION)
+
 #define REG_FIRMWARE_ALL()\
 	do {\
 		DEF_FIRMEARE_FOR_M8(mix_dump_mc);\
@@ -126,6 +134,8 @@
 		DEF_FIRMEARE_FOR_GXL(h264_enc_mc_gxtv);\
 		DEF_FIRMEARE_FOR_GXM(mix_sw_mc_hdec_gx_dblk);\
 		DEF_FIRMEARE_FOR_GXM(h264_enc_mc_gxtv);\
+		DEF_FIRMEARE_FOR_TXL(mix_sw_mc_hdec_gx_dblk);\
+		DEF_FIRMEARE_FOR_TXL(h264_enc_mc_txl);\
 	} while (0)
 
 INIT_DEF_FIRMWARE();
