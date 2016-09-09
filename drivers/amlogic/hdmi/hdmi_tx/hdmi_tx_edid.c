@@ -1410,6 +1410,7 @@ static dispmode_vic_t dispmode_VIC_tab[]=
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	{"1080p59hz", HDMI_1080p60},
 #endif
+#if MESON_CPU_TYPE > MESON_CPU_TYPE_MESON6
     {"4k2k30hz",  HDMI_4k2k_30},
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	{"4k2k29hz",  HDMI_4k2k_30},
@@ -1420,6 +1421,7 @@ static dispmode_vic_t dispmode_VIC_tab[]=
 	{"4k2k23hz",  HDMI_4k2k_24},
 #endif
     {"4k2ksmpte", HDMI_4k2k_smpte_24},
+#endif // MESON_CPU_TYPE > MESON_CPU_TYPE_MESON6
 };
 
 int hdmitx_edid_VIC_support(HDMI_Video_Codes_t vic)
