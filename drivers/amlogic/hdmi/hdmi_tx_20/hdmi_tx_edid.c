@@ -318,6 +318,9 @@ static void set_vsdb_phy_addr(struct vsdb_phyaddr *vsdb,
 	vsdb->d = (edid_offset[5] >> 0) & 0xf;
 	vsdb_local = *vsdb;
 	vsdb->valid = 1;
+#ifdef CONFIG_AML_AO_CEC
+	wake_up_interruptible(&vsdb->waitq);
+#endif
 }
 
 static void set_vsdb_dc_cap(struct rx_cap *pRXCap,
@@ -1743,7 +1746,7 @@ int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device)
 
 	edid_save_checkvalue(EDID_buf, BlockCount+1);
 
-#if 1
+#if 0
 	i = hdmitx_edid_dump(hdmitx_device, (char *)(hdmitx_device->tmp_buf),
 		HDMI_TMP_BUF_SIZE);
 	hdmitx_device->tmp_buf[i] = 0;
