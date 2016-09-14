@@ -1291,15 +1291,14 @@ static bool vgic_queue_irq(struct kvm_vcpu *vcpu, u8 sgi_source_id, int irq)
 	lr = vgic_cpu->vgic_irq_lr_map[irq];
 
 	/* Do we have an active interrupt for the same CPUID? */
-	if (lr != LR_EMPTY) {
-		vlr = vgic_get_lr(vcpu, lr);
-		if (vlr.source == sgi_source_id) {
-			kvm_debug("LR%d piggyback for IRQ%d\n", lr, vlr.irq);
-			BUG_ON(!test_bit(lr, vgic_cpu->lr_used));
-			vlr.state |= LR_STATE_PENDING;
-			vgic_set_lr(vcpu, lr, vlr);
-			return true;
-		}
+	if (lr != LR_EMPTY &&
+	    (LR_CPUID(vgic_cpu->vgic_lr[lr]) == sgi_source_id)) {
+		kvm_debug("LR%d piggyback for IRQ%d %x\n",
+			  lr, irq, vgic_cpu->vgic_lr[lr]);
+		BUG_ON(!test_bit(lr, vgic_cpu->lr_used));
+		vgic_cpu->vgic_lr[lr] |= GICH_LR_PENDING_BIT;
+		__clear_bit(lr, (unsigned long *)vgic_cpu->vgic_elrsr);
+		return true;
 	}
 
 	/* Try to use another LR for this interrupt */
@@ -1311,6 +1310,7 @@ static bool vgic_queue_irq(struct kvm_vcpu *vcpu, u8 sgi_source_id, int irq)
 	kvm_debug("LR%d allocated for IRQ%d %x\n", lr, irq, sgi_source_id);
 	vgic_cpu->vgic_irq_lr_map[irq] = lr;
 	set_bit(lr, vgic_cpu->lr_used);
+	__clear_bit(lr, (unsigned long *)vgic_cpu->vgic_elrsr);
 
 	vlr.irq = irq;
 	vlr.source = sgi_source_id;
@@ -1486,6 +1486,14 @@ static bool vgic_process_maintenance(struct kvm_vcpu *vcpu)
 
 	if (status & INT_STATUS_UNDERFLOW)
 		vgic_disable_underflow(vcpu);
+
+	/*
+	 * In the next iterations of the vcpu loop, if we sync the vgic state
+	 * after flushing it, but before entering the guest (this happens for
+	 * pending signals and vmid rollovers), then make sure we don't pick
+	 * up any old maintenance interrupts here.
+	 */
+	memset(vgic_cpu->vgic_eisr, 0, sizeof(vgic_cpu->vgic_eisr[0]) * 2);
 
 	return level_pending;
 }
@@ -1679,7 +1687,7 @@ int kvm_vgic_inject_irq(struct kvm *kvm, int cpuid, unsigned int irq_num,
 			bool level)
 {
 	if (likely(vgic_initialized(kvm)) &&
-	    vgic_update_irq_pending(kvm, cpuid, irq_num, level))
+	    vgic_update_irq_state(kvm, cpuid, irq_num, level))
 		vgic_kick_vcpus(kvm);
 
 	return 0;
@@ -1842,19 +1850,34 @@ static int vgic_init_maps(struct kvm *kvm)
 		ret |= vgic_init_bitmap(&dist->irq_spi_target[i],
 					nr_cpus, nr_irqs);
 
-	if (ret)
-		goto out;
-
-	kvm_for_each_vcpu(i, vcpu, kvm) {
-		ret = vgic_vcpu_init_maps(vcpu, nr_irqs);
-		if (ret) {
-			kvm_err("VGIC: Failed to allocate vcpu memory\n");
-			break;
-		}
+	if (of_address_to_resource(vgic_node, 3, &vcpu_res)) {
+		kvm_err("Cannot obtain VCPU resource\n");
+		ret = -ENXIO;
+		goto out_unmap;
 	}
 
-	for (i = VGIC_NR_PRIVATE_IRQS; i < dist->nr_irqs; i += 4)
-		vgic_set_target_reg(kvm, 0, i);
+	if (!PAGE_ALIGNED(vcpu_res.start)) {
+		kvm_err("GICV physical address 0x%llx not page aligned\n",
+			(unsigned long long)vcpu_res.start);
+		ret = -ENXIO;
+		goto out_unmap;
+	}
+
+	if (!PAGE_ALIGNED(resource_size(&vcpu_res))) {
+		kvm_err("GICV size 0x%llx not a multiple of page size 0x%lx\n",
+			(unsigned long long)resource_size(&vcpu_res),
+			PAGE_SIZE);
+		ret = -ENXIO;
+		goto out_unmap;
+	}
+
+	vgic_vcpu_base = vcpu_res.start;
+
+	kvm_info("%s@%llx IRQ%d\n", vgic_node->name,
+		 vctrl_res.start, vgic_maint_irq);
+	on_each_cpu(vgic_init_maintenance_interrupt, NULL, 1);
+
+	goto out;
 
 out:
 	if (ret)
@@ -1918,7 +1941,7 @@ out:
 
 int kvm_vgic_create(struct kvm *kvm)
 {
-	int i, vcpu_lock_idx = -1, ret = 0;
+	int i, vcpu_lock_idx = -1, ret;
 	struct kvm_vcpu *vcpu;
 
 	mutex_lock(&kvm->lock);
@@ -1933,6 +1956,7 @@ int kvm_vgic_create(struct kvm *kvm)
 	 * vcpu->mutex.  By grabbing the vcpu->mutex of all VCPUs we ensure
 	 * that no other VCPUs are run while we create the vgic.
 	 */
+	ret = -EBUSY;
 	kvm_for_each_vcpu(i, vcpu, kvm) {
 		if (!mutex_trylock(&vcpu->mutex))
 			goto out_unlock;
@@ -1940,11 +1964,10 @@ int kvm_vgic_create(struct kvm *kvm)
 	}
 
 	kvm_for_each_vcpu(i, vcpu, kvm) {
-		if (vcpu->arch.has_run_once) {
-			ret = -EBUSY;
+		if (vcpu->arch.has_run_once)
 			goto out_unlock;
-		}
 	}
+	ret = 0;
 
 	spin_lock_init(&kvm->arch.vgic.lock);
 	kvm->arch.vgic.in_kernel = true;
