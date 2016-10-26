@@ -43,7 +43,7 @@
 
 	memory@00000000 {
 		device_type = "memory";
-		linux,usable-memory = <0x0 0x1000000 0x0 0x3f000000>;
+		linux,usable-memory = <0x0 0x0100000 0x0 0x3ff00000>;
 	};
 
 	reserved-memory {
@@ -78,8 +78,10 @@
 
 		di_reserved:linux,di {
 			compatible = "amlogic, di-mem";
-			/** 10x(1920x1088x(3/2+1/5)+1088)x5/4=43M **/
-			size = <0x0 0x2b00000>;
+			/** 10x(1920x1088x(3/2+1/5)+1088)=34M **/
+			/** 10x(1920x1088x(3/2+1/5)+1088)x3/2=51M support 12bit **/
+			/** 10x(1920x1088x(3/2+1/5)+1088)x5/4=43M support 10bit **/
+			size = <0x0 0x3300000>;
 			//no-map;
 		};
 
@@ -175,16 +177,14 @@
 		status = "disable";
 		//led_gpio = <&gpio GPIODV_24 GPIO_ACTIVE_LOW>;
 	};
-
 	avin_detect {
 		compatible = "amlogic, avin_detect";
 		status = "okay";
-		interrupts = <0 65 1
-			      0 66 1>;
+		avin_device_num = <1>;
+		interrupts = <0 65 1>;
 		pinctrl-names = "avin_gpio_disable_pullup";
 		pinctrl-0 = <&avin_gpio_disable_pull>;
-		avin1_pin =  <&gpio    GPIODV_8    GPIO_ACTIVE_HIGH>;
-		avin2_pin =  <&gpio    GPIODV_7    GPIO_ACTIVE_HIGH>;
+		avin_det_pin =  <&gpio       GPIODV_8       GPIO_ACTIVE_HIGH>;
 		detect_interval_length = <100>;
 		set_detect_times = <5>;
 		set_fault_tolerance = <1>;
@@ -440,7 +440,7 @@
 		pinctrl-3 = <&hdmirx_pins &chb_uart_in>;
 		pinctrl-4 = <&hdmirx_pins &chc_uart_in>;
 		rx_port_maps = <0x3120>;
-		hdmiuart_share_cfg = <7>;
+		hdmiuart_share_cfg = <0>;
 		repeat = <0>;
 		interrupts = <0 56 1>;
 		hdmirx_addr_port = <0xda846000>;
@@ -528,6 +528,7 @@
 			caps2 = "MMC_CAP2_HS200", "MMC_CAP2_HS400";
 			f_min = <300000>;
 			f_max = <100000000>;
+			tx_phase = <3>;
 			max_req_size = <0x20000>; /* 256KB */
 			gpio_dat3 = <&gpio BOOT_3 GPIO_ACTIVE_HIGH>;
 			hw_reset =  <&gpio BOOT_9 GPIO_ACTIVE_HIGH>;
@@ -926,9 +927,9 @@
 			"top_level",
 			"aoclk",
 			"aud_in";
-		clocks = <&clock CLK_MPLL0>,
+		clocks = <&clock CLK_MPLL2>,
 			<&clock CLK_AMCLK>;
-		clock-names = "mpll0", "mclk";
+		clock-names = "mpll2", "mclk";
 		compatible = "amlogic, aml-i2s-dai";
 	};
 	spdif_dai: SPDIF {
@@ -952,6 +953,12 @@
 		#sound-dai-cells = <0>;
 		compatible = "amlogic, aml-pcm-dai";
 		pinctrl-names = "aml_audio_btpcm";
+		pinctrl-0 = <&audio_btpcm_pins>;
+		clocks = <&clock CLK_MPLL0>,
+			<&clock CLK_PCM_MCLK>,
+			<&clock CLK_PCM_SCLK>;
+		clock-names = "mpll0", "pcm_mclk", "pcm_sclk";
+		pcm_mode = <1>;	/* 0=slave mode, 1=master mode */
 	};
 	i2s_plat: i2s_platform {
 		compatible = "amlogic, aml-i2s";
@@ -992,6 +999,7 @@
 		pinctrl-names = "aml_snd_g9tv";
 		pinctrl-0 = <&audio_pins>;
 		mute_gpio-gpios = <&gpio GPIODV_11 GPIO_ACTIVE_HIGH>;
+		sleep_time = <20>;
 		aux_dev = "tas5707";
 		cpu_list = <&cpudai0 &cpudai1 &cpudai2>;
 		codec_list = <&codec0 &codec1 &codec2>;
@@ -1013,6 +1021,41 @@
 		};
 		codec2: codec2 {
 			sound-dai = <&pcm_codec>;
+		};
+		aml_EQ_DRC {
+			eq_table = /bits/ 32 <
+				/*channel 1*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef0*/
+				0x0080372b 0x0301afb6 0x007e1eb3 0x0301afb6 0x007e55de /*eq_coef1*/
+				0x007f9c8d 0x0301d300 0x007e9cfe 0x0301d300 0x007e398c /*eq_coef2*/
+				0x0083d5aa 0x031dee0a 0x005e8bb8 0x031dee0a 0x00626163 /*eq_coef3*/
+				0x007e0fc8 0x0308897c 0x007a2aa0 0x0308897c 0x00783a68 /*eq_coef4*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef5*/
+				0x0078eb9b 0x0333b014 0x0066ba2a 0x0333b014 0x005fa5c5 /*eq_coef6*/
+				0x009712e4 0x037db296 0x0034b3cd 0x037db296 0x004bc6b0 /*eq_coef7*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef8*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef9*/
+				/*channel 2*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef0*/
+				0x0080372b 0x0301afb6 0x007e1eb3 0x0301afb6 0x007e55de /*eq_coef1*/
+				0x007f9c8d 0x0301d300 0x007e9cfe 0x0301d300 0x007e398c /*eq_coef2*/
+				0x0083d5aa 0x031dee0a 0x005e8bb8 0x031dee0a 0x00626163 /*eq_coef3*/
+				0x007e0fc8 0x0308897c 0x007a2aa0 0x0308897c 0x00783a68 /*eq_coef4*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef5*/
+				0x0078eb9b 0x0333b014 0x0066ba2a 0x0333b014 0x005fa5c5 /*eq_coef6*/
+				0x009712e4 0x037db296 0x0034b3cd 0x037db296 0x004bc6b0 /*eq_coef7*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef8*/
+				0x00800000 0x00000000 0x00000000 0x00000000 0x00000000 /*eq_coef9*/
+			>;
+			drc_table = /bits/ 32 <
+				0x0000111c 0x0380111c /*drc_ae && drc_ae_1m*/
+				0x00081bfc 0x03881bfc /*drc_aa && drc_aa_1m*/
+				0x00001571 0x03801571 /*drc_ad && drc_ad_1m*/
+			>;
+			drc_tko_table = /bits/ 32 <
+				0x00000000 0xc4000000 0x00060000 /*offset, thd, k*/
+				0x00000000 0xf6000000 0x00028000 /*offset, thd, k*/
+			>;
 		};
 		tas5707 {
 			compatible = "amlogic, aml_tas5707_codec";

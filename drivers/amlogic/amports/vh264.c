@@ -107,6 +107,7 @@ static DEFINE_MUTEX(vh264_mutex);
 
 #define DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE 0x0001
 #define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
+#define DEC_CONTROL_FLAG_DISABLE_FAST_POC              0x0004
 
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
@@ -209,6 +210,7 @@ static u32 aspect_ratio_info;
 static u32 num_units_in_tick;
 static u32 time_scale;
 static u32 h264_ar;
+static u32 decoder_debug_flag;
 #ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
 static u32 last_interlaced;
 #endif
@@ -1354,6 +1356,12 @@ static void vh264_isr(void)
 				vh264_eos = 1;
 
 			b_offset = (status >> 16) & 0xffff;
+			if (decoder_debug_flag) {
+				pr_info("slice_type %x idr %x  error %x",
+						slice_type, idr_flag, error);
+				pr_info(" prog %x pic_struct %x offset %x\n",
+				prog_frame, pic_struct,	b_offset);
+			}
 #ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
 			last_interlaced = prog_frame ? 0 : 1;
 #endif
@@ -1525,7 +1533,7 @@ static void vh264_isr(void)
 				if (fixed_frame_rate_flag && !pts_discontinue &&
 					(fixed_frame_rate_check_count
 							> idr_num) &&
-					pts_valid_save &&
+					pts_valid_save && (sync_outside == 0) &&
 					(abs(pts_inc_by_duration(NULL, NULL)
 					 - pts)
 					 > DUR2PTS(frame_dur))) {
@@ -2089,8 +2097,10 @@ static void vh264_prot_init(void)
 		 0) ? error_recovery_mode : error_recovery_mode_in;
 	WRITE_VREG(AV_SCRATCH_F,
 			   (READ_VREG(AV_SCRATCH_F) & 0xffffffc3) |
+			   (READ_VREG(AV_SCRATCH_F) & 0xffffff43) |
 			   ((error_recovery_mode_use & 0x1) << 4));
-
+	if (dec_control & DEC_CONTROL_FLAG_DISABLE_FAST_POC)
+				SET_VREG_MASK(AV_SCRATCH_F, 1 << 7);
 	/* clear mailbox interrupt */
 	WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -2878,6 +2888,9 @@ MODULE_PARM_DESC(debugfirmware, "\n amvdec_h264 debug load firmware\n");
 module_param(fixed_frame_rate_flag, uint, 0664);
 MODULE_PARM_DESC(fixed_frame_rate_flag,
 				 "\n amvdec_h264 fixed_frame_rate_flag\n");
+module_param(decoder_debug_flag, uint, 0664);
+MODULE_PARM_DESC(decoder_debug_flag,
+				 "\n amvdec_h264 decoder_debug_flag\n");
 
 module_param(decoder_force_reset, uint, 0664);
 MODULE_PARM_DESC(decoder_force_reset,

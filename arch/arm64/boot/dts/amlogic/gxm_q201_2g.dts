@@ -40,7 +40,7 @@
 	};
 	memory@00000000 {
 		device_type = "memory";
-		linux,usable-memory = <0x0 0x1000000 0x0 0x7f000000>;
+		linux,usable-memory = <0x0 0x100000 0x0 0x7ff00000>;
 	};
 
 	reserved-memory {
@@ -96,14 +96,14 @@
 //		};
 		/*  POST PROCESS MANAGER */
 		ppmgr_reserved:linux,ppmgr {
-			compatible = "amlogic, ppmgr_memory";
-			size = <0x0 0x2000000>;
+			compatible = "shared-dma-pool";
+			size = <0x0 0x0>;
 		};
 
 		codec_mm_cma:linux,codec_mm_cma {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x0 0xd000000>;
+			size = <0x0 0xc000000>;
 			alignment = <0x0 0x400000>;
 			linux,contiguous-region;
 		};
@@ -205,6 +205,8 @@
 						0x0 0xc8834558 0x0 0xc>;
 						interrupts = <0 8 1>;
 						phy-mode= "rmii";
+						pinctrl-names = "internal_eth_pins";
+						pinctrl-0 = <&internal_eth_pins>;
 						mc_val = <0x1800>;
 						resets = <&clock GCLK_IDX_ETHERNET>;
 						reset-names = "ethpower";
@@ -915,9 +917,9 @@
 			"top_level",
 			"aoclk",
 			"aud_in";
-		clocks = <&clock CLK_MPLL0>,
+		clocks = <&clock CLK_MPLL2>,
 			<&clock CLK_AMCLK>;
-		clock-names = "mpll0", "mclk";
+		clock-names = "mpll2", "mclk";
 		compatible = "amlogic, aml-i2s-dai";
 	};
 	spdif_dai: SPDIF {
@@ -942,6 +944,11 @@
 		compatible = "amlogic, aml-pcm-dai";
 		pinctrl-names = "aml_audio_btpcm";
 		pinctrl-0 = <&audio_btpcm_pins>;
+		clocks = <&clock CLK_MPLL0>,
+			<&clock CLK_PCM_MCLK>,
+			<&clock CLK_PCM_SCLK>;
+		clock-names = "mpll0", "pcm_mclk", "pcm_sclk";
+		pcm_mode = <1>;	/* 0=slave mode, 1=master mode */
 	};
 	i2s_plat: i2s_platform {
 		compatible = "amlogic, aml-i2s";
