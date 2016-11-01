@@ -100,7 +100,7 @@ unsigned int menu_lang_array[] = {(((unsigned int)'c')<<16)|(((unsigned int)'h')
                                  };
 
 // CEC default setting
-static unsigned char * osd_name = "MBox";
+static unsigned char * osd_name = "KODI";
 static unsigned int vendor_id = 0x00;
 
 static irqreturn_t cec_isr_handler(int irq, void *dev_instance);
