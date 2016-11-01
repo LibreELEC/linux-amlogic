@@ -1208,6 +1208,6 @@
 &defendkey {
 	status = "okay";
 };
-&aml_remote {
+&meson_ir {
 	status = "okay";
 };
