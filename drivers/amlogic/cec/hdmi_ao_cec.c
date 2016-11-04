@@ -1340,6 +1340,7 @@ static void cec_rx_process(void)
 	int initiator, follower;
 	int opcode;
 	unsigned char msg[MAX_MSG] = {};
+	int dest_phy_addr;
 
 	if (len < 2 || !new_msg)		/* ignore ping message */
 		return;
@@ -1363,6 +1364,14 @@ static void cec_rx_process(void)
 		//	writel(phy_addr, cec_dev->cec_reg + AO_RTI_STATUS_REG1);
 		//	CEC_INFO("found wake up source:%x", phy_addr);
 		//}
+		break;
+
+	case CEC_OC_ROUTING_CHANGE:
+		dest_phy_addr = msg[4] << 8 | msg[5];
+		if (dest_phy_addr == cec_dev->phy_addr) {
+			CEC_INFO("wake up by ROUTING_CHANGE\n");
+			cec_key_report(0);
+		}
 		break;
 
 	case CEC_OC_GET_CEC_VERSION:

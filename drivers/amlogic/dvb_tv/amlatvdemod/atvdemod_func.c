@@ -147,6 +147,7 @@ static unsigned int mix1_freq;
 static unsigned int timer_init_flag;
 struct timer_list atvdemod_timer;
 static int snr_val;
+int broad_std_except_pal_m = 0;
 
 int get_atvdemod_snr_val(void)
 {
@@ -1468,7 +1469,7 @@ int atvdemod_clk_init(void)
 {
 	/* clocks_set_hdtv (); */
 	/* 1.set system clock */
-
+#if 0 /* now set pll in tvafe_general.c */
 	if (is_meson_txl_cpu()) {
 		amlatvdemod_hiu_reg_write(HHI_VDAC_CNTL0, 0x6e0201);
 		amlatvdemod_hiu_reg_write(HHI_VDAC_CNTL1, 0x8);
@@ -1503,17 +1504,19 @@ int atvdemod_clk_init(void)
 		W_HIU_REG(HHI_DADC_CNTL2, 0x00000406);
 		W_HIU_REG(HHI_DADC_CNTL3, 0x00082183);
 
-		W_HIU_REG(HHI_ATV_DMD_SYS_CLK_CNTL, 0x80);
 	} else {
 		W_HIU_REG(HHI_ADC_PLL_CNTL3, 0xca2a2110);
 		W_HIU_REG(HHI_ADC_PLL_CNTL4, 0x2933800);
 		W_HIU_REG(HHI_ADC_PLL_CNTL, 0xe0644220);
 		W_HIU_REG(HHI_ADC_PLL_CNTL2, 0x34e0bf84);
 		W_HIU_REG(HHI_ADC_PLL_CNTL3, 0x4a2a2110);
+
 		W_HIU_REG(HHI_ATV_DMD_SYS_CLK_CNTL, 0x80);
 		/* TVFE reset */
 		W_HIU_BIT(RESET1_REGISTER, 1, 7, 1);
 	}
+#endif
+	W_HIU_REG(HHI_ATV_DMD_SYS_CLK_CNTL, 0x80);
 
 	/* read_version_register(); */
 
@@ -1771,7 +1774,34 @@ int aml_audiomode_autodet(struct dvb_frontend *fe)
 				__func__, broad_std, carrier_power_average_max);
 			if (carrier_power_average_max < 150)
 				pr_err("%s,carrier too low error\n", __func__);
-
+			if (broad_std == AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_M) {
+				/*the max except palm*/
+				carrier_power_average[final_id] = 0;
+				final_id = 0;
+				carrier_power_max = carrier_power_average[0];
+				for (i = 0; i < ID_MAX; i++) {
+					if (carrier_power_max
+						< carrier_power_average[i]) {
+						carrier_power_max =
+						carrier_power_average[i];
+						final_id = i;
+					}
+				}
+			switch (final_id) {
+			case ID_PAL_I:
+				broad_std_except_pal_m =
+					AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I;
+				break;
+			case ID_PAL_BG:
+				broad_std_except_pal_m =
+					AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_BG;
+				break;
+			case ID_PAL_DK:
+				broad_std_except_pal_m =
+					AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK;
+				break;
+			}
+			}
 			if (p != NULL) {
 				p->analog.std = V4L2_COLOR_STD_PAL;
 				switch (broad_std) {

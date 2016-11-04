@@ -1069,8 +1069,8 @@ struct hevc_state_s {
 	int tile_height_lcu;
 
 	int slice_type;
-	int slice_addr;
-	int slice_segment_addr;
+	unsigned int slice_addr;
+	unsigned int slice_segment_addr;
 
 	unsigned char interlace_flag;
 	unsigned char curr_pic_struct;
@@ -1430,6 +1430,7 @@ static void uninit_buf_list(struct hevc_state_s *hevc, bool force_free)
 	}
 
 	if (release_cma_flag) {
+		pr_info("release cma begin\n");
 		for (i = 0; i < hevc->used_buf_num; i++) {
 			if (hevc->m_BUF[i].alloc_addr != 0
 				&& hevc->m_BUF[i].cma_page_count > 0) {
@@ -1454,7 +1455,7 @@ static void uninit_buf_list(struct hevc_state_s *hevc, bool force_free)
 					}
 				}
 
-				pr_info("release cma buffer[%d] (%d %ld)\n", i,
+				pr_debug("release cma buffer[%d] (%d %ld)\n", i,
 					hevc->m_BUF[i].cma_page_count,
 					hevc->m_BUF[i].alloc_addr);
 				codec_mm_free_for_dma(MEM_NAME,
@@ -1464,6 +1465,7 @@ static void uninit_buf_list(struct hevc_state_s *hevc, bool force_free)
 
 			}
 		}
+		pr_info("release cma end\n");
 	}
 	pr_info("%s, blackout %x r%x buf_mode %x r%x rel_cma_flag %x hevc->predisp_addr %d pre_alloc_addr(%ld, %ld)\n",
 		__func__, get_blackout_policy(), blackout,
@@ -1690,7 +1692,7 @@ static int config_pic(struct hevc_state_s *hevc, struct PIC_s *pic)
 					 5 ? 0x80 : 0x20;
 	int mpred_mv_end = hevc->work_space_buf->mpred_mv.buf_start +
 				 hevc->work_space_buf->mpred_mv.buf_size;
-	int y_adr = 0;
+	unsigned int y_adr = 0;
 	int buf_size = 0;
 #ifdef LOSLESS_COMPRESS_MODE
 /*SUPPORT_10BIT*/

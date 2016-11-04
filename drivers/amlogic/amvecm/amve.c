@@ -4313,10 +4313,16 @@ void ve_ogo_param_update(void)
 		video_rgb_ogo.b_pre_offset = -1024;
 	if (video_rgb_ogo.r_gain > 2047)
 		video_rgb_ogo.r_gain = 2047;
+	if (video_rgb_ogo.r_gain < 0)
+		video_rgb_ogo.r_gain = 0;
 	if (video_rgb_ogo.g_gain > 2047)
 		video_rgb_ogo.g_gain = 2047;
+	if (video_rgb_ogo.g_gain < 0)
+		video_rgb_ogo.g_gain = 0;
 	if (video_rgb_ogo.b_gain > 2047)
 		video_rgb_ogo.b_gain = 2047;
+	if (video_rgb_ogo.b_gain < 0)
+		video_rgb_ogo.b_gain = 0;
 	if (video_rgb_ogo.r_post_offset > 1023)
 		video_rgb_ogo.r_post_offset = 1023;
 	if (video_rgb_ogo.r_post_offset < -1024)
@@ -4658,10 +4664,10 @@ void vpp_vd_adj1_contrast(signed int cont_val)
 		WRITE_VPP_REG_BITS(VPP_VADJ_CTRL, 0, 1, 1);
 
 	if (get_cpu_type() > MESON_CPU_MAJOR_ID_GXTVBB) {
-		vd1_contrast = (READ_VPP_REG(VPP_VADJ1_Y) & 0x1ff00) |
+		vd1_contrast = (READ_VPP_REG(VPP_VADJ1_Y) & 0x3ff00) |
 						(cont_val << 0);
 	} else {
-		vd1_contrast = (READ_VPP_REG(VPP_VADJ1_Y) & 0xff00) |
+		vd1_contrast = (READ_VPP_REG(VPP_VADJ1_Y) & 0x1ff00) |
 						(cont_val << 0);
 	}
 	WRITE_VPP_REG(VPP_VADJ1_Y, vd1_contrast);

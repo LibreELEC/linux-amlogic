@@ -342,7 +342,7 @@
 		pinctrl-3 = <&hdmirx_pins &chb_uart_in>;
 		pinctrl-4 = <&hdmirx_pins &chc_uart_in>;
 		rx_port_maps = <0x3120>;
-		hdmiuart_share_cfg = <7>;
+		hdmiuart_share_cfg = <0>;
 		repeat = <1>;
 		interrupts = <0 56 1>;
 		hdmirx_addr_port = <0xda83e000>;
@@ -383,15 +383,16 @@
 			4	/*// TVAFE_CVBS_IN3,    //CVBS_IN3,*/
 		>;
 	};
-	aml_avin {
+	avin_detect {
 		compatible = "amlogic, avin_detect";
 		status = "okay";
+		avin_device_num = <2>;
 		interrupts = <0 65 1
 					  0 66 1>;
 		pinctrl-names = "avin_gpio_disable_pullup";
 		pinctrl-0 = <&avin_gpio_disable_pull>;
-		avin1_pin =  <&gpio       GPIOW_4       GPIO_ACTIVE_HIGH>;
-		avin2_pin =  <&gpio       GPIOW_3       GPIO_ACTIVE_HIGH>;
+		avin_det_pin =  <&gpio       GPIOW_4       GPIO_ACTIVE_HIGH>,
+						<&gpio       GPIOW_3       GPIO_ACTIVE_HIGH>;
 		detect_interval_length = <100>;
 		set_detect_times = <5>;
 		set_fault_tolerance = <1>;
@@ -962,9 +963,9 @@
 			"top_level",
 			"aoclk",
 			"aud_in";
-		clocks = <&clock CLK_MPLL0>,
+		clocks = <&clock CLK_MPLL2>,
 			<&clock CLK_AMCLK>;
-		clock-names = "mpll0", "mclk";
+		clock-names = "mpll2", "mclk";
 		compatible = "amlogic, aml-i2s-dai";
 	};
 	spdif_dai: SPDIF {
@@ -987,6 +988,13 @@
 	pcm_dai: PCM {
 		#sound-dai-cells = <0>;
 		compatible = "amlogic, aml-pcm-dai";
+		pinctrl-names = "aml_audio_btpcm";
+		pinctrl-0 = <&audio_btpcm_pins>;
+		clocks = <&clock CLK_MPLL0>,
+			<&clock CLK_PCM_MCLK>,
+			<&clock CLK_PCM_SCLK>;
+		clock-names = "mpll0", "pcm_mclk", "pcm_sclk";
+		pcm_mode = <1>;	/* 0=slave mode, 1=master mode */
 	};
 	i2s_plat: i2s_platform {
 		compatible = "amlogic, aml-i2s";

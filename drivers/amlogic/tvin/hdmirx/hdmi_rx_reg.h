@@ -68,6 +68,9 @@
 #define PHY_RESISTOR_CALIBRATION_1 (0x10UL)
 #define PHY_MAIN_FSM_OVERRIDE2	(0x08UL)
 
+#define PHY_MAIN_BIST_CONTROL	(0x0BUL)
+#define PHY_MAIN_BIST_RESULTS	(0x0CUL)
+
 #define PHY_CORESTATUS_CH0		(0x30UL)
 #define PHY_CORESTATUS_CH1		(0x50UL)
 #define PHY_CORESTATUS_CH2		(0x70UL)
@@ -108,6 +111,7 @@
 #define PHY_CDR_CTRL_CNT			(0x0EUL)
 #define PHY_VOLTAGE_LEVEL		(0x22UL)
 #define PHY_MPLL_CTRL			(0x24UL)
+#define MPLL_DIVIDER_CONTROL	(0x25UL)
 #define MPLL_PARAMETERS2                (0x27UL)
 #define MPLL_PARAMETERS3                (0x28UL)
 #define MPLL_PARAMETERS4                (0x29UL)
@@ -707,18 +711,18 @@
 /*
  * Audio Clock Interrupt registers
  */
-/** Register address: audio clock interrupt clear enable */
-#define DWC_AUD_CLK_IEN_CLR	(0xF90UL)
-/** Register address: audio clock interrupt set enable */
-#define DWC_AUD_CLK_IEN_SET	(0xF94UL)
-/** Register address: audio clock interrupt status */
-#define DWC_AUD_CLK_ISTS		(0xF98UL)
-/** Register address: audio clock interrupt enable */
-#define DWC_AUD_CLK_IEN		(0xF9CUL)
-/** Register address: audio clock interrupt clear status */
-#define DWC_AUD_CLK_ICLR		(0xFA0UL)
-/** Register address: audio clock interrupt set status */
-#define DWC_AUD_CLK_ISET		(0xFA4UL)
+/** Register address: audio clock and cec interrupt clear enable */
+#define DWC_AUD_CEC_IEN_CLR	(0xF90UL)
+/** Register address: audio clock and cec interrupt set enable */
+#define DWC_AUD_CEC_IEN_SET	(0xF94UL)
+/** Register address: audio clock and cec interrupt status */
+#define DWC_AUD_CEC_ISTS		(0xF98UL)
+/** Register address: audio clock and cec interrupt enable */
+#define DWC_AUD_CEC_IEN		(0xF9CUL)
+/** Register address: audio clock and cec interrupt clear status */
+#define DWC_AUD_CEC_ICLR		(0xFA0UL)
+/** Register address: audio clock and cec interrupt set status */
+#define DWC_AUD_CEC_ISET		(0xFA4UL)
 /*
  * Audio FIFO Interrupt registers
  */
