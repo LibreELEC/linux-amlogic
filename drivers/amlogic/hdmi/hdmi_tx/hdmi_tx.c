@@ -1311,6 +1311,12 @@ wait:
                 if(!(hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_IS_EDID_DATA_READY, 0))) {
                     hdmi_print(ERR, EDID "edid failed\n");
                     hdmitx_device->tv_no_edid = 1;
+                    hdmi_print(ERR, EDID "setting HDMI vendor\n");
+                    hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_HDMI_DVI_MODE, HDMI_MODE);
+                    hdmitx_device->RXCap.IEEEOUI = 0x000c03; /* Need to stop us being switched in to DVI mode */
+                    set_disp_mode_auto();
+                    hdmi_print(ERR, EDID "manual cec now\n");
+                    cec_node_init(hdmitx_device);
                 }
                 else {
                     goto edid_op;
