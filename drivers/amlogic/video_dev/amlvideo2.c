@@ -3470,7 +3470,7 @@ static const struct v4l2_file_operations amlvideo2_fops = {
 	.release        = amlvideo2_close,
 	.read           = amlvideo2_read,
 	.poll		= amlvideo2_poll,
-	.ioctl          = video_ioctl2, /* V4L2 ioctl handler */
+	.unlocked_ioctl          = video_ioctl2, /* V4L2 ioctl handler */
 	.mmap           = amlvideo2_mmap,
 };
 
@@ -3509,7 +3509,7 @@ static struct video_device amlvideo2_template = {
 	.release	= video_device_release,
 
 	.tvnorms              = V4L2_STD_525_60,
-	.current_norm         = V4L2_STD_NTSC_M,
+	// .current_norm         = V4L2_STD_NTSC_M,
 };
 
 static int amlvideo2_receiver_event_fun(int type, void* data, void* private_data)
@@ -3678,7 +3678,7 @@ static int amlvideo2_create_node(struct platform_device *pdev)
 			break;
 		}
 		*vfd = amlvideo2_template;
-		vfd->debug = debug;
+		// vfd->debug = debug;
 		ret = video_register_device(vfd, VFL_TYPE_GRABBER, video_nr);
 		if (ret < 0){
 			ret = -ENODEV;

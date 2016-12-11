@@ -965,7 +965,7 @@ static int amlvideo_mmap(struct file *file, struct vm_area_struct *vma) {
     return ret;
 }
 
-static const struct v4l2_file_operations amlvideo_fops = { .owner = THIS_MODULE, .open = amlvideo_open, .release = amlvideo_close, .read = amlvideo_read, .poll = amlvideo_poll, .ioctl = video_ioctl2, /* V4L2 ioctl handler */
+static const struct v4l2_file_operations amlvideo_fops = { .owner = THIS_MODULE, .open = amlvideo_open, .release = amlvideo_close, .read = amlvideo_read, .poll = amlvideo_poll, .unlocked_ioctl = video_ioctl2, /* V4L2 ioctl handler */
 .mmap = amlvideo_mmap, };
 
 static const struct v4l2_ioctl_ops amlvideo_ioctl_ops = {
@@ -991,7 +991,7 @@ static const struct v4l2_ioctl_ops amlvideo_ioctl_ops = {
 
 static struct video_device amlvideo_template = { .name = "amlvideo", .fops = &amlvideo_fops, .ioctl_ops = &amlvideo_ioctl_ops, .release = video_device_release,
 
-.tvnorms = V4L2_STD_525_60, .current_norm = V4L2_STD_NTSC_M , };
+.tvnorms = V4L2_STD_525_60, /* .current_norm = V4L2_STD_NTSC_M , */ };
 
 /* -----------------------------------------------------------------
  Initialization and module stuff
@@ -1042,7 +1042,9 @@ static int __init amlvideo_create_instance(int inst) {
         goto unreg_dev;
 
     *vfd = amlvideo_template;
-    vfd->debug = debug;
+    // vfd->debug = debug;
+    vfd->v4l2_dev = &dev->v4l2_dev;
+
     ret = video_register_device(vfd, VFL_TYPE_GRABBER, video_nr);
     if (ret < 0)
         goto rel_vdev;
