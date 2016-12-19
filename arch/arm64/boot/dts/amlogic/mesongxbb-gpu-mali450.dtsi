@@ -59,7 +59,7 @@
 			clkp_freq = <500000000>;
 			voltage = <1150>;
 			keep_count = <5>;
-			threshold = <30 250>;
+			threshold = <30 120>;
 		  };
 
 		  clk250_cfg:clk250_cfg {
@@ -68,8 +68,7 @@
 			clkp_freq = <500000000>;
 			voltage = <1150>;
 			keep_count = <5>;
-			threshold = <115 250>;
-			/*125 = 250*(125/250), 50= 60-10*/
+			threshold = <80 170>;
 		  };
 
 		  clk285_cfg:clk285_cfg {
@@ -78,8 +77,7 @@
 			clkp_freq = <285000000>;
 			voltage = <1150>;
 			keep_count = <5>;
-			threshold = <100 250>;
-			/*109 = 250*(125/285)*/
+			threshold = <100 190>;
 		  };
 
 		  clk400_cfg:clk400_cfg {
@@ -87,9 +85,8 @@
 			clk_parent = "fclk_div5";
 			clkp_freq = <400000000>;
 			voltage = <1150>;
-			keep_count = <3>;
-			threshold = <168 250>;
-			/*178 = 250*(285/400)*/
+			keep_count = <5>;
+			threshold = <152 207>;
 		  };
 
 		  clk500_cfg:clk500_cfg {
@@ -97,9 +94,8 @@
 			clk_parent = "fclk_div4";
 			clkp_freq = <500000000>;
 			voltage = <1150>;
-			keep_count = <2>;
-			threshold = <190 250>;
-			/*200=250*(400/500)*/
+			keep_count = <5>;
+			threshold = <180 220>;
 		  };
 
 		  clk666_cfg:clk666_cfg {
@@ -107,9 +103,8 @@
 			clk_parent = "fclk_div3";
 			clkp_freq = <666000000>;
 			voltage = <1150>;
-			keep_count = <1>;
-			threshold = <177 250>;
-			/*187.5=250*(500/666.6)*/
+			keep_count = <5>;
+			threshold = <210 236>;
 		  };
 
 		  clk750_cfg:clk750_cfg {
@@ -117,9 +112,8 @@
 			clk_parent = "gp0_pll";
 			clkp_freq = <744000000>;
 			voltage = <1150>;
-			keep_count = <1>;
-			threshold = <213 255>;
-			/*223=250*(666.0/744.0), 223+7=230*/
+			keep_count = <5>;
+			threshold = <230 255>;
 		  };
 
 		  clk800_cfg:clk800_cfg {
@@ -127,7 +121,7 @@
 			clk_parent = "gp0_pll";
 			clkp_freq = <792000000>;
 			voltage = <1150>;
-			keep_count = <1>;
+			keep_count = <5>;
 			threshold = <230 255>;
 		  };
 
