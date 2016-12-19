@@ -26,6 +26,9 @@ static inline bool cpu_have_feature(unsigned int num)
 {
 	return elf_hwcap & (1UL << num);
 }
-
 #endif /* __ASSEMBLY__ */
+
+bool cpu_supports_mixed_endian_el0(void);
+bool system_supports_mixed_endian_el0(void);
+
 #endif

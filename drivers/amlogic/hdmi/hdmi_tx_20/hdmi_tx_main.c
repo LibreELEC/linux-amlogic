@@ -2869,8 +2869,8 @@ static int amhdmitx_remove(struct platform_device *pdev)
 	device_remove_file(dev, &dev_attr_vic);
 	device_remove_file(dev, &dev_attr_hdcp_pwr);
 	device_remove_file(dev, &dev_attr_aud_output_chs);
-	device_remove_file(dev, &dev_attr_output_rgb);
 	device_remove_file(dev, &dev_attr_div40);
+	device_remove_file(dev, &dev_attr_output_rgb);
 
 	cdev_del(&hdmitx_device.cdev);
 

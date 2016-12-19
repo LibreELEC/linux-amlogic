@@ -954,6 +954,10 @@ kill_all_hid_devices(struct acc_dev *dev)
 	struct list_head *entry, *temp;
 	unsigned long flags;
 
+	/* do nothing if usb accessory device doesn't exist */
+	if (!dev)
+		return;
+
 	spin_lock_irqsave(&dev->lock, flags);
 	list_for_each_safe(entry, temp, &dev->hid_list) {
 		hid = list_entry(entry, struct acc_hid_dev, list);
@@ -1203,8 +1207,7 @@ err:
 static void acc_disconnect(void)
 {
 	/* unregister all HID devices if USB is disconnected */
-	if (_acc_dev)
-		kill_all_hid_devices(_acc_dev);
+	kill_all_hid_devices(_acc_dev);
 }
 
 static void acc_cleanup(void)

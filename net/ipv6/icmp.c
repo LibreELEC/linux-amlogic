@@ -558,8 +558,8 @@ static void icmpv6_echo_reply(struct sk_buff *skb)
 	struct dst_entry *dst;
 	int err = 0;
 	int hlimit;
-	u8 tclass;
 	u32 mark = IP6_REPLY_MARK(net, skb->mark);
+	u8 tclass;
 
 	saddr = &ipv6_hdr(skb)->daddr;
 
