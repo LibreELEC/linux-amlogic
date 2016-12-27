@@ -2840,13 +2840,15 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     int enc_line;
     unsigned char frame_par_di_set = 0;
     s32 i, vout_type;
+    u32 system_time;
     vframe_t *vf;
     unsigned long flags;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     vdin_v4l2_ops_t *vdin_ops = NULL;
     vdin_arg_t arg;
 #endif
-	bool show_nosync=false;
+    bool show_nosync=false;
+    int diff;
 
 #ifdef CONFIG_AM_VIDEO_LOG
     int toggle_cnt;
@@ -2976,8 +2978,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         timestamp_apts_inc(vsync_pts_inc / vsync_slow_factor);
     }
     if (omx_secret_mode == true) {
-        u32 system_time = timestamp_pcrscr_get();
-        int diff = omx_pts - system_time;
+        atomic_set(&trickmode_framedone, 1);
+        video_notify_flag |= VIDEO_NOTIFY_TRICK_WAIT;
+        system_time = timestamp_pcrscr_get();
+        diff = omx_pts - system_time;
         if (diff>11000 || diff<-11000) {
             timestamp_pcrscr_enable(1);
             //printk("system_time=%d,omx_pts=%d,diff=%d\n",system_time,omx_pts,diff);
