@@ -349,7 +349,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
 		}
 
 		if ((I_PICTURE == picture_type) ||
-				((P_PICTURE == picture_type) && (keyframe_pts_only != 0))) {
+				((P_PICTURE == picture_type) && (keyframe_pts_only == 0))) {
 			offset = READ_VREG(MP4_OFFSET_REG);
 			/*2500-->3000,because some mpeg4
 			video may checkout failed;
