@@ -148,6 +148,7 @@ static u64 vmpeg4_ratio64;
 static u32 rate_detect;
 static u32 vmpeg4_rotation;
 static u32 pts_unstable = 0;
+static u32 keyframe_pts_only;
 
 static u32 total_frame;
 static u32 last_vop_time_inc, last_duration;
@@ -335,7 +336,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
         if (1 == pts_unstable) {
             trustable_pts = I_PICTURE == picture_type;
         } else {
-            trustable_pts = I_PICTURE == picture_type || P_PICTURE == picture_type;
+            trustable_pts = I_PICTURE == picture_type || (P_PICTURE == picture_type && keyframe_pts_only == 0);
         }
 
         /*2500-->3000,because some mpeg4 video may checkout failed;
@@ -777,6 +778,8 @@ static void vmpeg4_local_init(void)
 
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
     pts_unstable = ((u32)vmpeg4_amstream_dec_info.param & 0x40) >> 6;
+
+    keyframe_pts_only = (u32)vmpeg4_amstream_dec_info.param & 0x100;
 
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
