@@ -324,6 +324,13 @@ static int video_receiver_event_fun(int type, void* data, void* private_data) {
             vfq_init(&q_omx, AMLVIDEO_POOL_SIZE+1, &amlvideo_pool_omx[0]);
         }
     }
+    else if (type == VFRAME_EVENT_PROVIDER_FR_HINT) {
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_FR_HINT,data);
+    }
+    else if (type == VFRAME_EVENT_PROVIDER_FR_END_HINT) {
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_FR_END_HINT,data);
+    }
+
     return 0;
 }
 
