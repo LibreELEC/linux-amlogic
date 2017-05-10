@@ -119,12 +119,13 @@
 #ifdef CONFIG_ARM64_ERRATUM_845719
 	tbz	x22, #4, 1f
 #ifdef CONFIG_PID_IN_CONTEXTIDR
-	mrs	x29, contextidr_el1
-	msr	contextidr_el1, x29
-#else
-	msr contextidr_el1, xzr
-#endif
+	mrs 	x29, contextidr_el1
+	msr 	contextidr_el1, x29
 1:
+#else
+	msr 	contextidr_el1, xzr
+1:
+#endif
 #endif
 	.endif
 	.if	\ret

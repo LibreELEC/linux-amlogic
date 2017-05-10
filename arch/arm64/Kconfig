@@ -1,7 +1,7 @@
 config ARM64
 	def_bool y
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
-	select ARCH_HAS_ELF_RANDOMIZE
+	select ARCH_HAS_GCOV_PROFILE_ALL
 	select ARCH_USE_CMPXCHG_LOCKREF
 	select ARCH_SUPPORTS_ATOMIC_RMW
 	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
@@ -86,38 +86,38 @@ config ARCH_PHYS_ADDR_T_64BIT
 config MMU
 	def_bool y
 
+config NO_IOPORT
+	def_bool y
+
 config ARCH_MMAP_RND_BITS_MIN
        default 14 if ARM64_64K_PAGES
-       default 16 if ARM64_16K_PAGES
        default 18
 
 # max bits determined by the following formula:
 #  VA_BITS - PAGE_SHIFT - 3
+#  VA_BITS depends on 64K_PAGES, either
+#  42 if 64K_PAGES or 39 otherwise
 config ARCH_MMAP_RND_BITS_MAX
-       default 19 if ARM64_VA_BITS=36
-       default 24 if ARM64_VA_BITS=39
-       default 27 if ARM64_VA_BITS=42
-       default 30 if ARM64_VA_BITS=47
-       default 29 if ARM64_VA_BITS=48 && ARM64_64K_PAGES
-       default 31 if ARM64_VA_BITS=48 && ARM64_16K_PAGES
-       default 33 if ARM64_VA_BITS=48
-       default 14 if ARM64_64K_PAGES
-       default 16 if ARM64_16K_PAGES
-       default 18
+       default 23 if ARM64_64K_PAGES
+       default 24
 
 config ARCH_MMAP_RND_COMPAT_BITS_MIN
        default 7 if ARM64_64K_PAGES
-       default 9 if ARM64_16K_PAGES
        default 11
 
 config ARCH_MMAP_RND_COMPAT_BITS_MAX
        default 16
 
-config NO_IOPORT
-	def_bool y
+config ILLEGAL_POINTER_VALUE
+	hex
+	default 0xdead000000000000
 
 config STACKTRACE_SUPPORT
 	def_bool y
+
+config ILLEGAL_POINTER_VALUE
+	hex
+	default 0xdead000000000000
 
 config LOCKDEP_SUPPORT
 	def_bool y
@@ -197,7 +197,9 @@ config ARM_AMBA
 
 endmenu
 
-menu "ARM errata workarounds via the alternatives framework"
+menu "Kernel Features"
+
+menu "ARM errata workarounds"
 
 config ARM64_ERRATUM_845719
 	bool "Cortex-A53: 845719: a load might read incorrect data"
@@ -246,7 +248,6 @@ config ARM64_ERRATUM_835769
 
 endmenu
 
-menu "Kernel Features"
 
 config ARM64_64K_PAGES
 	bool "Enable 64KB pages support"
@@ -416,31 +417,6 @@ config HOTPLUG_CPU
 	  Say Y here to experiment with turning CPUs off and on.  CPUs
 	  can be controlled through /sys/devices/system/cpu.
 
-config SWP_EMULATE
-	bool "Emulate SWP/SWPB instructions"
-	help
-	  ARMv6 architecture deprecates use of the SWP/SWPB instructions. ARMv8
-	  oblosetes the use of SWP/SWPB instructions. ARMv7 multiprocessing
-	  extensions introduce the ability to disable these instructions,
-	  triggering an undefined instruction exception when executed. Say Y
-	  here to enable software emulation of these instructions for userspace
-	  (not kernel) using LDREX/STREX. Also creates /proc/cpu/swp_emulation
-	  for statistics.
-
-	  In some older versions of glibc [<=2.8] SWP is used during futex
-	  trylock() operations with the assumption that the code will not
-	  be preempted. This invalid assumption may be more likely to fail
-	  with SWP emulation enabled, leading to deadlock of the user
-	  application.
-
-	  NOTE: when accessing uncached shared regions, LDREX/STREX rely
-	  on an external transaction monitoring block called a global
-	  monitor to maintain update atomicity. If your system does not
-	  implement a global monitor, this option can cause programs that
-	  perform SWP operations to uncached memory to deadlock.
-
-	  If unsure, say Y.
-
 source kernel/Kconfig.preempt
 
 config HZ
@@ -470,27 +446,6 @@ config HW_PERF_EVENTS
 	help
 	  Enable hardware performance counter support for perf events. If
 	  disabled, perf events will use software events only.
-
-config ARMV7_COMPAT
-	bool "Kernel support for ARMv7 applications"
-	depends on COMPAT
-	select SWP_EMULATE
-	help
-	 This option enables features that allow that ran on an ARMv7 or older
-	 processor to continue functioning.
-
-	 If you want to execute ARMv7 applications, say Y
-
-config ARMV7_COMPAT_CPUINFO
-	bool "Report backwards compatible cpu features in /proc/cpuinfo"
-	depends on ARMV7_COMPAT
-	default y
-	help
-	 This option makes /proc/cpuinfo list CPU features that an ARMv7 or
-	 earlier kernel would report, but are not optional on an ARMv8 or later
-	 processor.
-
-	 If you want to execute ARMv7 applications, say Y
 
 config SYS_SUPPORTS_HUGETLBFS
 	def_bool y
@@ -558,6 +513,74 @@ config SECCOMP
 	  and the task is only allowed to execute a few safe syscalls
 	  defined by each seccomp mode.
 
+menuconfig ARMV8_DEPRECATED
+	bool "Emulate deprecated/obsolete ARMv8 instructions"
+	depends on COMPAT
+	help
+	  Legacy software support may require certain instructions
+	  that have been deprecated or obsoleted in the architecture.
+
+	  Enable this config to enable selective emulation of these
+	  features.
+
+	  If unsure, say Y
+
+if ARMV8_DEPRECATED
+
+config SWP_EMULATION
+	bool "Emulate SWP/SWPB instructions"
+	help
+	  ARMv8 obsoletes the use of A32 SWP/SWPB instructions such that
+	  they are always undefined. Say Y here to enable software
+	  emulation of these instructions for userspace using LDXR/STXR.
+
+	  In some older versions of glibc [<=2.8] SWP is used during futex
+	  trylock() operations with the assumption that the code will not
+	  be preempted. This invalid assumption may be more likely to fail
+	  with SWP emulation enabled, leading to deadlock of the user
+	  application.
+
+	  NOTE: when accessing uncached shared regions, LDXR/STXR rely
+	  on an external transaction monitoring block called a global
+	  monitor to maintain update atomicity. If your system does not
+	  implement a global monitor, this option can cause programs that
+	  perform SWP operations to uncached memory to deadlock.
+
+	  If unsure, say Y
+
+config CP15_BARRIER_EMULATION
+	bool "Emulate CP15 Barrier instructions"
+	help
+	  The CP15 barrier instructions - CP15ISB, CP15DSB, and
+	  CP15DMB - are deprecated in ARMv8 (and ARMv7). It is
+	  strongly recommended to use the ISB, DSB, and DMB
+	  instructions instead.
+
+	  Say Y here to enable software emulation of these
+	  instructions for AArch32 userspace code. When this option is
+	  enabled, CP15 barrier usage is traced which can help
+	  identify software that needs updating.
+
+	  If unsure, say Y
+
+config SETEND_EMULATION
+	bool "Emulate SETEND instruction"
+	help
+	  The SETEND instruction alters the data-endianness of the
+	  AArch32 EL0, and is deprecated in ARMv8.
+
+	  Say Y here to enable software emulation of the instruction
+	  for AArch32 userspace code.
+
+	  Note: All the cpus on the system must have mixed endian support at EL0
+	  for this feature to be enabled. If a new CPU - which doesn't support mixed
+	  endian - is hotplugged in after this feature has been enabled, there could
+	  be unexpected results in the applications.
+
+	  If unsure, say Y
+
+endif
+
 endmenu
 
 menu "Boot options"
@@ -611,6 +634,20 @@ config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
 	  Space separated list of names of dtbs to append when
 	  building a concatenated Image.gz-dtb.
 
+config EFI
+	bool "UEFI runtime support"
+	depends on OF && !CPU_BIG_ENDIAN
+	select LIBFDT
+	select UCS2_STRING
+	select EFI_PARAMS_FROM_FDT
+	default y
+	help
+	  This option provides support for runtime services provided
+	  by UEFI firmware (such as non-volatile variables, realtime
+          clock, and platform reset). A UEFI stub is also provided to
+	  allow the kernel to be booted as an EFI application. This
+	  is only useful on systems that have UEFI firmware.
+
 endmenu
 
 menu "Userspace binary formats"
@@ -663,11 +700,29 @@ menu "CPU Power Management"
 
 source "drivers/cpuidle/Kconfig"
 
+config ARM64_ERRATUM_843419
+	bool "Cortex-A53: 843419: A load or store might access an incorrect address"
+	depends on MODULES
+	default y
+	help
+	  This option builds kernel modules using the large memory model in
+	  order to avoid the use of the ADRP instruction, which can cause
+	  a subsequent memory access to use an incorrect address on Cortex-A53
+	  parts up to r0p4.
+
+	  Note that the kernel itself must be linked with a version of ld
+	  which fixes potentially affected ADRP instructions through the
+	  use of veneers.
+
+	  If unsure, say Y.
+
 endmenu
 
 source "net/Kconfig"
 
 source "drivers/Kconfig"
+
+source "drivers/firmware/Kconfig"
 
 source "fs/Kconfig"
 

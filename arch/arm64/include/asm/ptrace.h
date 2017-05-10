@@ -54,6 +54,13 @@
 #define COMPAT_PSR_Z_BIT	0x40000000
 #define COMPAT_PSR_N_BIT	0x80000000
 #define COMPAT_PSR_IT_MASK	0x0600fc00	/* If-Then execution state mask */
+
+#ifdef CONFIG_CPU_BIG_ENDIAN
+#define COMPAT_PSR_ENDSTATE	COMPAT_PSR_E_BIT
+#else
+#define COMPAT_PSR_ENDSTATE	0
+#endif
+
 /*
  * These are 'magic' values for PTRACE_PEEKUSR that return info about where a
  * process is located in memory.
@@ -81,14 +88,14 @@
 #define compat_sp	regs[13]
 #define compat_lr	regs[14]
 #define compat_sp_hyp	regs[15]
-#define compat_sp_irq	regs[16]
-#define compat_lr_irq	regs[17]
-#define compat_sp_svc	regs[18]
-#define compat_lr_svc	regs[19]
-#define compat_sp_abt	regs[20]
-#define compat_lr_abt	regs[21]
-#define compat_sp_und	regs[22]
-#define compat_lr_und	regs[23]
+#define compat_lr_irq	regs[16]
+#define compat_sp_irq	regs[17]
+#define compat_lr_svc	regs[18]
+#define compat_sp_svc	regs[19]
+#define compat_lr_abt	regs[20]
+#define compat_sp_abt	regs[21]
+#define compat_lr_und	regs[22]
+#define compat_sp_und	regs[23]
 #define compat_r8_fiq	regs[24]
 #define compat_r9_fiq	regs[25]
 #define compat_r10_fiq	regs[26]
@@ -186,14 +193,6 @@ extern unsigned long profile_pc(struct pt_regs *regs);
 #else
 #define profile_pc(regs) instruction_pointer(regs)
 #endif
-
-/*
- * True if instr is a 32-bit thumb instruction. This works if instr
- * is the first or only half-word of a thumb instruction. It also works
- * when instr holds all 32-bits of a wide thumb instruction if stored
- * in the form (first_half<<16)|(second_half)
- */
-#define is_wide_instruction(instr)	((unsigned)(instr) >= 0xe800)
 
 #endif /* __ASSEMBLY__ */
 #endif

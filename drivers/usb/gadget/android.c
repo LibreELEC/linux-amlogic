@@ -92,6 +92,9 @@ struct android_dev {
 	struct usb_composite_dev *cdev;
 	struct device *dev;
 
+	void (*setup_complete)(struct usb_ep *ep,
+				struct usb_request *req);
+
 	bool enabled;
 	int disable_depth;
 	struct mutex mutex;
@@ -342,7 +345,7 @@ static struct android_usb_function ffs_function = {
 	.attributes	= ffs_function_attributes,
 };
 
-static int functionfs_ready_callback(struct ffs_data *ffs)
+static int __maybe_unused functionfs_ready_callback(struct ffs_data *ffs)
 {
 	struct android_dev *dev = _android_dev;
 	struct functionfs_config *config = ffs_function.config;
@@ -365,7 +368,7 @@ err:
 	return ret;
 }
 
-static void functionfs_closed_callback(struct ffs_data *ffs)
+static void __maybe_unused functionfs_closed_callback(struct ffs_data *ffs)
 {
 	struct android_dev *dev = _android_dev;
 	struct functionfs_config *config = ffs_function.config;
@@ -383,12 +386,12 @@ static void functionfs_closed_callback(struct ffs_data *ffs)
 	mutex_unlock(&dev->mutex);
 }
 
-static void *functionfs_acquire_dev_callback(struct ffs_dev *dev)
+static void __maybe_unused *functionfs_acquire_dev_callback(struct ffs_dev *dev)
 {
 	return 0;
 }
 
-static void functionfs_release_dev_callback(struct ffs_dev *dev)
+static void __maybe_unused functionfs_release_dev_callback(struct ffs_dev *dev)
 {
 }
 
@@ -856,8 +859,8 @@ err_usb_add_function:
 		usb_remove_function(c, config->f_ms[i]);
 	return ret;
 }
-#if 0
-static void mass_storage_function_unbind_config(struct android_usb_function *f,
+
+static void __maybe_unused mass_storage_function_unbind_config(struct android_usb_function *f,
 					       struct usb_configuration *c)
 {
 	int i;
@@ -866,7 +869,7 @@ static void mass_storage_function_unbind_config(struct android_usb_function *f,
 	for (i = 0; i < config->instances_on; i++)
 		usb_remove_function(c, config->f_ms[i]);
 }
-#endif
+
 static ssize_t mass_storage_inquiry_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1384,6 +1387,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 	struct usb_gadget	*gadget = cdev->gadget;
 	int			id, ret;
 
+	/* Save the default handler */
+	dev->setup_complete = cdev->req->complete;
+
 	/*
 	 * Start disconnected. Userspace will connect the gadget once
 	 * it is done configuring the functions.
@@ -1450,6 +1456,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 
 	req->zero = 0;
 	req->length = 0;
+	req->complete = dev->setup_complete;
 	gadget->ep0->driver_data = cdev;
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list) {
