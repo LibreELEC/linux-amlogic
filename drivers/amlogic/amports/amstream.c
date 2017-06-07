@@ -101,8 +101,8 @@ u32 amstream_buf_num;
 
 static int debugflags;
 
-#define DEFAULT_VIDEO_BUFFER_SIZE       (1024 * 1024 * 3)
-#define DEFAULT_VIDEO_BUFFER_SIZE_4K       (1024 * 1024 * 6)
+#define DEFAULT_VIDEO_BUFFER_SIZE       (1024 * 1024 * 10)
+#define DEFAULT_VIDEO_BUFFER_SIZE_4K       (1024 * 1024 * 20)
 #define DEFAULT_VIDEO_BUFFER_SIZE_TVP       (1024 * 1024 * 10)
 #define DEFAULT_VIDEO_BUFFER_SIZE_4K_TVP       (1024 * 1024 * 15)
 
