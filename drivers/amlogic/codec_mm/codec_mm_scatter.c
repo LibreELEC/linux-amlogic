@@ -36,7 +36,6 @@
 #include <linux/amlogic/codec_mm/codec_mm_scatter.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
-#include <linux/mm.h>
 #include <linux/amlogic/codec_mm/configs.h>
 
 #include "codec_mm_priv.h"
@@ -1717,7 +1716,7 @@ static int codec_mm_scatter_info_dump_in(
 			 (smgt->total_page_num << PAGE_SHIFT) / SZ_1M,
 			 smgt->total_page_num << PAGE_SHIFT,
 			 smgt->total_page_num);
-	n = smgt->alloced_page_num;
+	n = smgt->alloced_page_num - smgt->cached_pages;
 	BUFPRINT("\talloced size:%dM, %d Bypes,pages:%d\n",
 			 (n << PAGE_SHIFT) / SZ_1M,
 			 n << PAGE_SHIFT,
@@ -1728,11 +1727,6 @@ static int codec_mm_scatter_info_dump_in(
 	BUFPRINT("\tscatter cached:%d M |%d pages\n",
 		(smgt->cached_pages << PAGE_SHIFT) / SZ_1M,
 		smgt->cached_pages);
-
-	BUFPRINT("\talloc from sys size:%d\n",
-		(smgt->alloc_from_sys_sc_cnt +
-		smgt->one_page_cnt) << PAGE_SHIFT);
-
 	BUFPRINT("\talloc from sys sc cnt:%d\n",
 		smgt->alloc_from_sys_sc_cnt);
 	BUFPRINT("\talloc from sys pages cnt:%d pages\n",
@@ -2136,15 +2130,7 @@ static void codec_mm_scatter_cache_manage(
 	int total_free_page = smgt->total_page_num -
 		smgt->alloced_page_num + smgt->cached_pages;
 	if (smgt->delay_free_on > 0 && smgt->keep_size_PAGE > 0) {
-		/*if alloc too much ,don't cache any more.*/
-		if (smgt->no_cache_size_M > 0 &&
-			(smgt->cached_pages <= smgt->keep_size_PAGE) &&
-			(smgt->total_page_num >=
-			 (smgt->no_cache_size_M * (SZ_1M >> PAGE_SHIFT)))) {
-			/*have enough pages for most movies.
-			  don't cache more.
-			*/
-		} else if ((smgt->cached_pages < smgt->keep_size_PAGE) ||
+		if ((smgt->cached_pages < smgt->keep_size_PAGE) ||
 			(smgt->force_cache_on &&/*on star cache*/
 			(smgt->cached_pages < smgt->force_cache_page_cnt))
 		) {/*first 500ms ,alloc double.*/
@@ -2423,12 +2409,6 @@ static int codec_mm_scatter_mgt_alloc_in(struct codec_mm_scatter_mgt **psmgt)
 	smgt->mem_flags = CODEC_MM_FLAGS_CMA_FIRST |
 					CODEC_MM_FLAGS_FOR_VDECODER |
 					CODEC_MM_FLAGS_FOR_SCATTER;
-	if ((totalram_pages << PAGE_SHIFT) < 800 * SZ_1M) {
-		/*less memory boards don't cache more,
-		after alloced many pages.*/
-		smgt->no_cache_size_M = 100;
-	} else
-		smgt->no_cache_size_M = 0;
 	INIT_LIST_HEAD(&smgt->free_list);
 	INIT_LIST_HEAD(&smgt->scatter_list);
 	mutex_init(&smgt->monitor_lock);
