@@ -21,7 +21,7 @@
 #include <dt-bindings/reset/aml_gxl.h>
 #include <dt-bindings/thermal/thermal.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include "mesongxbb-gpu-mali450.dtsi"
+#include "mesongxl-gpu-mali450.dtsi"
 / {
 	cpus:cpus {
 		#address-cells = <2>;
