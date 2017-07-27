@@ -3625,7 +3625,6 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	pdata->need_retuning = false;
 	pdata->signal_voltage = 0xff; /* init as an invalid value */
 	host->is_tunning = 0;
-	mmc->index = 0;
 	mmc->ops = &aml_sd_emmc_ops;
 	mmc->alldev_claim = &aml_sd_emmc_claim;
 	mmc->ios.clock = 400000;
