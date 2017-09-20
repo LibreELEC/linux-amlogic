@@ -63,6 +63,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
 			rc-nebula.o \
 			rc-nec-terratec-cinergy-xs.o \
 			rc-norwood.o \
+                        rc-odroid.o \
 			rc-npgtech.o \
 			rc-pctv-sedna.o \
 			rc-pinnacle-color.o \
