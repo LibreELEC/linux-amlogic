@@ -481,7 +481,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd,
 	unsigned int ret;
 
 	if (args)
-		ret = copy_from_user(&val, argp, sizeof(unsigned long));
+		ret = copy_from_user(&val, argp, sizeof(unsigned int));
 	mutex_lock(&remote_file_mutex);
 	switch (cmd) {
 	case REMOTE_IOC_INFCODE_CONFIG:
@@ -517,35 +517,35 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case REMOTE_IOC_SET_RELT_DELAY:
 		ret = copy_from_user(&remote->relt_delay[remote->map_num],
-					argp, sizeof(long));
+					argp, sizeof(int));
 		break;
 	case REMOTE_IOC_SET_REPEAT_DELAY:
 		ret = copy_from_user(&remote->repeat_delay[remote->map_num],
 					argp,
-					sizeof(long));
+					sizeof(int));
 		break;
 	case REMOTE_IOC_SET_REPEAT_PERIOD:
 		ret = copy_from_user(&remote->repeat_peroid[remote->map_num],
 					argp,
-					sizeof(long));
+					sizeof(int));
 		break;
 	case REMOTE_IOC_SET_REPEAT_ENABLE:
 		ret = copy_from_user(&remote->repeat_enable, argp,
-					sizeof(long));
+					sizeof(int));
 		break;
 	case REMOTE_IOC_SET_DEBUG_ENABLE:
 		ret = copy_from_user(&remote->debug_enable, argp,
-							sizeof(long));
+							sizeof(int));
 		break;
 	case REMOTE_IOC_SET_MODE:
-		ret = copy_from_user(&remote->work_mode, argp, sizeof(long));
+		ret = copy_from_user(&remote->work_mode, argp, sizeof(int));
 		break;
 	case REMOTE_IOC_SET_BIT_COUNT:
-		ret = copy_from_user(&remote->bit_count, argp, sizeof(long));
+		ret = copy_from_user(&remote->bit_count, argp, sizeof(int));
 		break;
 	case REMOTE_IOC_SET_CUSTOMCODE:
 		ret = copy_from_user(&remote->custom_code[remote->map_num],
-							argp, sizeof(long));
+							argp, sizeof(int));
 		break;
 	case REMOTE_IOC_SET_REG_BASE_GEN:
 		am_remote_write_reg(OPERATION_CTRL_REG0, val);
@@ -568,7 +568,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd,
 	case REMOTE_IOC_SET_RELEASE_DELAY:
 		ret = copy_from_user(&remote->release_delay[remote->map_num],
 					argp,
-				sizeof(long));
+				sizeof(int));
 		break;
 	/*SW*/
 	case REMOTE_IOC_SET_TW_LEADER_ACT:
@@ -630,7 +630,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd,
 	case REMOTE_IOC_GET_TW_BIT0_TIME:
 	case REMOTE_IOC_GET_TW_BIT1_TIME:
 	case REMOTE_IOC_GET_TW_REPEATE_LEADER:
-		ret = copy_to_user(argp, &val, sizeof(long));
+		ret = copy_to_user(argp, &val, sizeof(int));
 		break;
 	}
 	mutex_unlock(&remote_file_mutex);
