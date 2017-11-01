@@ -93,6 +93,7 @@ static int debugflags=0;
 static int output_fps = 0;
 static u32 omx_pts = 0;
 bool omx_secret_mode = false;
+EXPORT_SYMBOL(omx_secret_mode);
 #define DEBUG_FLAG_FFPLAY	(1<<0)
 #define DEBUG_FLAG_CALC_PTS_INC	(1<<1)
 
