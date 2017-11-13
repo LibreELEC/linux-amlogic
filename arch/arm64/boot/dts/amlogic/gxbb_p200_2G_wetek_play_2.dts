@@ -52,8 +52,8 @@
 		};
 		pstore:aml_pstore {
 			compatible = "amlogic, pstore";
-			reg = <0x0 0x07300000 0x0 0x100000>;
-			no-map;
+			//reg = <0x0 0x07300000 0x0 0x100000>;
+			//no-map;
 		};
 		fb_reserved:linux,meson-fb {
 			compatible = "amlogic, fb-memory";
@@ -70,7 +70,7 @@
 
 		ion_reserved:linux,ion-dev {
 			compatible = "amlogic, idev-mem";
-			size = <0x0 0x2000000>;
+			//size = <0x0 0x2000000>;
 			multi-use;
 		};
 
@@ -87,16 +87,16 @@
 //			size = <0x0 0x01000000>;
 //		};
 		/*  POST PROCESS MANAGER */
-		//ppmgr_reserved:linux,ppmgr {
-		//	compatible = "amlogic, ppmgr_memory";
-		//	size = <0x0 0x2000000>;
-		//};
+		ppmgr_reserved:linux,ppmgr {
+			compatible = "amlogic, ppmgr_memory";
+			//size = <0x0 0x2000000>;
+		};
 
 		codec_mm_cma:linux,codec_mm_cma {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x0 0xc000000>;
-			alignment = <0x0 0x400000>;
+			size = <0x0 0xa000000>;
+			alignment = <0x0 0x800000>;
 			linux,contiguous-region;
 		};
 		picdec_cma_reserved:linux,picdec {
@@ -122,8 +122,8 @@
 		/* codec shared reserved */
 		codec_mm_reserved:linux,codec_mm_reserved {
 			compatible = "amlogic, codec-mm-reserved";
-			size = <0x0 0x4100000>;
-			alignment = <0x0 0x100000>;
+			size = <0x0 0x6000000>;
+			alignment = <0x0 0x800000>;
  			//no-map;
 		};
 	};
@@ -257,7 +257,7 @@
 	};
 	ppmgr {
 		compatible = "amlogic, ppmgr";//to match of_device_id's compatible member
-		memory-region = <&ion_reserved>;
+		memory-region = <&ppmgr_reserved>;
 		dev_name = "ppmgr";
 		status = "okay";
 	};
