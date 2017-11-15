@@ -210,15 +210,12 @@ static void of_gpiochip_add_pin_range(struct gpio_chip *chip)
 		if (!pctldev)
 			break;
 
-
-#if 0
 		ret = gpiochip_add_pin_range(chip,
-					     pinctrl_dev_get_name(pctldev),
-					     0, /* offset in gpiochip */
+					     pinctrl_dev_get_devname(pctldev),
 					     pinspec.args[0],
 					     pinspec.args[1],
 					     pinspec.args[2]);
-#endif
+
 		if (ret)
 			break;
 	}
