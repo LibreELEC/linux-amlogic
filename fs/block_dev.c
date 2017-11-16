@@ -29,7 +29,6 @@
 #include <linux/cleancache.h>
 #include <linux/aio.h>
 #include <asm/uaccess.h>
-#include <linux/syscalls.h>
 #include "internal.h"
 
 struct bdev_inode {
@@ -89,7 +88,7 @@ void kill_bdev(struct block_device *bdev)
 
 	invalidate_bh_lrus();
 	truncate_inode_pages(mapping, 0);
-}
+}	
 EXPORT_SYMBOL(kill_bdev);
 
 /* Invalidate clean unused buffers and pagecache. */
@@ -361,13 +360,13 @@ out:
 	mutex_unlock(&bd_inode->i_mutex);
 	return retval;
 }
-
+	
 int blkdev_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 {
 	struct inode *bd_inode = filp->f_mapping->host;
 	struct block_device *bdev = I_BDEV(bd_inode);
 	int error;
-
+	
 	error = filemap_write_and_wait_range(filp->f_mapping, start, end);
 	if (error)
 		return error;
@@ -539,7 +538,7 @@ struct block_device *bdget(dev_t dev)
 		inode->i_rdev = dev;
 		inode->i_bdev = bdev;
 		inode->i_data.a_ops = &def_blk_aops;
-		mapping_set_gfp_mask(&inode->i_data, GFP_USER | __GFP_BDEV);
+		mapping_set_gfp_mask(&inode->i_data, GFP_USER);
 		inode->i_data.backing_dev_info = &default_backing_dev_info;
 		spin_lock(&bdev_lock);
 		list_add(&bdev->bd_list, &all_bdevs);
@@ -580,7 +579,7 @@ void bdput(struct block_device *bdev)
 }
 
 EXPORT_SYMBOL(bdput);
-
+ 
 static struct block_device *bd_acquire(struct inode *inode)
 {
 	struct block_device *bdev;
@@ -652,22 +651,17 @@ void bd_forget(struct inode *inode)
 static bool bd_may_claim(struct block_device *bdev, struct block_device *whole,
 			 void *holder)
 {
-	if(bdev->bd_holder == sys_swapon)
-		return true;
-
 	if (bdev->bd_holder == holder)
 		return true;	 /* already a holder */
-	else if (bdev->bd_holder != NULL){
+	else if (bdev->bd_holder != NULL)
 		return false; 	 /* held by someone else */
-	}
 	else if (bdev->bd_contains == bdev)
 		return true;  	 /* is a whole device which isn't held */
 
 	else if (whole->bd_holder == bd_may_claim)
 		return true; 	 /* is a partition of a device that is being partitioned */
-	else if (whole->bd_holder != NULL){
+	else if (whole->bd_holder != NULL)
 		return false;	 /* is a partition of a held device */
-	}
 	else
 		return true;	 /* is a partition of an un-held device */
 }
@@ -1257,6 +1251,7 @@ int blkdev_get(struct block_device *bdev, fmode_t mode, void *holder)
 	}
 
 	res = __blkdev_get(bdev, mode, 0);
+
 	if (whole) {
 		struct gendisk *disk = whole->bd_disk;
 
@@ -1330,13 +1325,13 @@ struct block_device *blkdev_get_by_path(const char *path, fmode_t mode,
 	int err;
 
 	bdev = lookup_bdev(path);
-	if (IS_ERR(bdev)){
+	if (IS_ERR(bdev))
 		return bdev;
-	}
+
 	err = blkdev_get(bdev, mode, holder);
-	if (err){
+	if (err)
 		return ERR_PTR(err);
-	}
+
 	if ((mode & FMODE_WRITE) && bdev_read_only(bdev)) {
 		blkdev_put(bdev, mode);
 		return ERR_PTR(-EACCES);
