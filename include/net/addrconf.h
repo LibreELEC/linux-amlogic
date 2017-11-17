@@ -65,7 +65,7 @@ extern int			addrconf_set_dstaddr(struct net *net,
 
 extern int			ipv6_chk_addr(struct net *net,
 					      const struct in6_addr *addr,
-					      struct net_device *dev,
+					      const struct net_device *dev,
 					      int strict);
 
 #if defined(CONFIG_IPV6_MIP6) || defined(CONFIG_IPV6_MIP6_MODULE)
@@ -189,8 +189,6 @@ static inline bool ipv6_is_mld(struct sk_buff *skb, int nexthdr, int offset)
 
 extern void addrconf_prefix_rcv(struct net_device *dev,
 				u8 *opt, int len, bool sllao);
-
-u32 addrconf_rt_table(const struct net_device *dev, u32 default_table);
 
 /*
  *	anycast prototypes (anycast.c)
