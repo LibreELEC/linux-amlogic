@@ -492,7 +492,9 @@ static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
 {
 	addr->sa.sa_family = AF_INET6;
 	addr->v6.sin6_port = port;
+	addr->v6.sin6_flowinfo = 0;
 	addr->v6.sin6_addr = *saddr;
+	addr->v6.sin6_scope_id = 0;
 }
 
 /* Compare addresses exactly.
@@ -520,6 +522,8 @@ static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
 		}
 		return 0;
 	}
+	if (addr1->v6.sin6_port != addr2->v6.sin6_port)
+		return 0;
 	if (!ipv6_addr_equal(&addr1->v6.sin6_addr, &addr2->v6.sin6_addr))
 		return 0;
 	/* If this is a linklocal address, compare the scope_id. */

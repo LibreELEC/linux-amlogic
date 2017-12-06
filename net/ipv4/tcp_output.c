@@ -222,7 +222,8 @@ void tcp_select_initial_window(int __space, __u32 mss,
 		/* Set window scaling on max possible window
 		 * See RFC1323 for an explanation of the limit to 14
 		 */
-		space = max_t(u32, sysctl_tcp_rmem[2], sysctl_rmem_max);
+		space = max_t(u32, space, sysctl_tcp_rmem[2]);
+		space = max_t(u32, space, sysctl_rmem_max);
 		space = min_t(u32, space, *window_clamp);
 		while (space > 65535 && (*rcv_wscale) < 14) {
 			space >>= 1;
@@ -231,13 +232,14 @@ void tcp_select_initial_window(int __space, __u32 mss,
 	}
 
 	/* Set initial window to a value enough for senders starting with
-	 * initial congestion window of sysctl_tcp_default_init_rwnd. Place
+	 * initial congestion window of TCP_DEFAULT_INIT_RCVWND. Place
 	 * a limit on the initial window when mss is larger than 1460.
 	 */
 	if (mss > (1 << *rcv_wscale)) {
-		int init_cwnd = sysctl_tcp_default_init_rwnd;
+		int init_cwnd = TCP_DEFAULT_INIT_RCVWND;
 		if (mss > 1460)
-			init_cwnd = max_t(u32, (1460 * init_cwnd) / mss, 2);
+			init_cwnd =
+			max_t(u32, (1460 * TCP_DEFAULT_INIT_RCVWND) / mss, 2);
 		/* when initializing use the value from init_rcv_wnd
 		 * rather than the default from above
 		 */
@@ -1751,12 +1753,14 @@ static int tcp_mtu_probe(struct sock *sk)
 	len = 0;
 	tcp_for_write_queue_from_safe(skb, next, sk) {
 		copy = min_t(int, skb->len, probe_size - len);
-		if (nskb->ip_summed)
+		if (nskb->ip_summed) {
 			skb_copy_bits(skb, 0, skb_put(nskb, copy), copy);
-		else
-			nskb->csum = skb_copy_and_csum_bits(skb, 0,
-							    skb_put(nskb, copy),
-							    copy, nskb->csum);
+		} else {
+			__wsum csum = skb_copy_and_csum_bits(skb, 0,
+							     skb_put(nskb, copy),
+							     copy, 0);
+			nskb->csum = csum_block_add(nskb->csum, csum, len);
+		}
 
 		if (skb->len <= copy) {
 			/* We've eaten all the data from this skb.
@@ -1941,26 +1945,14 @@ repair:
 
 bool tcp_schedule_loss_probe(struct sock *sk)
 {
-	struct inet_connection_sock *icsk = inet_csk(sk);
 	struct tcp_sock *tp = tcp_sk(sk);
-	u32 timeout, tlp_time_stamp, rto_time_stamp;
 	u32 rtt = tp->srtt >> 3;
+	u32 timeout, rto_delta;
 
-	if (WARN_ON(icsk->icsk_pending == ICSK_TIME_EARLY_RETRANS))
-		return false;
-	/* No consecutive loss probes. */
-	if (WARN_ON(icsk->icsk_pending == ICSK_TIME_LOSS_PROBE)) {
-		tcp_rearm_rto(sk);
-		return false;
-	}
 	/* Don't do any loss probe on a Fast Open connection before 3WHS
 	 * finishes.
 	 */
 	if (sk->sk_state == TCP_SYN_RECV)
-		return false;
-
-	/* TLP is only scheduled when next timer event is RTO. */
-	if (icsk->icsk_pending != ICSK_TIME_RETRANS)
 		return false;
 
 	/* Schedule a loss probe in 2*RTT for SACK capable connections
@@ -1983,14 +1975,10 @@ bool tcp_schedule_loss_probe(struct sock *sk)
 				(rtt + (rtt >> 1) + TCP_DELACK_MAX));
 	timeout = max_t(u32, timeout, msecs_to_jiffies(10));
 
-	/* If RTO is shorter, just schedule TLP in its place. */
-	tlp_time_stamp = tcp_time_stamp + timeout;
-	rto_time_stamp = (u32)inet_csk(sk)->icsk_timeout;
-	if ((s32)(tlp_time_stamp - rto_time_stamp) > 0) {
-		s32 delta = rto_time_stamp - tcp_time_stamp;
-		if (delta > 0)
-			timeout = delta;
-	}
+	/* If the RTO formula yields an earlier time, then use that time. */
+	rto_delta = tcp_rto_delta(sk);  /* How far in future is RTO? */
+	if (rto_delta > 0)
+		timeout = min_t(u32, timeout, rto_delta);
 
 	inet_csk_reset_xmit_timer(sk, ICSK_TIME_LOSS_PROBE, timeout,
 				  TCP_RTO_MAX);
@@ -2150,9 +2138,11 @@ u32 __tcp_select_window(struct sock *sk)
 	int full_space = min_t(int, tp->window_clamp, tcp_full_space(sk));
 	int window;
 
-	if (mss > full_space)
+	if (unlikely(mss > full_space)) {
 		mss = full_space;
-
+		if (mss <= 0)
+			return 0;
+	}
 	if (free_space < (full_space >> 1)) {
 		icsk->icsk_ack.quick = 0;
 
@@ -2325,7 +2315,8 @@ int __tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb)
 	 * copying overhead: fragmentation, tunneling, mangling etc.
 	 */
 	if (atomic_read(&sk->sk_wmem_alloc) >
-	    min(sk->sk_wmem_queued + (sk->sk_wmem_queued >> 2), sk->sk_sndbuf))
+	    min_t(u32, sk->sk_wmem_queued + (sk->sk_wmem_queued >> 2),
+		  sk->sk_sndbuf))
 		return -EAGAIN;
 
 	if (before(TCP_SKB_CB(skb)->seq, tp->snd_una)) {

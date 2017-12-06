@@ -2857,7 +2857,6 @@ struct wireless_dev {
 	spinlock_t mgmt_registrations_lock;
 
 	struct mutex mtx;
-	struct mutex clean_mtx;
 
 	struct work_struct cleanup_work;
 
