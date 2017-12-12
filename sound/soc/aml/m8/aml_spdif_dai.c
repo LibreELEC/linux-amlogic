@@ -41,12 +41,15 @@
 #include <sound/pcm_params.h>
 
 #include <linux/amlogic/iomap.h>
+#include <linux/amlogic/sound/aout_notify.h>
+#include <linux/amlogic/sound/aiu_regs.h>
+#include <linux/amlogic/sound/audin_regs.h>
+#include <linux/amlogic/sound/aml_snd_iomap.h>
+#include <linux/amlogic/cpu_version.h>
+
 #include "aml_audio_hw.h"
 #include "aml_spdif_dai.h"
 #include "aml_i2s.h"
-#include <linux/amlogic/sound/aout_notify.h>
-#include <linux/amlogic/sound/aiu_regs.h>
-#include <linux/amlogic/cpu_version.h>
 
 /*
  0 --  other formats except(DD,DD+,DTS)
@@ -64,6 +67,11 @@ struct aml_spdif {
 	struct clk *clk_spdif;
 	struct clk *clk_81;
 	int old_samplerate;
+	uint clk_div;
+	/* spdif dai data in source select.
+	* !Check this with chip spec.
+	*/
+	uint src;
 };
 struct aml_spdif *spdif_p;
 unsigned int clk81 = 0;
@@ -72,10 +80,33 @@ EXPORT_SYMBOL(clk81);
 static int old_samplerate = -1;
 static int flag_samesrc = -1;
 
+static void set_IEC958_clock_div(uint div)
+{
+	if (div == spdif_p->clk_div)
+		return;
+
+	if (div > 0 && div <= 4) {
+		pr_info("set 958 audio clk div %d\n", div);
+		audio_set_spdif_clk_div(div);
+		spdif_p->clk_div = div;
+	}
+}
+
+static inline bool is_meson_tv_chipset(void)
+{
+	int ret = false;
+
+	ret = is_meson_gxtvbb_cpu()
+			|| is_meson_txl_cpu()
+			|| is_meson_txlx_cpu();
+	return ret;
+}
+
 void aml_spdif_play(int samesrc)
 {
 #if 0
-	if (is_meson_gxtvbb_cpu() == false) {
+	if (!is_meson_tv_chipset()) {
+		uint div = 0;
 		static int iec958buf[32 + 16];
 		struct _aiu_958_raw_setting_t set;
 		struct _aiu_958_channel_status_t chstat;
@@ -102,25 +133,22 @@ void aml_spdif_play(int samesrc)
 			flag_samesrc = samesrc;
 			aml_set_spdif_clk(48000 * 512, samesrc);
 		}
-		/* Todo, div can be changed, for most case, div = 2 */
-		/* audio_set_spdif_clk_div(); */
-		/* 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4. */
-		if (IEC958_mode_codec == 4	|| IEC958_mode_codec == 5 ||
+		if (IEC958_mode_codec == 4 || IEC958_mode_codec == 5 ||
 		IEC958_mode_codec == 7 || IEC958_mode_codec == 8) {
 			pr_info("set 4x audio clk for 958\n");
-			aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
+			div = 1;
 		} else if (samesrc) {
 			pr_info("share the same clock\n");
-			aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 1 << 4);
+			div = 2;
 		} else {
 			pr_info("set normal 512 fs /4 fs\n");
-			aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
+			div = 4;
 		}
-		/* enable 958 divider */
-		aml_cbus_update_bits(AIU_CLK_CTRL, 1 << 1, 1 << 1);
+
+		set_IEC958_clock_div(div);
 		audio_util_set_dac_958_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 		/*clear the same source function as new raw data output */
-		audio_i2s_958_same_source(0);
+		audio_i2s_958_same_source(samesrc);
 		memset(iec958buf, 0, sizeof(iec958buf));
 		audio_set_958outbuf((virt_to_phys(iec958buf) + 63) & (~63),
 					128, 0);
@@ -184,6 +212,7 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	struct _aiu_958_raw_setting_t set;
 	struct _aiu_958_channel_status_t chstat;
 	unsigned iec958_mode;
+	int div;
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	if (buf == NULL || runtime == NULL) {
@@ -210,7 +239,7 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 			break;
 		}
 		audio_out_i2s_enable(0);
-		audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
+		audio_util_set_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 #ifdef CONFIG_SND_AML_SPLIT_MODE
 		audio_set_i2s_mode(i2s_mode, (runtime->format == SNDRV_PCM_FORMAT_S16) ? 2 : runtime->channels);
 #else
@@ -229,9 +258,6 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 		aml_set_spdif_clk(runtime->rate * 512, samesrc);
 	}
 
-	/* Todo, div can be changed, for most case, div = 2 */
-	/* audio_set_spdif_clk_div(); */
-	/* 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4. */
 	if (runtime->rate == 192000 && runtime->channels == 8 && runtime->format == SNDRV_PCM_FORMAT_S16) {
 		IEC958_mode_codec = 8; /* TrueHD/DTS-HD MA */
 		pr_info("set 4x audio clk for 958\n");
@@ -239,11 +265,11 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	} else if (runtime->rate == 192000 && runtime->channels == 2 && runtime->format == SNDRV_PCM_FORMAT_S16) {
 		IEC958_mode_codec = 4; /* EAC3 */
 		pr_info("set 4x audio clk for 958\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
+		div = 1;
 	} else if (samesrc) {
 		IEC958_mode_codec = 0;
 		pr_info("share the same clock\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 1 << 4);
+		div = 2;
 	} else if (runtime->rate == 48000 && runtime->channels == 2 && runtime->format == SNDRV_PCM_FORMAT_S16) {
 		IEC958_mode_codec = 2; /* AC3/DTS */
 		pr_info("set normal 512 fs /4 fs\n");
@@ -251,13 +277,12 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	} else {
 		IEC958_mode_codec = 0;
 		pr_info("set normal 512 fs /4 fs\n");
-		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 3 << 4);
+		div = 4;
 	}
-	/* enable 958 divider */
-	aml_cbus_update_bits(AIU_CLK_CTRL, 1 << 1, 1 << 1);
+	set_IEC958_clock_div(div);
 	audio_util_set_dac_958_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	/*clear the same source function as new raw data output */
-	audio_i2s_958_same_source(0);
+	audio_i2s_958_same_source(samesrc);
 
 	switch (runtime->format) {
 	case SNDRV_PCM_FORMAT_S32:
@@ -388,10 +413,6 @@ static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
 		       snd_pcm_lib_buffer_bytes(substream));
 		if (IEC958_mode_codec == 6)
 			pr_info("8chPCM output:disable aml_spdif_play\n");
-		else
-			;/*aml_spdif_play();*/
-
-		/* audio_spdifout_pg_enable(0); */
 	}
 
 }
@@ -399,25 +420,14 @@ static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
 static int aml_dai_spdif_prepare(struct snd_pcm_substream *substream,
 				 struct snd_soc_dai *dai)
 {
-
-	/* struct snd_soc_pcm_runtime *rtd = substream->private_data; */
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	/* struct aml_runtime_data *prtd = runtime->private_data; */
-	/* audio_stream_t *s = &prtd->s; */
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		aml_hw_iec958_init(substream, 0);
 	} else {
 		audio_in_spdif_set_buf(runtime->dma_addr,
-				       runtime->dma_bytes * 2);
+				       runtime->dma_bytes * 2, spdif_p->src);
 		memset((void *)runtime->dma_area, 0, runtime->dma_bytes * 2);
-		{
-			int *ppp =
-			    (int *)(runtime->dma_area + runtime->dma_bytes * 2 -
-				    8);
-			ppp[0] = 0x78787878;
-			ppp[1] = 0x78787878;
-		}
 	}
 
 	return 0;
@@ -622,6 +632,9 @@ static int aml_dai_spdif_probe(struct platform_device *pdev)
 	}
 	clk81 = clk_get_rate(spdif_priv->clk_81);
 
+	/*In PAO mode, audio data from hdmi-rx has no channel order,
+	set default mode from spdif-in*/
+	spdif_priv->src = SPDIF_IN;
 	aml_spdif_play(0);
 	ret = snd_soc_register_component(&pdev->dev, &aml_component,
 					  aml_spdif_dai,

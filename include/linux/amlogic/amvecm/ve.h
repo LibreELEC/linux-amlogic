@@ -280,6 +280,9 @@ struct ve_regmap_s {
 	unsigned long reg[43];
 };
 
+#define EOTF_LUT_SIZE 33
+#define OSD_OETF_LUT_SIZE 41
+
 /********************OSD HDR registers backup********************************/
 struct hdr_osd_lut_s {
 	uint32_t r_map[33];
@@ -310,6 +313,8 @@ struct hdr_osd_reg_s {
 	uint32_t viu_osd1_eotf_coef11_12; /* 0x1ad7 */
 	uint32_t viu_osd1_eotf_coef20_21; /* 0x1ad8 */
 	uint32_t viu_osd1_eotf_coef22_rs; /* 0x1ad9 */
+	uint32_t VIU_OSD1_EOTF_3X3_OFST_0; /* 0x1aa0*/
+	uint32_t VIU_OSD1_EOTF_3X3_OFST_1; /* 0x1aa1*/
 	uint32_t viu_osd1_oetf_ctl; /* 0x1adc */
 	struct hdr_osd_lut_s lut_val;
 };

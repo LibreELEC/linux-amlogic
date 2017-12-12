@@ -97,6 +97,17 @@ struct sFlmSftPar {
 	int mPstDlyPre;
 	/* pre-processing (t-0), pre-processing f(t+mNxtDlySft); default=1 */
 	int mNxtDlySft;
+	int cmb22_nocmb_num;
+	int flm22_en;
+	int flm32_en;
+	int flm22_flag;
+	int flm2224_flag;
+	int flm22_comlev;
+	int flm22_comlev1;
+	int flm22_comnum;
+	int dif01rate;
+	int flag_di01th;
+	int numthd;
 
 	UINT32 sF32Dif02M0;	/* mpeg-4096, cvbs-8192 */
 	UINT32 sF32Dif02M1;	/* mpeg-4096, cvbs-8192 */
@@ -113,6 +124,7 @@ struct FlmDectRes {
 	UINT8 rFlmPstGCm;
 	UINT8 rFlmSltPre;
 	UINT8 rFlmPstMod;
+	UINT8 dif01flag;
 	UShort rPstCYWnd0[3];
 	UShort rPstCYWnd1[3];
 	UShort rPstCYWnd2[3];
@@ -130,12 +142,14 @@ int FlmModsDet(struct sFlmDatSt *pRDat, int nDif01, int nDif02);
 
 
 /*  */
-int FlmVOFSftTop(UINT8 *rCmb32Spcl, UShort *rPstCYWnd0, UShort *rPstCYWnd1,
-		 UShort *rPstCYWnd2, UShort *rPstCYWnd3, UShort *rPstCYWnd4,
-		 UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
-		 UINT32 *rROFldDif01, UINT32 *rROFrmDif02, UINT32 *rROCmbInf,
-		 int *tTCNm,
-		 struct sFlmSftPar *pPar, int nROW, int nCOL);
+int FlmVOFSftTop(UINT8 *rCmb32Spcl, unsigned short *rPstCYWnd0,
+		unsigned short *rPstCYWnd1, unsigned short *rPstCYWnd2,
+		unsigned short *rPstCYWnd3, unsigned short *rPstCYWnd4,
+		UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
+		UINT8 *dif01flag, UINT32 *rROFldDif01, UINT32 *rROFrmDif02,
+		UINT32 *rROCmbInf, UINT32 glb_frame_mot_num,
+		UINT32 glb_field_mot_num, int *tTCNm,
+		struct sFlmSftPar *pPar, int nROW, int nCOL, bool reverse);
 
 /* length of pFlm01/nDif01: [0:5]; */
 /* iDx: index of minimum dif02 ([0:5] */
@@ -173,8 +187,9 @@ int VOFSftTop(UINT8 *rFlmPstGCm, UINT8 *rFlmSltPre, UINT8 *rFlmPstMod,
 	      UShort *rPstCYWnd0, UShort *rPstCYWnd1, UShort *rPstCYWnd2,
 	      UShort *rPstCYWnd3, int nMod, UINT32 *rROCmbInf,
 	      struct sFlmDatSt *pRDat, struct sFlmSftPar *pPar,
-	      int nROW, int nCOL);
+	      int nROW, int nCOL, bool reverse);
 
 extern UINT32 field_count;
+extern unsigned int frame_diff_avg;
 
 #endif

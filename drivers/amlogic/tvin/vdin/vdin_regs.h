@@ -25,6 +25,8 @@
 #define VPU_VDIN_ASYNC_HOLD_CTRL 0x2743
 #define VPU_VDISP_ASYNC_HOLD_CTRL 0x2744
 #define VPU_VPUARB2_ASYNC_HOLD_CTRL 0x2745
+#define VPU_ARB_URG_CTRL 0x2747
+#define VPU_WRARB_MODE_L2C1 0x27a2
 #define VPU_ARB_DBG_STAT_L1C2	0x27b6
 #define VDIN_DET_IDLE_BIT 8
 #define VDIN_DET_IDLE_WIDTH 4
@@ -62,6 +64,8 @@
 
 /* vpp */
 #define VPP_VDO_MEAS_CTRL 0x1da8
+#define VPP_POSTBLEND_VD1_H_START_END 0x1d1c
+#define VPP_POSTBLEND_VD1_V_START_END 0x1d1d
 
 /* VDIN0        8'h00 - 8'h7f */
 /* VDIN1        8'h80 - 8'hef */
@@ -575,6 +579,20 @@
 /* Bit 5:0, vdi9_asfifo_cnt */
 #define VDIN_COM_STATUS3         ((0x1273))/* + 0xd0100000) */
 
+/* dolby vdin regs */
+#define VDIN_DOLBY_DSC_CTRL0                       0x1275
+/*((0x1275  << 2) + 0xff900000)*/
+#define VDIN_DOLBY_DSC_CTRL1                       0x1276
+#define VDIN_DOLBY_DSC_CTRL2                       0x1277
+#define VDIN_DOLBY_DSC_CTRL3                       0x1278
+#define VDIN_DOLBY_AXI_CTRL0                       0x1279
+#define VDIN_DOLBY_AXI_CTRL1                       0x127a
+#define VDIN_DOLBY_AXI_CTRL2                       0x127b
+#define VDIN_DOLBY_AXI_CTRL3                       0x127c
+#define VDIN_DOLBY_DSC_STATUS0                     0x127d
+#define VDIN_DOLBY_DSC_STATUS1                     0x127e
+#define VDIN_DOLBY_DSC_STATUS2                     0x127f
+#define VDIN_DOLBY_DSC_STATUS3                     0x121d
 
 
 
@@ -763,6 +781,8 @@
 
 /* #define VDIN_SC_MISC_CTRL                       0x120b */
 /* signed value for short line output */
+#define PRE_HSCL_MODE_BIT               17
+#define PRE_HSCL_MODE_WID               4
 #define INIT_PIX_IN_PTR_BIT             8
 #define INIT_PIX_IN_PTR_WID             7
 #define INIT_PIX_IN_PTR_MSK             0x0000007f
@@ -955,6 +975,26 @@
 #define VDIN_INTF_WIDTHM1_BIT           0
 #define VDIN_INTF_WIDTHM1_WID           13
 
+/* #define VDIN_LFIFO_URG_CTRL                       0x121e */
+/*Bit 15          default== 0, urgent_ctrl_en
+*Bit 14          default== 0, urgent_wr, if true for write buffer
+*Bit 13          default== 0, out_inv_en
+*Bit 12          default == 0, urgent_ini_value
+*Bit 11:6        default == 0, up_th  up threshold
+*Bit 5:0         default == 0, dn_th  dn threshold*/
+#define VDIN_LFIFO_URG_CTRL_EN_BIT      15
+#define VDIN_LFIFO_URG_CTRL_EN_WID      1
+#define VDIN_LFIFO_URG_WR_EN_BIT        14
+#define VDIN_LFIFO_URG_WR_EN_WID        1
+#define VDIN_LFIFO_OUT_INV_EN_BIT       13
+#define VDIN_LFIFO_OUT_INV_EN_WID       1
+#define VDIN_LFIFO_URG_INI_BIT          12
+#define VDIN_LFIFO_URG_INI_WID          1
+#define VDIN_LFIFO_URG_UP_TH_BIT        6
+#define VDIN_LFIFO_URG_UP_TH_WID        6
+#define VDIN_LFIFO_URG_DN_TH_BIT        0
+#define VDIN_LFIFO_URG_DN_TH_WID        6
+
 
 /* #define VDIN_WR_CTRL2                           0x121f */
 /*1: enable WR 10 bit mode, 0: disable WR 10 bit mode */
@@ -1029,8 +1069,6 @@
 #define WR_CANVAS_BIT                   0
 #define WR_CANVAS_WID                   8
 
-
-
 /* #define VDIN_WR_H_START_END                        0x1221 */
 
 #define HORIZONTAL_REVERSE_BIT          29/* if true horizontal reverse */
@@ -1068,7 +1106,11 @@
 /* #define VDIN_SCIN_HEIGHTM1                          0x1225 */
 /* Bit 12:0, scaler input height minus 1 */
 #define SCALER_INPUT_HEIGHT_BIT            0
-#define SCALER_INPUT_HEIGHT_WID           12
+#define SCALER_INPUT_HEIGHT_WID           13
+
+/* Bit 28:16, vshrk input height minus 1 */
+#define VSHRK_INPUT_HEIGHT_BIT           16
+#define VSHRK_INPUT_HEIGHT_WID           13
 
 /* #define `define VDIN_DUMMY_DATA                0x1226 */
 #define DUMMY_COMPONENT0_BIT                16
@@ -1625,6 +1667,13 @@
 #define VDI7_ASFIFO_CTRL_WID            8
 #define VDI6_ASFIFO_CTRL_BIT            0
 #define VDI6_ASFIFO_CTRL_WID            8
+
+#define VDIN_VSHRK_EN_BIT	27
+#define VDIN_VSHRK_EN_WID	1
+#define VDIN_VSHRK_LPF_MODE_BIT	24
+#define VDIN_VSHRK_LPF_MODE_WID	1
+#define VDIN_VSHRK_MODE_BIT	25
+#define VDIN_VSHRK_MODE_WID	2
 
 /* Bit 3:2 vshrk_clk2_ctrl */
 /* Bit 1:0 vshrk_clk1_ctrl */

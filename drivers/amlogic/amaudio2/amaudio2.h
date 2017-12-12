@@ -36,7 +36,11 @@ struct BUF {
 	unsigned wr;
 	unsigned rd;
 	unsigned level;
+#ifdef AMAUDIO2_USE_IRQ
 	spinlock_t lock;
+#else
+	struct mutex lock;
+#endif
 };
 
 struct amaudio_t {
@@ -86,6 +90,7 @@ extern unsigned long aml_i2s_playback_start_addr;
 extern unsigned long aml_i2s_playback_phy_start_addr;
 extern unsigned long aml_i2s_alsa_write_addr;
 extern unsigned int aml_i2s_playback_channel;
+extern unsigned int aml_i2s_playback_format;
 
 #define AMAUDIO_IOC_MAGIC  'A'
 

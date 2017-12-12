@@ -98,6 +98,7 @@ struct amlsd_platform {
 	unsigned int width;
 	unsigned int caps;
 	unsigned int caps2;
+	unsigned int pm_caps;
 	unsigned int card_capacity;
 	unsigned int tx_phase;
 	unsigned int tx_delay;
@@ -133,6 +134,7 @@ struct amlsd_platform {
 	unsigned int gpio_dat3;
 	unsigned int hw_reset;
 	unsigned int jtag_pin;
+	unsigned int base;
 	int is_sduart;
 	unsigned int card_in_delay;
 	bool is_in;
@@ -183,7 +185,8 @@ struct amlsd_platform {
 	/*for inand partition: struct mtd_partition, easy porting from nand*/
 	struct mtd_partition *parts;
 	unsigned int nr_parts;
-
+	/* fixme, debug code */
+	unsigned int desc_cnt;
 	struct resource *resource;
 	void (*xfer_pre)(struct amlsd_platform *pdata);
 	void (*xfer_post)(struct amlsd_platform *pdata);
@@ -327,6 +330,8 @@ struct amlsd_host {
 	unsigned long	clksrc_rate;
 	struct aml_emmc_adjust emmc_adj;
 	struct aml_emmc_rxclk emmc_rxclk;
+	unsigned int ctrl_ver;
+	u32 idx;
 	u32 error_flag;
 };
 
@@ -918,6 +923,47 @@ struct sd_emmc_regs {
 	u32 gping[128]; /* 0x400 */
 	u32 gpong[128]; /* 0x800 */
 };
+struct sd_emmc_regs_v3 {
+	u32 gclock;	 /* 0x00 */
+	u32 gdelay1;	 /* 0x04 */
+	u32 gdelay2;/*0x08*/
+	u32 gadjust;	/* 0x0c */
+	u32 gcalout[4];	/* 0x10~0x1c */
+	u32 adj_idx_log;/*20*/
+	u32 clktest_log;/*0x24*/
+	u32 clktest_out;/*0x28*/
+	u32 eyetest_log;/*0x2c*/
+	u32 eyetest_out0;/*0x30*/
+	u32 eyetest_out1;/*0x34*/
+	u32 intf3;/*0x38*/
+	u32 reserved3c;/*0x3c*/
+	u32 gstart;	 /* 0x40 */
+	u32 gcfg;	   /* 0x44 */
+	u32 gstatus;	/* 0x48 */
+	u32 girq_en;	/* 0x4c */
+	u32 gcmd_cfg;   /* 0x50 */
+	u32 gcmd_arg;   /* 0x54 */
+	u32 gcmd_dat;   /* 0x58 */
+	u32 gcmd_rsp0;   /* 0x5c */
+	u32 gcmd_rsp1;  /* 0x60 */
+	u32 gcmd_rsp2;  /* 0x64 */
+	u32 gcmd_rsp3;  /* 0x68 */
+	u32 reserved_6c;	   /* 0x6c */
+	u32 gcurr_cfg;  /* 0x70 */
+	u32 gcurr_arg;  /* 0x74 */
+	u32 gcurr_dat;  /* 0x78 */
+	u32 gcurr_rsp;  /* 0x7c */
+	u32 gnext_cfg;  /* 0x80 */
+	u32 gnext_arg;  /* 0x84 */
+	u32 gnext_dat;  /* 0x88 */
+	u32 gnext_rsp;  /* 0x8c */
+	u32 grxd;	   /* 0x90 */
+	u32 gtxd;	   /* 0x94 */
+	u32 reserved_98[90];   /* 0x98~0x1fc */
+	u32 gdesc[128]; /* 0x200 */
+	u32 gping[128]; /* 0x400 */
+	u32 gpong[128]; /* 0x800 */
+};
 struct sd_emmc_clock {
 	/*[5:0]	 Clock divider.
 	Frequency = clock source/cfg_div, Maximum divider 63. */
@@ -949,6 +995,37 @@ struct sd_emmc_clock {
 	u32 irq_sdio_sleep_ds:1;
 	u32 reserved27:5;
 };
+struct sd_emmc_clock_v3 {
+	/*[5:0]	 Clock divider.
+	Frequency = clock source/cfg_div, Maximum divider 63. */
+	u32 div:6;
+	/*[7:6]	 Clock source, 0: Crystal 24MHz, 1: Fix PLL, 850MHz*/
+	u32 src:2;
+	/*[9:8]	 Core clock phase. 0: 0 phase,
+	1: 90 phase, 2: 180 phase, 3: 270 phase.*/
+	u32 core_phase:2;
+	/*[11:10]   TX clock phase. 0: 0 phase,
+	1: 90 phase, 2: 180 phase, 3: 270 phase.*/
+	u32 tx_phase:2;
+	/*[13:12]   RX clock phase. 0: 0 phase,
+	1: 90 phase, 2: 180 phase, 3: 270 phase.*/
+	u32 rx_phase:2;
+	u32 sram_pd:2;
+	/*[19:16]   TX clock delay line. 0: no delay,
+	n: delay n*200ps. Maximum delay 3ns.*/
+	u32 tx_delay:6;
+	/*[23:20]   RX clock delay line. 0: no delay,
+	n: delay n*200ps. Maximum delay 3ns.*/
+	u32 rx_delay:6;
+	/*[24]	  1: Keep clock always on.
+	0: Clock on/off controlled by activities. */
+	u32 always_on:1;
+	/*[25]	1: enable IRQ sdio when in sleep mode. */
+	u32 irq_sdio_sleep:1;
+	/*[26]	1: select DS as IRQ source during sleep.. */
+	u32 irq_sdio_sleep_ds:1;
+	u32 reserved31:1;
+};
 struct sd_emmc_delay {
 	u32 dat0:4;		 /*[3:0]	   Data 0 delay line. */
 	u32 dat1:4;		 /*[7:4]	   Data 1 delay line. */
@@ -959,11 +1036,51 @@ struct sd_emmc_delay {
 	u32 dat6:4;		 /*[27:24]	 Data 6 delay line. */
 	u32 dat7:4;		 /*[31:28]	 Data 7 delay line. */
 };
+struct sd_emmc_delay1_v3 {
+	u32 dat0:6;		 /*[5:0]	   Data 0 delay line. */
+	u32 dat1:6;		 /*[11:6]	   Data 1 delay line. */
+	u32 dat2:6;		 /*[17:12]	  Data 2 delay line. */
+	u32 dat3:6;		 /*[23:18]	 Data 3 delay line. */
+	u32 dat4:6;		 /*[29:24]	 Data 4 delay line. */
+	u32 spare:2;		 /*[31:30]	 Data 5 delay line. */
+};
+struct sd_emmc_delay2_v3 {
+	u32 dat5:6;		 /*[5:0]	   Data 0 delay line. */
+	u32 dat6:6;		 /*[11:6]	   Data 1 delay line. */
+	u32 dat7:6;		 /*[17:12]	  Data 2 delay line. */
+	u32 dat8:6;		 /*[23:18]	 Data 3 delay line. */
+	u32 dat9:6;		 /*[29:24]	 Data 4 delay line. */
+	u32 spare:2;		 /*[31:30]	 Data 5 delay line. */
+};
 struct sd_emmc_adjust {
 	/*[3:0]	   Command delay line. */
 	u32 cmd_delay:4;
 	/*[7:4]	   DS delay line. */
 	u32 ds_delay:4;
+	/*[11:8]	  Select one signal to be tested.*/
+	u32 cali_sel:4;
+	/*[12]		Enable calibration. */
+	u32 cali_enable:1;
+	/*[13]	   Adjust interface timing
+	by resampling the input signals. */
+	u32 adj_enable:1;
+	/*[14]	   1: test the rising edge.
+	0: test the falling edge. */
+	u32 cali_rise:1;
+	/*[15]	   1: Sampling the DAT based on DS in HS400 mode.
+	0: Sampling the DAT based on RXCLK. */
+	u32 ds_enable:1;
+	 /*[21:16]	   Resample the input signals
+	when clock index==adj_delay. */
+	u32 adj_delay:6;
+	/*[22]	   1: Use cali_dut first falling edge to adjust
+		the timing, set cali_enable to 1 to use this function.
+	0: no use adj auto. */
+	u32 adj_auto:1;
+	u32 reserved22:9;
+};
+struct sd_emmc_adjust_v3 {
+	u32 reserved8:8;
 	/*[11:8]	  Select one signal to be tested.*/
 	u32 cali_sel:4;
 	/*[12]		Enable calibration. */
@@ -998,6 +1115,39 @@ struct sd_emmc_calout {
 	u32 cali_setup:8;
 	u32 reserved16:16;
 };
+
+struct clktest_log {
+	u32 clktest_times:31;
+	u32 clktest_done:1;
+};
+
+struct clktest_out {
+	u32 clktest_out;
+};
+
+struct eyetest_log {
+	u32 eyetest_times:31;
+	u32 eyetest_done:1;
+};
+
+struct eyetest_out0 {
+	u32 eyetest_out0;
+};
+
+struct eyetest_out1 {
+	u32 eyetest_out1;
+};
+
+struct intf3 {
+	u32 clktest_exp:5;  /*[4:0]*/
+	u32 clktest_on_m:1; /*[5]*/
+	u32 eyetest_exp:5;  /*[10:6]*/
+	u32 eyetest_on:1;   /*[11]*/
+	u32 ds_sht_m:6;     /*[17:12]*/
+	u32 ds_sht_exp:4;   /*[21:18]*/
+	u32 sd_intf3:1;     /*[22]*/
+};
+
 struct sd_emmc_start {
 	/*[0]   1: Read descriptor from internal SRAM,
 	limited to 32 descriptors. */

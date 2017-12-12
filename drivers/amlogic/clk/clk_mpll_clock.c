@@ -23,11 +23,14 @@
 #include <linux/err.h>
 #include <linux/string.h>
 #include <linux/log2.h>
+#include <linux/delay.h>
+#include <linux/amlogic/cpu_version.h>
+#include <linux/amlogic/iomap.h>
 #include "mpll_clk.h"
 #include "clk.h"
 
 #undef pr_fmt
-#define pr_fmt(fmt) "gxbb_mpll_clk: " fmt
+#define pr_fmt(fmt) "meson_mpll_clk: " fmt
 
 #define sdm_mask(d)		((1 << (d->sdm_in_width)) - 1)
 #define n_mask(d)			((1 << (d->n_in_width)) - 1)
@@ -41,6 +44,7 @@
 #define ERROR		10000000
 #define SDM_EN      15
 #define EN_DDS      14
+#define SAR_ADC_REG12 0x21ac
 
 static int mpll_enable(struct clk_hw *hw)
 {
@@ -49,7 +53,11 @@ static int mpll_enable(struct clk_hw *hw)
 
 	if (strncmp(hw->clk->name, "mpll_clk_out0", 13) == 0) {
 		val = readl(mpll->con_reg2);
-		val |= 1 <<  mpll->SSEN_shift;
+		if (!is_meson_txlx_cpu())
+			/* txlx should not enable mpll2 SSG func
+			 * HI_MPLL_CNTL bit25
+			 */
+			val |= 1 <<  mpll->SSEN_shift;
 		writel(val, mpll->con_reg2);
 	}
 
@@ -65,7 +73,11 @@ static void mpll_disable(struct clk_hw *hw)
 	unsigned int val;
 	if (strncmp(hw->clk->name, "mpll_clk_out0", 13) == 0) {
 		val = readl(mpll->con_reg2);
-		val &= ~(1 <<  mpll->SSEN_shift);
+		if (!is_meson_txlx_cpu())
+			/* txlx should not enable mpll2 SSG func
+			 * HI_MPLL_CNTL bit25
+			 */
+			val &= ~(1 <<  mpll->SSEN_shift);
 		writel(val, mpll->con_reg2);
 	}
 
@@ -108,6 +120,10 @@ static int mpll_set_rate(struct clk_hw *hw, unsigned long drate,
 	u64 divider;
 	unsigned long frac;
 	uint val;
+	char name[14];
+	int index;
+
+	strcpy(name, hw->clk->name);
 	divider = prate;
 	frac = do_div(divider, drate);
 	val = DIV_ROUND_UP(frac * SDM_MAX, drate);
@@ -123,7 +139,25 @@ static int mpll_set_rate(struct clk_hw *hw, unsigned long drate,
 	val &=  ~(n_mask(mpll) << mpll->n_in_shift);
 	val |= mpll->n_in <<  mpll->n_in_shift;
 	writel(val, mpll->con_reg);
+
+	if (mpll->con_reg3) {
+		writel(((1<<mpll->misc_offset) | readl(mpll->con_reg3)),
+			mpll->con_reg3);
+		udelay(1);
+		/* keep HHI_PLL_TOP_MISC bit to 1 to avoid suspend/resume
+		 * mpll setting issue
+		 * writel((~(1<<mpll->misc_offset) & readl(mpll->con_reg3)),
+		 * mpll->con_reg3);
+		 */
+	}
 	pr_debug("readl con_reg=%x\n", readl(mpll->con_reg));
+
+	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX) {
+		if (!kstrtou32(&name[12], 10, &index))
+			aml_write_cbus(SAR_ADC_REG12,
+				aml_read_cbus(SAR_ADC_REG12)|(1<<index));
+	}
+
 	return 0;
 }
 
@@ -154,7 +188,11 @@ void __init mpll_clk_register(void __iomem *base, struct mpll_clk_tab *tab)
 	pll->sdm_in_width = 14;
 	pll->n_in_shift = 16;
 	pll->n_in_width = 9;
-	pll->SSEN_shift = 25;
+	if (!is_meson_txlx_cpu())
+			/* txlx should not enable mpll2 SSG func
+			 * HI_MPLL_CNTL bit25
+			 */
+		pll->SSEN_shift = 25;
 
 	init.name = tab->name;
 	init.flags = tab->flags;
@@ -165,6 +203,8 @@ void __init mpll_clk_register(void __iomem *base, struct mpll_clk_tab *tab)
 	pll->hw.init = &init;
 	pll->con_reg = base + tab->offset;
 	pll->con_reg2 = base + tab->offset2;
+	pll->con_reg3 = base + tab->offset3;
+	pll->misc_offset = tab->misc_offset;
 	clk = clk_register(NULL, &pll->hw);
 	if (IS_ERR(clk)) {
 		pr_err("%s: failed to register pll clock %s : %ld\n",

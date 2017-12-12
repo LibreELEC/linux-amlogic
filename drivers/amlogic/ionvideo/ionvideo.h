@@ -29,6 +29,7 @@
 #include <linux/kthread.h>
 #include <linux/freezer.h>
 #include <linux/delay.h>
+#include <linux/completion.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-ctrls.h>
@@ -73,6 +74,8 @@ do {                                                    \
 		pr_debug("ppmgr2-dev: " fmt, ## arg);  \
 } while (0)
 
+#define PPMGR2_CANVAS_INDEX_SRC (PPMGR2_CANVAS_INDEX + 3)
+
 /* ------------------------------------------------------------------
  Basic structures
  ------------------------------------------------------------------*/
@@ -108,6 +111,8 @@ struct ionvideo_dmaqueue {
 struct ppmgr2_device {
 	int dst_width;
 	int dst_height;
+	int dst_buffer_width;
+	int dst_buffer_height;
 	int ge2d_fmt;
 	int canvas_id[PPMGR2_MAX_CANVAS];
 	void *phy_addr[PPMGR2_MAX_CANVAS];
@@ -121,13 +126,22 @@ struct ppmgr2_device {
 	int paint_mode;
 	int interlaced_num;
 	int bottom_first;
+
+	struct mutex *ge2d_canvas_mutex;
 };
+
+#define ION_VF_RECEIVER_NAME_SIZE 32
+
+#define ION_ACTIVE 0
+#define ION_INACTIVE_REQ 1
+#define ION_INACTIVE 2
 
 struct ionvideo_dev {
 	struct list_head ionvideo_devlist;
 	struct v4l2_device v4l2_dev;
 	struct video_device vdev;
 	int fd_num;
+	int ionvideo_v4l_num;
 
 	spinlock_t slock;
 	struct mutex mutex;
@@ -158,15 +172,27 @@ struct ionvideo_dev {
 	u32 skip;
 	int once_record;
 	u8 is_omx_video_started;
+	int is_actived;
+	u64 last_pts_us64;
+	unsigned int freerun_mode;
+	unsigned int skip_frames;
+
+	wait_queue_head_t wq;
+
+	char vf_receiver_name[ION_VF_RECEIVER_NAME_SIZE];
+	int inst;
+	bool mapped;
+	bool thread_stoped;
+	int vf_wait_cnt;
+
+	int active_state;
+	struct completion inactive_done;
 };
 
-int is_ionvideo_active(void);
 unsigned get_ionvideo_debug(void);
 
 int ppmgr2_init(struct ppmgr2_device *ppd);
-int ppmgr2_canvas_config(struct ppmgr2_device *ppd, int dst_width,
-				int dst_height, int dst_fmt, void *phy_addr,
-				int index);
+int ppmgr2_canvas_config(struct ppmgr2_device *ppd, int index);
 int ppmgr2_process(struct vframe_s *vf, struct ppmgr2_device *ppd, int index);
 int ppmgr2_top_process(struct vframe_s *vf, struct ppmgr2_device *ppd,
 			int index);
@@ -177,5 +203,9 @@ void ppmgr2_set_angle(struct ppmgr2_device *ppd, int angle);
 void ppmgr2_set_mirror(struct ppmgr2_device *ppd, int mirror);
 void ppmgr2_set_paint_mode(struct ppmgr2_device *ppd, int paint_mode);
 int v4l_to_ge2d_format(int v4l2_format);
+
+#define IONVIDEO_IOC_MAGIC  'I'
+#define IONVIDEO_IOCTL_ALLOC_ID   _IOW(IONVIDEO_IOC_MAGIC, 0x00, int)
+#define IONVIDEO_IOCTL_FREE_ID    _IOW(IONVIDEO_IOC_MAGIC, 0x01, int)
 
 #endif

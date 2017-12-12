@@ -37,12 +37,16 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
-
 /* Amlogic headers */
 #include <linux/amlogic/major.h>
 #include <linux/amlogic/iomap.h>
 #include <linux/amlogic/sound/aiu_regs.h>
 #include <linux/amlogic/sound/audin_regs.h>
+#include <linux/amlogic/sound/aml_snd_iomap.h>
+
+/*#define AMAUDIO2_DEBUG*/
+/*#define AMAUDIO2_USE_IRQ*/
+
 #include "amaudio2.h"
 
 #define BASE_IRQ                        (32)
@@ -75,6 +79,9 @@ int audio_out_mode = 0;
 int amaudio2_enable = 0;
 int output_device = 0;
 int input_device = 1;
+
+static int external_mute_flag;
+static int external_mute_enable = 1;
 
 static int int_num = INT_NUM;
 static int i2s_num = I2S_BLOCK;
@@ -161,25 +168,48 @@ static struct amaudio_port_t amaudio_ports[] = {
 	},
 };
 
-static inline short clip16(int x)
+static inline int16_t clip16(int x)
 {
 	if (x < -32768)
 		return -32768;
 	else if (x > 32767)
 		return 32767;
 
-	return (short)x;
+	return (int16_t)x;
 }
 
-static inline int clip24(int x)
+static inline int32_t clip24(int x)
 {
 	if (x < -8388608)
 		return -8388608;
 	else if (x > 8388607)
 		return 8388607;
 
-	return x;
+	return (int32_t)x;
 }
+
+static inline int32_t clip32(long x)
+{
+	if (x < -2147483648)
+		return -2147483648;
+	else if (x > 2147483647)
+		return 2147483647;
+
+	return (int32_t)x;
+}
+
+int External_Mute(int mute_flag)
+{
+	if (mute_flag == 1) {
+		external_mute_flag = 1;
+		pr_info("amaudio2_out external mute!\n");
+	} else {
+		external_mute_flag = 0;
+		pr_info("amaudio2_out external unmute!\n");
+	}
+	return 0;
+}
+EXPORT_SYMBOL(External_Mute);
 
 static int amaudio_open(struct inode *inode, struct file *file)
 {
@@ -189,7 +219,7 @@ static int amaudio_open(struct inode *inode, struct file *file)
 	int res = 0;
 
 	if (iminor(inode) == 0) {
-		pr_info("amaudio2_out open!\n");
+		pr_debug("amaudio2_out open!\n");
 		if (!this->dev->dma_mask)
 			this->dev->dma_mask = &amaudio_pcm_dmamask;
 		if (!this->dev->coherent_dma_mask)
@@ -224,16 +254,30 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		amaudio->hw.size = get_i2s_out_size();
 		amaudio->hw.rd = get_i2s_out_ptr();
 
+#ifdef AMAUDIO2_USE_IRQ
 		spin_lock_init(&amaudio->sw.lock);
 		spin_lock_init(&amaudio->hw.lock);
 
 		if (request_irq(IRQ_OUT, i2s_out_callback, IRQF_SHARED,
 				"i2s_out", amaudio)) {
 			res = -EINVAL;
+			pr_err("amaudio2 request irq error!\n");
 			goto error;
 		}
+#else
+		mutex_init(&amaudio->sw.lock);
+		mutex_init(&amaudio->hw.lock);
 
-		aml_cbus_update_bits(AIU_MEM_I2S_MASKS, 0xffff << 16,
+		if (request_threaded_irq(IRQ_OUT, NULL, i2s_out_callback,
+				IRQF_SHARED | IRQF_ONESHOT,
+				"i2s_out", (void *)amaudio)) {
+			res = -EINVAL;
+			pr_err("amaudio2 request irq error!\n");
+			goto error;
+		}
+#endif
+
+		aml_aiu_update_bits(AIU_MEM_I2S_MASKS, 0xffff << 16,
 				int_num << 16);
 
 		/*pr_info("channel: %d, int_num = %d,"
@@ -242,7 +286,7 @@ static int amaudio_open(struct inode *inode, struct file *file)
 		int_block, amaudio->hw.size);*/
 
 	} else if (iminor(inode) == 1) {
-		pr_info("amaudio2_in opened\n");
+		pr_debug("amaudio2_in opened\n");
 		if (!this->dev->dma_mask)
 			this->dev->dma_mask = &amaudio_pcm_dmamask;
 		if (!this->dev->coherent_dma_mask)
@@ -291,7 +335,7 @@ static int amaudio_mmap(struct file *file, struct vm_area_struct *vma)
 						  amaudio->sw.size);
 		return mmap_flag;
 	} else if (amaudio->type == 1) {
-		pr_info("audio in mmap!\n");
+		pr_debug("audio in mmap!\n");
 	} else {
 		return -ENODEV;
 	}
@@ -301,14 +345,14 @@ static int amaudio_mmap(struct file *file, struct vm_area_struct *vma)
 
 static unsigned get_i2s_out_size(void)
 {
-	return aml_read_cbus(AIU_MEM_I2S_END_PTR)
-	       - aml_read_cbus(AIU_MEM_I2S_START_PTR) + i2s_num;
+	return aml_aiu_read(AIU_MEM_I2S_END_PTR)
+	       - aml_aiu_read(AIU_MEM_I2S_START_PTR) + i2s_num;
 }
 
 static unsigned get_i2s_out_ptr(void)
 {
-	return aml_read_cbus(AIU_MEM_I2S_RD_PTR)
-	       - aml_read_cbus(AIU_MEM_I2S_START_PTR);
+	return aml_aiu_read(AIU_MEM_I2S_RD_PTR)
+	       - aml_aiu_read(AIU_MEM_I2S_START_PTR);
 }
 
 void cover_memcpy(struct BUF *des, int a, struct BUF *src, int b,
@@ -317,16 +361,16 @@ void cover_memcpy(struct BUF *des, int a, struct BUF *src, int b,
 	int i;
 	int samp;
 
-	short *des_left = (short *)(des->addr + a);
-	short *des_right = des_left + 16;
-	short *src_buf = (short *)(src->addr + b);
+	int16_t *des_left = (int16_t *)(des->addr + a);
+	int16_t *des_right = des_left + 16;
+	int16_t *src_buf = (int16_t *)(src->addr + b);
 
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	for (i = 0; i < count; i += 2) {
+	for (i = 0; i < count; i += 4) {
 		samp = ((*src_buf++) * direct_left_gain) >> 8;
-		*des_left++ = (short)samp;
+		*des_left++ = (int16_t)samp;
 		samp = ((*src_buf++) * direct_right_gain) >> 8;
-		*des_right++ = (short)samp;
+		*des_right++ = (int16_t)samp;
 	}
 #else
 	int j;
@@ -334,9 +378,9 @@ void cover_memcpy(struct BUF *des, int a, struct BUF *src, int b,
 	for (i = 0; i < count; i += 64) {
 		for (j = 0; j < 16; j++) {
 			samp = ((*src_buf++) * direct_left_gain) >> 8;
-			*des_left++ = (short)samp;
+			*des_left++ = (int16_t)samp;
 			samp = ((*src_buf++) * direct_right_gain) >> 8;
-			*des_right++ = (short)samp;
+			*des_right++ = (int16_t)samp;
 		}
 		des_left += 16;
 		des_right += 16;
@@ -350,12 +394,12 @@ void direct_mix_memcpy(struct BUF *des, int a, struct BUF *src, int b,
 	int i;
 	int samp;
 
-	short *des_left = (short *)(des->addr + a);
-	short *des_right = des_left + 16;
-	short *src_buf = (short *)(src->addr + b);
+	int16_t *des_left = (int16_t *)(des->addr + a);
+	int16_t *des_right = des_left + 16;
+	int16_t *src_buf = (int16_t *)(src->addr + b);
 
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	for (i = 0; i < count; i += 2) {
+	for (i = 0; i < count; i += 4) {
 		samp = ((*des_left) * music_gain +
 			(*src_buf++) * direct_left_gain) >> 8;
 		*des_left++ = clip16(samp);
@@ -387,15 +431,15 @@ void inter_mix_memcpy(struct BUF *des, int a, struct BUF *src, int b,
 				unsigned count)
 {
 	int i;
-	short sampL, sampR;
+	int16_t sampL, sampR;
 	int samp, sampLR;
 
-	short *des_left = (short *)(des->addr + a);
-	short *des_right = des_left + 16;
-	short *src_buf = (short *)(src->addr + b);
+	int16_t *des_left = (int16_t *)(des->addr + a);
+	int16_t *des_right = des_left + 16;
+	int16_t *src_buf = (int16_t *)(src->addr + b);
 
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	for (i = 0; i < count; i += 2) {
+	for (i = 0; i < count; i += 4) {
 		sampL = *src_buf++;
 		sampR = *src_buf++;
 		/* Here has risk to distortion.
@@ -437,70 +481,102 @@ void cover_memcpy_8_channel(struct BUF *des, int a, struct BUF *src, int b,
 				unsigned count)
 {
 	int i;
-	int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
-	int32_t *to = (int32_t *)(des->addr + a);
-	int32_t *tfrom = (int32_t *)(src->addr + b);
-
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	lf = to;
-	cf = to + 1;
-	rf = to + 2;
-	ls = to + 3;
-	rs = to + 4;
-	lef = to + 5;
-	sbl = to + 6;
-	sbr = to + 7;
-
-	for (i = 0; i < count; i += 32) {
-		*lf++ = (int32_t)(((long)(*tfrom++) * direct_left_gain) >> 8);
-		*cf++ = (int32_t)(((long)(*tfrom++) * direct_right_gain) >> 8);
-		*rf++ = (int32_t)(((long)(*tfrom++) * direct_left_gain) >> 8);
-		*ls++ = (int32_t)(((long)(*tfrom++) * direct_right_gain) >> 8);
-		*rs++ = (int32_t)(((long)(*tfrom++) * direct_left_gain) >> 8);
-		*lef++ = (int32_t)(((long)(*tfrom++) * direct_right_gain) >> 8);
-		*sbl++ = (int32_t)(((long)(*tfrom++) * direct_left_gain) >> 8);
-		*sbr++ = (int32_t)(((long)(*tfrom++) * direct_right_gain) >> 8);
-
-		lf += 7;
-		cf += 7;
-		rf += 7;
-		ls += 7;
-		rs += 7;
-		lef += 7;
-		sbl += 7;
-		sbr += 7;
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		for (i = 0; i < count; i += 8) {
+			*to++ = (int32_t)
+				(((long)(*tfrom++) * direct_left_gain) >> 8);
+			*to++ = (int32_t)
+				(((long)(*tfrom++) * direct_right_gain) >> 8);
+		}
+	} else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		for (i = 0; i < count; i += 4) {
+			*to++ = (int16_t)
+				(((*tfrom++) * direct_left_gain) >> 8);
+			*to++ = (int16_t)
+				(((*tfrom++) * direct_right_gain) >> 8);
+		}
 	}
 #else
 	int j;
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
 
-	lf = to;
-	cf = to + 1 * 8;
-	rf = to + 2 * 8;
-	ls = to + 3 * 8;
-	rs = to + 4 * 8;
-	lef = to + 5 * 8;
-	sbl = to + 6 * 8;
-	sbr = to + 7 * 8;
-
-	for (j = 0; j < count; j += 256) {
-		for (i = 0; i < 8; i++) {
-			*lf++ = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			*cf++ = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			*rf++ = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			*ls++ = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			*rs++ = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			*lef++ = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			*sbl++ = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			*sbr++ = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
+		lf = to;
+		cf = to + 1 * 8;
+		rf = to + 2 * 8;
+		ls = to + 3 * 8;
+		rs = to + 4 * 8;
+		lef = to + 5 * 8;
+		sbl = to + 6 * 8;
+		sbr = to + 7 * 8;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 8; i++) {
+				*lf++ = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				*cf++ = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				*rf++ = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				*ls++ = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				*rs++ = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				*lef++ = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				*sbl++ = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				*sbr++ = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+			}
+			lf += 56;
+			cf += 56;
+			rf += 56;
+			ls += 56;
+			rs += 56;
+			lef += 56;
+			sbl += 56;
+			sbr += 56;
 		}
-		lf += 56;
-		cf += 56;
-		rf += 56;
-		ls += 56;
-		rs += 56;
-		lef += 56;
-		sbl += 56;
-		sbr += 56;
+	} else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		int16_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
+
+		lf = to;
+		cf = to + 1 * 16;
+		rf = to + 2 * 16;
+		ls = to + 3 * 16;
+		rs = to + 4 * 16;
+		lef = to + 5 * 16;
+		sbl = to + 6 * 16;
+		sbr = to + 7 * 16;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 16; i++) {
+				*lf++ = ((*tfrom++) * direct_left_gain) >> 8;
+				*cf++ = ((*tfrom++) * direct_right_gain) >> 8;
+				*rf++ = ((*tfrom++) * direct_left_gain) >> 8;
+				*ls++ = ((*tfrom++) * direct_right_gain) >> 8;
+				*rs++ = ((*tfrom++) * direct_left_gain) >> 8;
+				*lef++ = ((*tfrom++) * direct_right_gain) >> 8;
+				*sbl++ = ((*tfrom++) * direct_left_gain) >> 8;
+				*sbr++ = ((*tfrom++) * direct_right_gain) >> 8;
+			}
+			lf += 7 * 16;
+			cf += 7 * 16;
+			rf += 7 * 16;
+			ls += 7 * 16;
+			rs += 7 * 16;
+			lef += 7 * 16;
+			sbl += 7 * 16;
+			sbr += 7 * 16;
+		}
 	}
 #endif
 }
@@ -509,103 +585,140 @@ void direct_mix_memcpy_8_channel(struct BUF *des, int a, struct BUF *src, int b,
 				unsigned count)
 {
 	int i;
-	int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
-	int32_t *to = (int32_t *)(des->addr + a);
-	int32_t *tfrom = (int32_t *)(src->addr + b);
-	int32_t samp;
+	int samp;
 
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	lf = to;
-	cf = to + 1;
-	rf = to + 2;
-	ls = to + 3;
-	rs = to + 4;
-	lef = to + 5;
-	sbl = to + 6;
-	sbr = to + 7;
-
-	for (i = 0; i < count; i += 32) {
-		samp = *lf;
-		*lf++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_left_gain)) >> 8);
-		samp = *cf;
-		*cf++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_right_gain)) >> 8);
-		samp = *rf;
-		*rf++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_left_gain)) >> 8);
-		samp = *ls;
-		*ls++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_right_gain)) >> 8);
-		samp = *rs;
-		*rs++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_left_gain)) >> 8);
-		samp = *lef;
-		*lef++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_right_gain)) >> 8);
-		samp = *sbl;
-		*sbl++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_left_gain)) >> 8);
-		samp = *sbr;
-		*sbr++ = (int32_t)((long)(((samp) * music_gain +
-			(*tfrom++) * direct_right_gain)) >> 8);
-
-		lf += 7;
-		cf += 7;
-		rf += 7;
-		ls += 7;
-		rs += 7;
-		lef += 7;
-		sbl += 7;
-		sbr += 7;
-	}
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		for (i = 0; i < count; i += 8) {
+			samp = *to;
+			*to++ = clip32(((long)(samp) * music_gain +
+				(long)(*tfrom++) * direct_left_gain) >> 8);
+			samp = *to;
+			*to++ = clip32(((long)(samp) * music_gain +
+				(long)(*tfrom++) * direct_right_gain) >> 8);
+		}
+	 } else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		for (i = 0; i < count; i += 4) {
+			samp = *to;
+			*to++ = clip16(((samp) * music_gain +
+				(*tfrom++) * direct_left_gain) >> 8);
+			samp = *to;
+			*to++ = clip16(((samp) * music_gain +
+				(*tfrom++) * direct_right_gain) >> 8);
+		}
+	 }
 #else
 	int j;
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
 
-	lf = to;
-	cf = to + 1 * 8;
-	rf = to + 2 * 8;
-	ls = to + 3 * 8;
-	rs = to + 4 * 8;
-	lef = to + 5 * 8;
-	sbl = to + 6 * 8;
-	sbr = to + 7 * 8;
-
-	for (j = 0; j < count; j += 256) {
-		for (i = 0; i < 8; i++) {
-			samp = *lf;
-			*lf++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_left_gain) >> 8);
-			samp = *cf;
-			*cf++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_right_gain) >> 8);
-			samp = *rf;
-			*rf++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_left_gain) >> 8);
-			samp = *ls;
-			*ls++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_right_gain) >> 8);
-			samp = *rs;
-			*rs++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_left_gain) >> 8);
-			samp = *lef;
-			*lef++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_right_gain) >> 8);
-			samp = *sbl;
-			*sbl++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_left_gain) >> 8);
-			samp = *sbr;
-			*sbr++ = clip24(((samp) * music_gain +
-				((*tfrom++) >> 8) * direct_right_gain) >> 8);
+		lf = to;
+		cf = to + 1 * 8;
+		rf = to + 2 * 8;
+		ls = to + 3 * 8;
+		rs = to + 4 * 8;
+		lef = to + 5 * 8;
+		sbl = to + 6 * 8;
+		sbr = to + 7 * 8;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 8; i++) {
+				samp = *lf;
+				*lf++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_left_gain)
+					>> 8);
+				samp = *cf;
+				*cf++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_right_gain)
+					>> 8);
+				samp = *rf;
+				*rf++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_left_gain)
+					>> 8);
+				samp = *ls;
+				*ls++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_right_gain)
+					>> 8);
+				samp = *rs;
+				*rs++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_left_gain)
+					>> 8);
+				samp = *lef;
+				*lef++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_right_gain)
+					>> 8);
+				samp = *sbl;
+				*sbl++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_left_gain)
+					>> 8);
+				samp = *sbr;
+				*sbr++ = clip24(((samp) * music_gain +
+					((*tfrom++) >> 8) * direct_right_gain)
+					>> 8);
+			}
+			lf += 56;
+			cf += 56;
+			rf += 56;
+			ls += 56;
+			rs += 56;
+			lef += 56;
+			sbl += 56;
+			sbr += 56;
 		}
-		lf += 56;
-		cf += 56;
-		rf += 56;
-		ls += 56;
-		rs += 56;
-		lef += 56;
-		sbl += 56;
-		sbr += 56;
+	} else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		int16_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
+
+		lf = to;
+		cf = to + 1 * 16;
+		rf = to + 2 * 16;
+		ls = to + 3 * 16;
+		rs = to + 4 * 16;
+		lef = to + 5 * 16;
+		sbl = to + 6 * 16;
+		sbr = to + 7 * 16;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 16; i++) {
+				samp = *lf;
+				*lf++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_left_gain) >> 8);
+				samp = *cf;
+				*cf++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_right_gain) >> 8);
+				samp = *rf;
+				*rf++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_left_gain) >> 8);
+				samp = *ls;
+				*ls++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_right_gain) >> 8);
+				samp = *rs;
+				*rs++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_left_gain) >> 8);
+				samp = *lef;
+				*lef++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_right_gain) >> 8);
+				samp = *sbl;
+				*sbl++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_left_gain) >> 8);
+				samp = *sbr;
+				*sbr++ = clip16(((samp) * music_gain +
+					(*tfrom++) * direct_right_gain) >> 8);
+			}
+			lf += 7 * 16;
+			cf += 7 * 16;
+			rf += 7 * 16;
+			ls += 7 * 16;
+			rs += 7 * 16;
+			lef += 7 * 16;
+			sbl += 7 * 16;
+			sbr += 7 * 16;
+		}
 	}
 #endif
 }
@@ -614,119 +727,181 @@ void inter_mix_memcpy_8_channel(struct BUF *des, int a, struct BUF *src, int b,
 				unsigned count)
 {
 	int i;
-	int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
-	int32_t *to = (int32_t *)(des->addr + a);
-	int32_t *tfrom = (int32_t *)(src->addr + b);
-	int32_t samp, sampLR, sampL, sampR;
+	int samp, sampLR, sampL, sampR;
 
 #ifdef CONFIG_SND_AML_SPLIT_MODE
-	lf = to;
-	cf = to + 1;
-	rf = to + 2;
-	ls = to + 3;
-	rs = to + 4;
-	lef = to + 5;
-	sbl = to + 6;
-	sbr = to + 7;
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		for (i = 0; i < count; i += 8) {
+			sampL = (int)
+				(((long)(*tfrom++) * direct_left_gain) >> 8);
+			sampR = (int)
+				(((long)(*tfrom++) * direct_right_gain) >> 8);
+			sampLR = (sampL + sampR) >> 1;
 
-	for (i = 0; i < count; i += 32) {
-		sampL = (int32_t)((long)((*tfrom++) * direct_left_gain) >> 8);
-		sampR = (int32_t)((long)((*tfrom++) * direct_right_gain) >> 8);
-		sampLR = (sampL + sampR) >> 1;
+			samp = *to;
+			*to++ = clip32(
+				(((long)samp * music_gain) >> 8) + sampLR);
+			samp = *to;
+			*to++ = clip32(
+				(((long)samp * music_gain) >> 8) + sampLR);
+		}
+	} else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		for (i = 0; i < count; i += 4) {
+			sampL = (int)(((*tfrom++) * direct_left_gain) >> 8);
+			sampR = (int)(((*tfrom++) * direct_right_gain) >> 8);
+			sampLR = (sampL + sampR) >> 1;
 
-		samp = *lf;
-		*lf++ = (int32_t)((long)samp * music_gain + sampLR);
-		samp = *cf;
-		*cf++ = (int32_t)((long)samp * music_gain + sampLR);
-
-		sampL = (int32_t)((long)((*tfrom++) * direct_left_gain) >> 8);
-		sampR = (int32_t)((long)((*tfrom++) * direct_right_gain) >> 8);
-		sampLR = (sampL + sampR) >> 1;
-		samp = *rf;
-		*rf++ = (int32_t)((long)samp * music_gain + sampLR);
-		samp = *ls;
-		*ls++ = (int32_t)((long)samp * music_gain + sampLR);
-
-		sampL = (int32_t)((long)((*tfrom++) * direct_left_gain) >> 8);
-		sampR = (int32_t)((long)((*tfrom++) * direct_right_gain) >> 8);
-		sampLR = (sampL + sampR) >> 1;
-		samp = *rs;
-		*rs++ = (int32_t)((long)samp * music_gain + sampLR);
-		samp = *lef;
-		*lef++ = (int32_t)((long)samp * music_gain + sampLR);
-
-		sampL = (int32_t)((long)((*tfrom++) * direct_left_gain) >> 8);
-		sampR = (int32_t)((long)((*tfrom++) * direct_right_gain) >> 8);
-		sampLR = (sampL + sampR) >> 1;
-		samp = *sbl;
-		*sbl++ = (int32_t)((long)samp * music_gain + sampLR);
-		samp = *sbr;
-		*sbr++ = (int32_t)((long)samp * music_gain + sampLR);
-
-		lf += 7;
-		cf += 7;
-		rf += 7;
-		ls += 7;
-		rs += 7;
-		lef += 7;
-		sbl += 7;
-		sbr += 7;
+			samp = *to;
+			*to++ = clip16(
+				(((long)samp * music_gain) >> 8) + sampLR);
+			samp = *to;
+			*to++ = clip16(
+				(((long)samp * music_gain) >> 8) + sampLR);
+		}
 	}
 #else
 	int j;
+	if (aml_i2s_playback_format == 32 || aml_i2s_playback_format == 24) {
+		int32_t *to = (int32_t *)(des->addr + a);
+		int32_t *tfrom = (int32_t *)(src->addr + b);
+		int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
 
-	lf = to;
-	cf = to + 1 * 8;
-	rf = to + 2 * 8;
-	ls = to + 3 * 8;
-	rs = to + 4 * 8;
-	lef = to + 5 * 8;
-	sbl = to + 6 * 8;
-	sbr = to + 7 * 8;
+		lf = to;
+		cf = to + 1 * 8;
+		rf = to + 2 * 8;
+		ls = to + 3 * 8;
+		rs = to + 4 * 8;
+		lef = to + 5 * 8;
+		sbl = to + 6 * 8;
+		sbr = to + 7 * 8;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 8; i++) {
+				sampL = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				sampR = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				sampLR = (sampL + sampR) >> 1;
 
-	for (j = 0; j < count; j += 256) {
-		for (i = 0; i < 8; i++) {
-			sampL = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			sampR = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			sampLR = (sampL + sampR) >> 1;
+				samp = *lf;
+				*lf++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *cf;
+				*cf++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
 
-			samp = *lf;
-			*lf++ = clip24(((samp) >> 8) * music_gain + sampLR);
-			samp = *cf;
-			*cf++ = clip24(((samp) >> 8) * music_gain + sampLR);
+				sampL = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				sampR = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *rf;
+				*rf++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *ls;
+				*ls++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
 
-			sampL = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			sampR = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			sampLR = (sampL + sampR) >> 1;
-			samp = *rf;
-			*rf++ = clip24(((samp) >> 8) * music_gain + sampLR);
-			samp = *ls;
-			*ls++ = clip24(((samp) >> 8) * music_gain + sampLR);
+				sampL = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				sampR = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *rs;
+				*rs++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *lef;
+				*lef++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
 
-			sampL = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			sampR = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			sampLR = (sampL + sampR) >> 1;
-			samp = *rs;
-			*rs++ = clip24(((samp) >> 8) * music_gain + sampLR);
-			samp = *lef;
-			*lef++ = clip24(((samp) >> 8) * music_gain + sampLR);
-
-			sampL = (((*tfrom++) >> 8) * direct_left_gain) >> 8;
-			sampR = (((*tfrom++) >> 8) * direct_right_gain) >> 8;
-			sampLR = (sampL + sampR) >> 1;
-			samp = *sbl;
-			*sbl++ = clip24(((samp) >> 8) * music_gain + sampLR);
-			samp = *sbr;
-			*sbr++ = clip24(((samp) >> 8) * music_gain + sampLR);
+				sampL = (((*tfrom++) >> 8) * direct_left_gain)
+					>> 8;
+				sampR = (((*tfrom++) >> 8) * direct_right_gain)
+					>> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *sbl;
+				*sbl++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *sbr;
+				*sbr++ = clip24(
+					((samp * music_gain) >> 8) + sampLR);
+			}
+			lf += 56;
+			cf += 56;
+			rf += 56;
+			ls += 56;
+			rs += 56;
+			lef += 56;
+			sbl += 56;
+			sbr += 56;
 		}
-		lf += 56;
-		cf += 56;
-		rf += 56;
-		ls += 56;
-		rs += 56;
-		lef += 56;
-		sbl += 56;
-		sbr += 56;
+	} else {
+		int16_t *to = (int16_t *)(des->addr + a);
+		int16_t *tfrom = (int16_t *)(src->addr + b);
+		int16_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
+
+		lf = to;
+		cf = to + 1 * 16;
+		rf = to + 2 * 16;
+		ls = to + 3 * 16;
+		rs = to + 4 * 16;
+		lef = to + 5 * 16;
+		sbl = to + 6 * 16;
+		sbr = to + 7 * 16;
+		for (j = 0; j < count; j += 256) {
+			for (i = 0; i < 16; i++) {
+				sampL = ((*tfrom++) * direct_left_gain) >> 8;
+				sampR = ((*tfrom++) * direct_right_gain) >> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *lf;
+				*lf++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *cf;
+				*cf++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+
+				sampL = ((*tfrom++) * direct_left_gain) >> 8;
+				sampR = ((*tfrom++) * direct_right_gain) >> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *rf;
+				*rf++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *ls;
+				*ls++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+
+				sampL = ((*tfrom++) * direct_left_gain) >> 8;
+				sampR = ((*tfrom++) * direct_right_gain) >> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *rs;
+				*rs++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *lef;
+				*lef++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+
+				sampL = ((*tfrom++) * direct_left_gain) >> 8;
+				sampR = ((*tfrom++) * direct_right_gain) >> 8;
+				sampLR = (sampL + sampR) >> 1;
+				samp = *sbl;
+				*sbl++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+				samp = *sbr;
+				*sbr++ = clip16(
+					((samp * music_gain) >> 8) + sampLR);
+			}
+			lf += 7 * 16;
+			cf += 7 * 16;
+			rf += 7 * 16;
+			ls += 7 * 16;
+			rs += 7 * 16;
+			lef += 7 * 16;
+			sbl += 7 * 16;
+			sbr += 7 * 16;
+		}
 	}
 #endif
 }
@@ -735,13 +910,17 @@ static void i2s_copy(struct amaudio_t *amaudio)
 {
 	struct BUF *hw = &amaudio->hw;
 	struct BUF *sw = &amaudio->sw;
-	unsigned long swirqflags, hwirqflags;
 	unsigned i2s_out_ptr = get_i2s_out_ptr();
 	unsigned alsa_delay =
 		(aml_i2s_alsa_write_addr + hw->size - i2s_out_ptr) % hw->size;
 	unsigned amaudio_delay = (hw->wr + hw->size - i2s_out_ptr) % hw->size;
 
+#ifdef AMAUDIO2_USE_IRQ
+	unsigned long swirqflags, hwirqflags;
 	spin_lock_irqsave(&hw->lock, hwirqflags);
+#else
+	mutex_lock(&hw->lock);
+#endif
 
 	hw->rd = i2s_out_ptr;
 	hw->level = amaudio_delay;
@@ -756,7 +935,7 @@ static void i2s_copy(struct amaudio_t *amaudio)
 	}
 
 	if (sw->level > soft_buffer_threshold) {
-		/*pr_info(
+		/*pr_debug(
 		"Reset sw: hw->wr = %x,hw->rd = %x, hw->level = %x,"
 		"alsa_delay:%x,sw->wr = %x, sw->rd = %x,sw->level = %x\n",
 		hw->wr, hw->rd, hw->level, alsa_delay,
@@ -774,30 +953,91 @@ static void i2s_copy(struct amaudio_t *amaudio)
 				(sw->rd + int_block > sw->size));
 	BUG_ON((hw->wr < 0) || (sw->rd < 0));
 
-	if (audio_out_mode == 0)
-		(*aml_cover_memcpy)(hw, hw->wr, sw, sw->rd, int_block);
-	else if (audio_out_mode == 1)
-		(*aml_inter_mix_memcpy)(hw, hw->wr, sw, sw->rd, int_block);
-	else if (audio_out_mode == 2)
-		(*aml_direct_mix_memcpy)(hw, hw->wr, sw, sw->rd, int_block);
+	if (external_mute_enable == 1 && external_mute_flag == 1) {
+		memset((hw->addr + hw->wr), 0, int_block);
+	} else {
+		if (audio_out_mode == 0)
+			(*aml_cover_memcpy)
+					(hw, hw->wr, sw, sw->rd, int_block);
+		else if (audio_out_mode == 1)
+			(*aml_inter_mix_memcpy)
+					(hw, hw->wr, sw, sw->rd, int_block);
+		else if (audio_out_mode == 2)
+			(*aml_direct_mix_memcpy)
+					(hw, hw->wr, sw, sw->rd, int_block);
+	}
 
 	hw->wr = (hw->wr + int_block) % hw->size;
 	hw->level = (hw->wr + hw->size - i2s_out_ptr) % hw->size;
 
+#ifdef AMAUDIO2_USE_IRQ
+	spin_unlock_irqrestore(&hw->lock, hwirqflags);
 	spin_lock_irqsave(&sw->lock, swirqflags);
+#else
+	mutex_unlock(&hw->lock);
+	mutex_lock(&sw->lock);
+#endif
+
 	sw->rd = (sw->rd + int_block) % sw->size;
 	sw->level = (sw->size + sw->wr - sw->rd) % sw->size;
-	spin_unlock_irqrestore(&sw->lock, swirqflags);
 
-EXIT:  spin_unlock_irqrestore(&hw->lock, hwirqflags);
+#ifdef AMAUDIO2_USE_IRQ
+	spin_unlock_irqrestore(&sw->lock, swirqflags);
+#else
+	mutex_unlock(&sw->lock);
+#endif
+	return;
+
+EXIT:
+
+#ifdef AMAUDIO2_USE_IRQ
+	spin_unlock_irqrestore(&hw->lock, hwirqflags);
+#else
+	mutex_unlock(&hw->lock);
+#endif
 	return;
 }
+
+#ifdef AMAUDIO2_DEBUG
+#define period_reset	(1000*1000)
+#define CCCNT_WARN		2000
+static unsigned long start_time;
+static unsigned long isr_time;
+static unsigned long total_time;
+static unsigned long total_cnt;
+#endif
 
 static irqreturn_t i2s_out_callback(int irq, void *data)
 {
 	struct amaudio_t *amaudio = (struct amaudio_t *)data;
 
+#ifdef AMAUDIO2_DEBUG
+	unsigned long clk1, clk2;
+	unsigned int ratio = 0;
+	clk1 = sched_clock()/1000;
+#endif
+
 	i2s_copy(amaudio);
+
+#ifdef AMAUDIO2_DEBUG
+	clk2 = sched_clock()/1000;
+	isr_time += (clk2-clk1);
+	total_time = (clk2-start_time);
+	total_cnt++;
+
+	if (total_time >= period_reset) {
+		ratio = isr_time * 100 / total_time;
+		if ((ratio >= 20) || (total_cnt > CCCNT_WARN)) {
+			pr_err("Warning:isrtime:%ld totalTime:%ld ratio:%d, cnt:%d\n",
+				isr_time, total_time, ratio, (int)total_cnt);
+		}
+		start_time	= sched_clock()/1000;
+		isr_time	= 0;
+		total_time = 0;
+		total_cnt = 0;
+	}
+#endif
+
 	return IRQ_HANDLED;
 }
 
@@ -821,7 +1061,9 @@ static long amaudio_ioctl(struct file *file, unsigned int cmd,
 {
 	struct amaudio_t *amaudio = (struct amaudio_t *)file->private_data;
 	s32 r = 0;
+#ifdef AMAUDIO2_USE_IRQ
 	unsigned long swirqflags, hwirqflags;
+#endif
 
 	switch (cmd) {
 	case AMAUDIO_IOC_GET_SIZE:
@@ -830,22 +1072,43 @@ static long amaudio_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case AMAUDIO_IOC_GET_PTR:
 		/* the read pointer of internal buffer */
+#ifdef AMAUDIO2_USE_IRQ
 		spin_lock_irqsave(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_lock(&amaudio->sw.lock);
+#endif
+
 		r = amaudio->sw.rd;
+
+#ifdef AMAUDIO2_USE_IRQ
 		spin_unlock_irqrestore(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_unlock(&amaudio->sw.lock);
+#endif
 		break;
 	case AMAUDIO_IOC_UPDATE_APP_PTR:
 		/*
 		 * the user space write pointer
 		 * of the internal buffer
 		 */
+#ifdef AMAUDIO2_USE_IRQ
 		spin_lock_irqsave(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_lock(&amaudio->sw.lock);
+#endif
+
 		amaudio->sw.wr = arg;
 		amaudio->sw.level = (amaudio->sw.size + amaudio->sw.wr
 					 - amaudio->sw.rd) % amaudio->sw.size;
+
+#ifdef AMAUDIO2_USE_IRQ
 		spin_unlock_irqrestore(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_unlock(&amaudio->sw.lock);
+#endif
+
 		if (amaudio->sw.wr % i2s_num)
-			pr_info("wr:%x, not %d Bytes align\n",
+			pr_err("wr:%x, not %d Bytes align\n",
 						amaudio->sw.wr, i2s_num);
 		break;
 	case AMAUDIO_IOC_RESET:
@@ -854,19 +1117,36 @@ static long amaudio_ioctl(struct file *file, unsigned int cmd,
 		 * pointer to get a given latency
 		 * this api should be called before fill datas
 		 */
+#ifdef AMAUDIO2_USE_IRQ
 		spin_lock_irqsave(&amaudio->hw.lock, hwirqflags);
+#else
+		mutex_lock(&amaudio->hw.lock);
+#endif
+
 		amaudio->hw.rd = get_i2s_out_ptr();
 		amaudio->hw.wr = (amaudio->hw.rd + latency) % amaudio->hw.size;
 		amaudio->hw.wr /= int_block;
 		amaudio->hw.wr *= int_block;
 		amaudio->hw.level = latency;
+
+#ifdef AMAUDIO2_USE_IRQ
 		spin_unlock_irqrestore(&amaudio->hw.lock, hwirqflags);
 		/* empty the buffer */
 		spin_lock_irqsave(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_unlock(&amaudio->hw.lock);
+		mutex_lock(&amaudio->sw.lock);
+#endif
+
 		amaudio->sw.wr = 0;
 		amaudio->sw.rd = 0;
 		amaudio->sw.level = 0;
+
+#ifdef AMAUDIO2_USE_IRQ
 		spin_unlock_irqrestore(&amaudio->sw.lock, swirqflags);
+#else
+		mutex_unlock(&amaudio->sw.lock);
+#endif
 		/*pr_info("Reset amaudio2: latency=%d bytes\n", latency);*/
 		break;
 	case AMAUDIO_IOC_AUDIO_OUT_MODE:
@@ -958,7 +1238,7 @@ static ssize_t store_direct_left_gain(struct class *class,
 		val = 256;
 
 	direct_left_gain = val;
-	pr_info("direct_left_gain set to %d\n", direct_left_gain);
+	pr_debug("direct_left_gain set to %d\n", direct_left_gain);
 	return count;
 }
 
@@ -983,7 +1263,7 @@ static ssize_t store_direct_right_gain(struct class *class,
 		val = 256;
 
 	direct_right_gain = val;
-	pr_info("direct_right_gain set to %d\n", direct_right_gain);
+	pr_debug("direct_right_gain set to %d\n", direct_right_gain);
 	return count;
 }
 
@@ -1008,7 +1288,7 @@ static ssize_t store_music_gain(struct class *class,
 		val = 256;
 
 	music_gain = val;
-	pr_info("music_gain set to %d\n", music_gain);
+	pr_debug("music_gain set to %d\n", music_gain);
 	return count;
 }
 
@@ -1086,6 +1366,27 @@ static ssize_t store_aml_output_driver(struct class *class,
 	return count;
 }
 
+static ssize_t show_aml_external_mute_enable(struct class *class,
+				struct class_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", external_mute_enable);
+}
+
+static ssize_t store__aml_external_mute_enable(struct class *class,
+				struct class_attribute *attr,
+				const char *buf, size_t count)
+{
+	if (buf[0] == '0') {
+		pr_info("amaudio2_out external mute enable!\n");
+		external_mute_enable = 0;
+	} else if (buf[0] == '1') {
+		pr_info("amaudio2_out external mute disable!\n");
+		external_mute_enable = 1;
+	}
+
+	return count;
+}
+
 static struct class_attribute amaudio_attrs[] = {
 	__ATTR(aml_audio_out_mode,
 	       S_IRUGO | S_IWUSR,
@@ -1115,6 +1416,10 @@ static struct class_attribute amaudio_attrs[] = {
 	       S_IRUGO | S_IWUSR | S_IWGRP,
 	       show_aml_output_driver,
 	       store_aml_output_driver),
+	__ATTR(aml_external_mute_enable,
+	       S_IRUGO | S_IWUSR | S_IWGRP,
+	       show_aml_external_mute_enable,
+	       store__aml_external_mute_enable),
 	__ATTR_NULL
 };
 

@@ -52,6 +52,19 @@ struct ve_regs_s {
 	unsigned int mode:1;
 	unsigned int rsv:5;
 };
+enum vlock_param_e {
+	VLOCK_EN = 0x0,
+	VLOCK_ADAPT,
+	VLOCK_MODE,
+	VLOCK_DIS_CNT_LIMIT,
+	VLOCK_DELTA_LIMIT,
+	VLOCK_DEBUG,
+	VLOCK_DYNAMIC_ADJUST,
+	VLOCK_STATE,
+	VLOCK_SYNC_LIMIT_FLAG,
+	VLOCK_DIS_CNT_NO_VF_LIMIT,
+	VLOCK_PARAM_MAX,
+};
 
 extern struct ve_hist_s video_ve_hist;
 extern unsigned int ve_size;
@@ -64,6 +77,8 @@ extern struct tcon_gamma_table_s video_gamma_table_r_adj;
 extern struct tcon_gamma_table_s video_gamma_table_g_adj;
 extern struct tcon_gamma_table_s video_gamma_table_b_adj;
 extern struct tcon_rgb_ogo_s     video_rgb_ogo;
+
+extern spinlock_t vpp_lcd_gamma_lock;
 
 void ve_on_vs(struct vframe_s *vf);
 
@@ -84,6 +99,7 @@ extern void ve_disable_dnlp(void);
 extern void vpp_enable_lcd_gamma_table(void);
 extern void vpp_disable_lcd_gamma_table(void);
 extern void vpp_set_lcd_gamma_table(u16 *data, u32 rgb_mask);
+extern void init_write_gamma_table(u16 *data, u32 rgb_mask);
 extern void vpp_set_rgb_ogo(struct tcon_rgb_ogo_s *p);
 extern void vpp_phase_lock_on_vs(unsigned int cycle,
 				 unsigned int stamp,
@@ -101,11 +117,20 @@ extern void ve_new_dnlp_param_update(void);
 extern void ve_ogo_param_update(void);
 extern void am_set_regmap(struct am_regs_s *p);
 extern void sharpness_process(struct vframe_s *vf);
-extern void amvecm_bricon_process(unsigned int bri_val,
-				unsigned int cont_val, struct vframe_s *vf);
+extern void amvecm_bricon_process(signed int bri_val,
+				signed int cont_val, struct vframe_s *vf);
+extern void amvecm_color_process(signed int sat_val,
+	signed int hue_val, struct vframe_s *vf);
 extern void amvecm_3d_black_process(void);
 extern void amvecm_3d_sync_process(void);
 extern void amve_vlock_process(struct vframe_s *vf);
+extern void amve_vlock_resume(void);
+extern void vlock_param_set(unsigned int val, enum vlock_param_e sel);
+extern void vlock_status(void);
+extern void vlock_reg_dump(void);
+extern void vlock_log_start(void);
+extern void vlock_log_stop(void);
+extern void vlock_log_print(void);
 
 int amvecm_hiu_reg_read(unsigned int reg, unsigned int *val);
 int amvecm_hiu_reg_write(unsigned int reg, unsigned int val);
@@ -117,6 +142,8 @@ extern unsigned int sync_3d_v_start;
 extern unsigned int sync_3d_v_end;
 extern unsigned int sync_3d_polarity;
 extern unsigned int sync_3d_out_inv;
+extern unsigned int sync_3d_black_color;
+extern unsigned int sync_3d_sync_to_vbo;
 
 extern void __iomem *amvecm_hiu_reg_base;
 
@@ -128,6 +155,24 @@ extern u32 VSYNC_RD_MPEG_REG(u32 adr);
 /* #if defined(CONFIG_ARCH_MESON2) */
 /* unsigned long long ve_get_vs_cnt(void); */
 /* #endif */
+extern int video_rgb_ogo_xvy_mtx;
+
+#define VLOCK_STATE_NULL 0
+#define VLOCK_STATE_ENABLE_STEP1_DONE 1
+#define VLOCK_STATE_ENABLE_STEP2_DONE 2
+#define VLOCK_STATE_DISABLE_STEP1_DONE 3
+#define VLOCK_STATE_DISABLE_STEP2_DONE 4
+#define VLOCK_STATE_ENABLE_FORCE_RESET 5
+
+/* video lock */
+#define VLOCK_MODE_ENC          0
+#define VLOCK_MODE_AUTO_PLL		1
+#define VLOCK_MODE_MANUAL_PLL	2
+#define XTAL_VLOCK_CLOCK   24000000/*vlock use xtal clock*/
+
+/* 0:enc;1:pll;2:manual pll */
+extern unsigned int vlock_mode;
+extern unsigned int vlock_en;
 
 #endif
 

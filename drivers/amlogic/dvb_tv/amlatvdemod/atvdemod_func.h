@@ -269,6 +269,8 @@ extern int aml_atvdemod_get_snr(struct dvb_frontend *fe);
 #define AML_ATV_DEMOD_VIDEO_MODE_PROP_CURVE_CHINA	3
 #define AML_ATV_DEMOD_VIDEO_MODE_PROP_CURVE_BYPASS	4
 
+#define HHI_GCLK_MPEG0 (0x1050)
+
 /*sound format 0: MONO;1:NICAM*/
 #define AML_ATV_DEMOD_SOUND_MODE_PROP_MONO	0
 #define AML_ATV_DEMOD_SOUND_MODE_PROP_NICAM	1
@@ -305,6 +307,8 @@ struct amlatvdemod_device_s {
 	const char *pin_name;
 };
 
+extern int amlatvdemod_hiu_reg_read(unsigned int reg, unsigned int *val);
+extern void aml_audio_overmodulation(int enable);
 extern void amlatvdemod_set_std(int val);
 extern struct amlatvdemod_device_s *amlatvdemod_devp;
 extern void aml_fix_PWM_adjust(int enable);
@@ -314,5 +318,9 @@ extern void aml_atvdemod_overmodule_det(void);
 extern int aml_audiomode_autodet(struct dvb_frontend *fe);
 extern void retrieve_frequency_offset(int *freq_offset);
 extern int aml_atvdemod_get_snr_ex(void);
+extern void set_atvdemod_scan_mode(int val);
+extern int atvauddemod_init(void);
 
+/*from amldemod/amlfrontend.c*/
+extern int vdac_enable_check_dtv(void);
 #endif /* __ATVDEMOD_FUN_H */

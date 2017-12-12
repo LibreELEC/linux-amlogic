@@ -21,11 +21,24 @@
 #include <linux/time.h>
 
 #include "atvdemod_func.h"
+#include "atvauddemod_func.h"
 #include "../aml_dvb_reg.h"
 
 static int broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC;
 module_param(broad_std, int, 0644);
 MODULE_PARM_DESC(broad_std, "\n broad_std\n");
+
+int aud_std = AUDIO_STANDARD_NICAM_DK;
+module_param(aud_std, int, 0644);
+MODULE_PARM_DESC(aud_std, "\n audio std\n");
+
+int aud_mode = AUDIO_OUTMODE_STEREO;
+module_param(aud_mode, int, 0644);
+MODULE_PARM_DESC(aud_mode, "\n audio demod output mode val\n");
+
+int aud_auto = 1;
+module_param(aud_auto, int, 0644);
+MODULE_PARM_DESC(aud_auto, "\n audio demod auto detec\n");
 
 static unsigned long over_threshold = 0xffff;
 module_param(over_threshold, ulong, 0644);
@@ -39,13 +52,21 @@ static bool audio_det_en;
 module_param(audio_det_en, bool, 0644);
 MODULE_PARM_DESC(audio_det_en, "\n audio_det_en\n");
 
-static bool non_std_en;
-module_param(non_std_en, bool, 0644);
-MODULE_PARM_DESC(non_std__en, "\n non_std_en\n");
+static int non_std_en;
+module_param(non_std_en, int, 0644);
+MODULE_PARM_DESC(non_std_en, "\n non_std_en\n");
 
 static int atv_video_gain;
 module_param(atv_video_gain, int, 0644);
-MODULE_PARM_DESC(atv_video_gain, "\n atv_video_gain\n");
+MODULE_PARM_DESC(atv_video_gain, "\n atv_video_gain reg:0x0f44\n");
+
+static int carrier_amplif_val = 0xc030901;
+module_param(carrier_amplif_val, int, 0644);
+MODULE_PARM_DESC(carrier_amplif_val, "\ncarrier_amplif_val (reg 0x0624)\n");
+
+static int extra_input_fil_val = 0x1030501;
+module_param(extra_input_fil_val, int, 0644);
+MODULE_PARM_DESC(extra_input_fil_val, "\nextra_input_fil_val (reg 0x0900)\n");
 
 static int audio_det_mode = AUDIO_AUTO_DETECT;
 module_param(audio_det_mode, int, 0644);
@@ -134,6 +155,10 @@ MODULE_PARM_DESC(reg_dbg_en, "\n reg_dbg_en\n");
 static unsigned int audio_gain_val = 512;
 module_param(audio_gain_val, uint, 0644);
 MODULE_PARM_DESC(audio_gain_val, "\n audio_gain_val\n");
+
+static unsigned int audio_a2_threshold = 0x800;
+module_param(audio_a2_threshold, uint, 0644);
+MODULE_PARM_DESC(audio_a2_threshold, "\n audio_a2_threshold\n");
 
 enum AUDIO_SCAN_ID {
 	ID_PAL_I = 0,
@@ -315,8 +340,10 @@ void set_video_gain_val(int val)
 
 void atv_dmd_soft_reset(void)
 {
+	atv_dmd_wr_long(0x1d, 0x0, 0x1035);/* disable dac */
 	atv_dmd_wr_byte(APB_BLOCK_ADDR_SYSTEM_MGT, 0x0, 0x0);
 	atv_dmd_wr_byte(APB_BLOCK_ADDR_SYSTEM_MGT, 0x0, 0x1);
+	atv_dmd_wr_long(0x1d, 0x0, 0x1037);/* enable dac */
 }
 
 void atv_dmd_input_clk_32m(void)
@@ -374,7 +401,7 @@ void atv_dmd_misc(void)
 		atv_dmd_wr_long(0x0f, 0x3c, reg_23cf);/*zhuangwei*/
 		/*guanzhong@20150804a*/
 		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_STG_2, 0x00, 0x1);
-		atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM, 0x08, 0x60180200);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM, 0x08, 0x601b0201);
 		/*dezhi@20150610a 0x1a maybe better?!*/
 		/* atv_dmd_wr_byte(APB_BLOCK_ADDR_AGC_PWM, 0x09, 0x19); */
 	} else {
@@ -384,7 +411,7 @@ void atv_dmd_misc(void)
 
 	if (amlatvdemod_devp->parm.tuner_id == AM_TUNER_MXL661) {
 		atv_dmd_wr_long(0x0c, 0x04, 0xbffa0000) ;/*test in sky*/
-		atv_dmd_wr_long(0x0c, 0x00, 0x5a4000);/*test in sky*/
+		atv_dmd_wr_long(0x0c, 0x00, 0x6f4000);/*test in sky*/
 		/*guanzhong@20151013 fix nonstd def is:0x0c010301;0x0c020601*/
 		atv_dmd_wr_long(APB_BLOCK_ADDR_CARR_RCVY, 0x24, 0x0c030901);
 	} else {
@@ -396,27 +423,33 @@ void atv_dmd_misc(void)
 	atv_dmd_wr_long(0x19, 0x00, 0x4a4000);/*zhuangwei*/
 	/*atv_dmd_wr_byte(0x0c,0x01,0x28);//pwd-out gain*/
 	/*atv_dmd_wr_byte(0x0c,0x04,0xc0);//pwd-out offset*/
-	if (is_meson_gxtvbb_cpu()) {
-		aml_audio_valume_gain_set(audio_gain_val);
-		/* 20160121 fix audio demodulation over */
-		atv_dmd_wr_long(0x09, 0x00, 0x1030501);
-		atv_dmd_wr_long(0x09, 0x04, 0x1900000);
-		if (aud_dmd_jilinTV)
-			atv_dmd_wr_long(0x09, 0x00, 0x2030503);
-		if (non_std_en == 1) {
-			atv_dmd_wr_long(0x09, 0x00, 0x2030503);
-			atv_dmd_wr_long(0x0f, 0x44, 0x7c8808c1);
-			atv_dmd_wr_long(0x06, 0x24, 0x0c010801);
-		} else {
-			atv_dmd_wr_long(0x09, 0x00, 0x1030501);
-			if (atv_video_gain)
-				atv_dmd_wr_long(0x0f, 0x44, atv_video_gain);
-			else
-				atv_dmd_wr_long(0x0f, 0x44, 0xfc0808c1);
-			atv_dmd_wr_long(0x06, 0x24, 0xc030901);
-		}
 
+	aml_audio_valume_gain_set(audio_gain_val);
+	/* 20160121 fix audio demodulation over */
+	atv_dmd_wr_long(0x09, 0x00, 0x1030501);
+	atv_dmd_wr_long(0x09, 0x04, 0x1900000);
+	if (aud_dmd_jilinTV)
+		atv_dmd_wr_long(0x09, 0x00, 0x2030503);
+	if (non_std_en == 1) {
+		atv_dmd_wr_long(0x09, 0x00, 0x2030503);
+		atv_dmd_wr_long(0x0f, 0x44, 0x7c8808c1);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_CARR_RCVY, 0x24, 0x0c010801);
+	} else if (non_std_en == 2) {
+		/* fix vsync signal is too weak */
+		atv_dmd_wr_long(0x09, 0x00, 0x1030501);
+		atv_dmd_wr_long(0x0f, 0x44, 0x8c0808c1);
+		atv_dmd_wr_long(0x0f, 0x0c, 0x387c0831);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_CARR_RCVY, 0x24, 0xc030901);
+	} else {
+		atv_dmd_wr_long(0x09, 0x00, extra_input_fil_val);
+		if (atv_video_gain)
+			atv_dmd_wr_long(0x0f, 0x44, atv_video_gain);
+		else
+			atv_dmd_wr_long(0x0f, 0x44, 0xfc0808c1);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_CARR_RCVY, 0x24,
+			carrier_amplif_val);
 	}
+
 }
 
 /*Broadcast_Standard*/
@@ -1068,6 +1101,10 @@ void configure_receiver(int Broadcast_Standard, unsigned int Tuner_IF_Frequency,
 				 ((sif_deemp & 0xff) << 16) | 0x0500 |
 				 sif_fm_gain));
 		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_STG_2, 0x06, sif_cfg_demod);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2, 0x24,
+				(((sif_bb_bw & 0xff) << 24) |
+				 0xfffff));
+		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2, 0x1c, 0x1f000);
 	}
 
 	if (Broadcast_Standard != AML_ATV_DEMOD_VIDEO_MODE_PROP_DTV) {
@@ -1453,6 +1490,8 @@ void atvdemod_timer_hander(unsigned long arg)
 {
 	if (atvdemod_timer_en == 0)
 		return;
+	if (vdac_enable_check_dtv())
+		return;
 	atvdemod_timer.expires = jiffies + ATVDEMOD_INTERVAL*10;/*100ms timer*/
 	add_timer(&atvdemod_timer);
 	if (atvdemod_afc_en)
@@ -1533,6 +1572,79 @@ int atvdemod_clk_init(void)
 	return 0;
 }
 
+int amlfmt_aud_standard(int broad_std)
+{
+	int std = 0;
+	int nicam_lock = 0;
+	uint32_t reg_value = 0;
+
+	switch (broad_std) {
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC:
+		std = AUDIO_STANDARD_BTSC;
+		configure_adec(std);
+		adec_soft_reset();
+		mdelay(2);
+
+		/* maybe need wait */
+		reg_value = adec_rd_reg(CARRIER_MAG_REPORT);
+		if (((reg_value>>16)&0xffff) > audio_a2_threshold)
+			std = AUDIO_STANDARD_A2_K;
+		else
+			std = AUDIO_STANDARD_BTSC;
+		break;
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_J:
+		std = AUDIO_STANDARD_EIAJ;
+		break;
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_BG:
+		std = AUDIO_STANDARD_NICAM_BG;
+		configure_adec(std);
+		adec_soft_reset();
+		mdelay(2);
+		/* need wait */
+		reg_value = adec_rd_reg(0x1a3);
+		nicam_lock = (reg_value>>28)&1;
+
+		if (nicam_lock)
+			std = AUDIO_STANDARD_NICAM_BG;
+		else
+			std = AUDIO_STANDARD_A2_BG;
+		break;
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK:
+		std = AUDIO_STANDARD_NICAM_DK;
+		configure_adec(aud_std);
+		adec_soft_reset();
+		mdelay(2);
+		/* need wait */
+		reg_value = adec_rd_reg(0x1a3);
+		nicam_lock = (reg_value>>28)&1;
+		if (nicam_lock)
+			std = AUDIO_STANDARD_NICAM_DK;
+		else
+			std = AUDIO_STANDARD_A2_DK2;
+		break;
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I:
+		std = AUDIO_STANDARD_NICAM_I;
+		break;
+	case AML_ATV_DEMOD_VIDEO_MODE_PROP_SECAM_L:
+		std = AUDIO_STANDARD_NICAM_L;
+		break;
+	}
+	pr_err("%s detect aud std:%d\n", __func__, std);
+	return std;
+}
+
+int atvauddemod_init(void)
+{
+	if (is_meson_txlx_cpu()) {
+		if (aud_auto)
+			aud_std = amlfmt_aud_standard(broad_std);
+		configure_adec(aud_std);
+		adec_soft_reset();
+		set_outputmode(aud_std, aud_mode);
+	}
+	return 0;
+}
+
 int atvdemod_init(void)
 {
 	/* unsigned long data32; */
@@ -1545,8 +1657,13 @@ int atvdemod_init(void)
 
 	/* 1.set system clock when atv enter*/
 
+	pr_err("%s do configure_receiver ...\n", __func__);
+	if (is_meson_txlx_cpu())
+		sound_format = 1;
 	configure_receiver(broad_std, if_freq, if_inv, gde_curve, sound_format);
+	pr_err("%s do atv_dmd_misc ...\n", __func__);
 	atv_dmd_misc();
+
 	/*4.software reset*/
 	atv_dmd_soft_reset();
 	atv_dmd_soft_reset();
@@ -1574,7 +1691,7 @@ int atvdemod_init(void)
 		timer_init_flag = 1;
 	}
 	#endif
-	pr_info("delay done\n");
+	pr_info("%s done\n", __func__);
 	return 0;
 }
 void atvdemod_uninit(void)
@@ -2070,4 +2187,48 @@ void aml_fix_PWM_adjust(int enable)
 	}
 }
 
+void aml_audio_overmodulation(int enable)
+{
+	static int ov_flag;
+	unsigned long tmp_v;
+	unsigned long tmp_v1;
+	u32 Broadcast_Standard = broad_std;
+	if (enable && Broadcast_Standard ==
+		AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK) {
+		tmp_v = atv_dmd_rd_long(APB_BLOCK_ADDR_SIF_STG_2, 0x28);
+		tmp_v = tmp_v&0xffff;
+		if (tmp_v >= 0x10 && ov_flag == 0) {
+			tmp_v1 =
+				atv_dmd_rd_long(APB_BLOCK_ADDR_SIF_STG_2, 0);
+			tmp_v1 = (tmp_v1&0xffffff)|(1<<24);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2, 0, tmp_v1);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x14, 0x8000015);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x1c, 0x0f000);
+		} else if (tmp_v >= 0x2500 && ov_flag == 0) {
+			tmp_v1 = atv_dmd_rd_long(APB_BLOCK_ADDR_SIF_STG_2, 0);
+			tmp_v1 = (tmp_v1&0xffffff)|(1<<24);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2, 0, tmp_v1);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x14, 0xf400015);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x18, 0xc000);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x1c, 0x0f000);
+			ov_flag = 1;
+		} else if (tmp_v <= 0x10 && ov_flag == 1) {
+			tmp_v1 = atv_dmd_rd_long(APB_BLOCK_ADDR_SIF_STG_2, 0);
+			tmp_v1 = (tmp_v1&0xffffff)|(0<<24);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2, 0, tmp_v1);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x14, 0xf400000);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x18, 0xc000);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,
+					0x1c, 0x1f000);
+			ov_flag = 0;
+		}
+	}
+}
 
