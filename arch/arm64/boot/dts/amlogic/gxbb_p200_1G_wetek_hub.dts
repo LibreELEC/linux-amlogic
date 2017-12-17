@@ -1144,6 +1144,9 @@
 &defendkey {
 	status = "okay";
 };
+&remote {
+	status = "disabled";
+};
 &meson_ir {
 	status = "okay";
 	linux,rc-map-name = "rc-wetek-hub";
