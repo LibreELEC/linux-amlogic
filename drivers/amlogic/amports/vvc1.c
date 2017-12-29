@@ -69,8 +69,8 @@
 #define VC1_OFFSET_REG      AV_SCRATCH_C
 #define MEM_OFFSET_REG      AV_SCRATCH_F
 
-#define VF_POOL_SIZE		32
-#define DECODE_BUFFER_NUM_MAX	8
+#define VF_POOL_SIZE		16
+#define DECODE_BUFFER_NUM_MAX	4
 #define WORKSPACE_SIZE		(2 * SZ_1M)
 #define MAX_BMMU_BUFFER_NUM	(DECODE_BUFFER_NUM_MAX + 1)
 #define VF_BUFFER_IDX(n)	(1 + n)
@@ -185,10 +185,9 @@ static inline bool close_to(int a, int b, int m)
 
 static inline u32 index2canvas(u32 index)
 {
-	const u32 canvas_tab[DECODE_BUFFER_NUM_MAX] = {
+	const u32 canvas_tab[4] = {
 #if 1	/* ALWASY.MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
-		0x010100, 0x030302, 0x050504, 0x070706,
-		0x090908, 0x0b0b0a, 0x0d0d0c, 0x0f0f0e
+		0x010100, 0x030302, 0x050504, 0x070706
 #else
 		0x020100, 0x050403, 0x080706, 0x0b0a09
 #endif
@@ -880,19 +879,11 @@ static int vvc1_prot_init(void)
 	WRITE_VREG(AV_SCRATCH_1, 0x030302);
 	WRITE_VREG(AV_SCRATCH_2, 0x050504);
 	WRITE_VREG(AV_SCRATCH_3, 0x070706);
-	WRITE_VREG(AV_SCRATCH_G, 0x090908);
-	WRITE_VREG(AV_SCRATCH_H, 0x0b0b0a);
-	WRITE_VREG(AV_SCRATCH_I, 0x0d0d0c);
-	WRITE_VREG(AV_SCRATCH_J, 0x0f0f0e);
 #else
 	WRITE_VREG(AV_SCRATCH_0, 0x020100);
 	WRITE_VREG(AV_SCRATCH_1, 0x050403);
 	WRITE_VREG(AV_SCRATCH_2, 0x080706);
 	WRITE_VREG(AV_SCRATCH_3, 0x0b0a09);
-	WRITE_VREG(AV_SCRATCH_G, 0x090908);
-	WRITE_VREG(AV_SCRATCH_H, 0x0b0b0a);
-	WRITE_VREG(AV_SCRATCH_I, 0x0d0d0c);
-	WRITE_VREG(AV_SCRATCH_J, 0x0f0f0e);
 #endif
 
 	/* notify ucode the buffer offset */
