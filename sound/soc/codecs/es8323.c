@@ -639,8 +639,8 @@ struct snd_soc_dai_driver es8323_dai = {
 	.name = "es8323-hifi",
 	.playback = {
 	     .stream_name = "Playback",
-	     .channels_min = 1,
-	     .channels_max = 2,
+	     .channels_min = 2,
+	     .channels_max = 8,
 	     .rates = ES8323_RATES,
 	     .formats = ES8323_FORMATS,
 	},
