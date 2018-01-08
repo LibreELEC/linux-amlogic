@@ -103,7 +103,7 @@ static void osd_debug_dump_value(void)
 		osd_log_info("\ty_start: 0x%08x, y_end: 0x%08x\n",
 				pdata->y_start, pdata->y_end);
 
-		pdata = &hwpara->free_scale_data[index];
+		pdata = &hwpara->free_src_data[index];
 		osd_log_info("free-scale src data:\n");
 		osd_log_info("\tx_start: 0x%08x, x_end: 0x%08x\n",
 				pdata->x_start, pdata->x_end);
@@ -142,6 +142,10 @@ static void osd_debug_dump_register_all(void)
 	osd_log_info("reg[0x%x]: 0x%08x\n", reg, osd_reg_read(reg));
 	reg = VPP_OSD_SCO_V_START_END;
 	osd_log_info("reg[0x%x]: 0x%08x\n\n", reg, osd_reg_read(reg));
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXLX) {
+		reg = OSD_DB_FLT_CTRL;
+		osd_log_info("reg[0x%x]: 0x%08x\n\n", reg, osd_reg_read(reg));
+	}
 
 	for (index = 0; index < 2; index++) {
 		if (index == 1)
@@ -168,6 +172,9 @@ static void osd_debug_dump_register_all(void)
 
 	if ((get_cpu_type() == MESON_CPU_MAJOR_ID_GXTVBB) ||
 		(get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)) {
+		reg = VIU_MISC_CTRL1;
+			osd_log_info("reg[0x%x]: 0x%08x\n",
+				reg, osd_reg_read(reg));
 		for (reg = OSD1_AFBCD_ENABLE;
 			reg <= OSD1_AFBCD_PIXEL_VSCOPE; reg++)
 			osd_log_info("reg[0x%x]: 0x%08x\n",

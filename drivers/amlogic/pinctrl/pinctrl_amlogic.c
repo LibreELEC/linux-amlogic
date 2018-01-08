@@ -816,6 +816,16 @@ static int meson_gpio_direction_output(struct gpio_chip *chip, unsigned gpio,
 	unsigned int reg, bit, pin;
 	struct meson_bank *bank;
 	int ret;
+	int odval;
+
+	if (gl_pmx->soc->is_od_domain) {
+		odval = gl_pmx->soc->is_od_domain(gpio);
+		if (unlikely(odval) && (value == 1)) {
+			pr_info("change od high_level\n");
+			meson_gpio_direction_input(chip, gpio);
+			return 0;
+		}
+	}
 
 	pin = domain->data->pin_base + gpio;
 	ret = gl_pmx->soc->soc_extern_gpio_output(domain, pin, value);
@@ -843,8 +853,25 @@ static void meson_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 	unsigned int reg, bit, pin;
 	struct meson_bank *bank;
 	int ret;
+	int odval;
+
+	if (gl_pmx->soc->is_od_domain) {
+		odval = gl_pmx->soc->is_od_domain(gpio);
+		if (unlikely(odval)) {
+			if (value == 1) {
+				pr_info("change od high_level\n");
+				meson_gpio_direction_output(chip, gpio, 1);
+				return;
+			} else if (value == 0) {
+				pr_info("change od low_level\n");
+				meson_gpio_direction_output(chip, gpio, 0);
+				return;
+			}
+		}
+	}
 
 	pin = domain->data->pin_base + gpio;
+
 	ret = gl_pmx->soc->soc_extern_gpio_output(domain, pin, value);
 	if (ret == 0)
 		return;

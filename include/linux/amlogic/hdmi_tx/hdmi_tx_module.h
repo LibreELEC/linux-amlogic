@@ -25,6 +25,7 @@
 #include <linux/clk-private.h>
 #include <linux/clk-provider.h>
 #include <linux/device.h>
+#include <linux/amlogic/vout/vinfo.h>
 /* #include <linux/amlogic/aml_gpio_consumer.h> */
 
 /*****************************
@@ -50,20 +51,23 @@ struct rx_audiocap {
 enum hd_ctrl {
 	VID_EN, VID_DIS, AUD_EN, AUD_DIS, EDID_EN, EDID_DIS, HDCP_EN, HDCP_DIS,
 };
-
+#define VESA_MAX_TIMING 64
 struct rx_cap {
 	unsigned int native_Mode;
 	/*video*/
 	unsigned int VIC[VIC_MAX_NUM];
 	unsigned int VIC_count;
 	unsigned int native_VIC;
+	enum hdmi_vic vesa_timing[VESA_MAX_TIMING]; /* Max 64 */
 	/*audio*/
 	struct rx_audiocap RxAudioCap[AUD_MAX_NUM];
 	unsigned char AUD_count;
 	unsigned char RxSpeakerAllocation;
 	/*vendor*/
 	unsigned int IEEEOUI;
+	unsigned int Max_TMDS_Clock1; /* HDMI1.4b TMDS_CLK */
 	unsigned int HF_IEEEOUI;	/* For HDMI Forum */
+	unsigned int Max_TMDS_Clock2; /* HDMI2.0 TMDS_CLK */
 	/* CEA861-F, Table 56, Colorimetry Data Block */
 	unsigned int colorimetry_data;
 	unsigned int scdc_present:1;
@@ -84,14 +88,17 @@ struct rx_cap {
 	unsigned char hdr_lum_max;
 	unsigned char hdr_lum_avg;
 	unsigned char hdr_lum_min;
-	unsigned char ReceiverBrandName[4];
+	unsigned char IDManufacturerName[4];
+	unsigned char IDProductCode[2];
+	unsigned char IDSerialNumber[4];
 	unsigned char ReceiverProductName[16];
 	unsigned char manufacture_week;
 	unsigned char manufacture_year;
+	unsigned char physcial_weight;
+	unsigned char physcial_height;
 	unsigned char edid_version;
 	unsigned char edid_revision;
 	unsigned int ColorDeepSupport;
-	unsigned int Max_TMDS_Clock;
 	unsigned int Video_Latency;
 	unsigned int Audio_Latency;
 	unsigned int Interlaced_Video_Latency;
@@ -107,6 +114,12 @@ struct rx_cap {
 		unsigned char top_and_bottom;
 		unsigned char side_by_side;
 	} support_3d_format[VIC_MAX_NUM];
+	struct dv_info dv_info;
+	enum hdmi_vic preferred_mode;
+	struct dtd dtd[16];
+	unsigned char dtd_idx;
+	unsigned char flag_vfpdb;
+	unsigned char number_of_dtd;
 	/*blk0 check sum*/
 	unsigned char blk0_chksum;
 };
@@ -140,6 +153,14 @@ struct audcts_log {
 	unsigned int stable:1;
 };
 
+struct frac_rate_table {
+	char *hz;
+	u32 sync_num_int;
+	u32 sync_den_int;
+	u32 sync_num_dec;
+	u32 sync_den_dec;
+};
+
 #define EDID_MAX_BLOCK              4
 #define HDMI_TMP_BUF_SIZE           1024
 struct hdmitx_dev {
@@ -151,17 +172,23 @@ struct hdmitx_dev {
 	struct task_struct *task_cec;
 	struct notifier_block nb;
 	struct workqueue_struct *hdmi_wq;
+	struct workqueue_struct *rxsense_wq;
 	struct device *hdtx_dev;
 	struct delayed_work work_hpd_plugin;
 	struct delayed_work work_hpd_plugout;
+	struct delayed_work work_rxsense;
 	struct work_struct work_internal_intr;
+	struct work_struct work_hdr;
+	struct delayed_work work_do_hdcp;
 #ifdef CONFIG_AML_HDMI_TX_14
 	struct delayed_work cec_work;
 #endif
 	struct timer_list hdcp_timer;
+	int chip_type;
 	int hdcp_try_times;
 	/* -1, no hdcp; 0, NULL; 1, 1.4; 2, 2.2 */
 	int hdcp_mode;
+	int hdcp_bcaps_repeater;
 	int ready;	/* 1, hdmi stable output, others are 0 */
 	int hdcp_hpd_stick;	/* 1 not init & reset at plugout */
 #ifdef CONFIG_AML_HDMI_TX_14
@@ -210,6 +237,8 @@ struct hdmitx_dev {
 	unsigned cur_phy_block_ptr;
 	unsigned char EDID_buf[EDID_MAX_BLOCK * 128];
 	unsigned char EDID_buf1[EDID_MAX_BLOCK*128]; /* for second read */
+	unsigned char *edid_ptr;
+	unsigned int edid_parsing; /* Indicator that RX edid data integrated */
 	unsigned char EDID_hash[20];
 	struct rx_cap RXCap;
 	struct hdmitx_vidpara *cur_video_param;
@@ -242,10 +271,6 @@ struct hdmitx_dev {
 	unsigned int tv_no_edid;
 	unsigned int hpd_lock;
 	struct hdmi_format_para *para;
-	/* 0: RGB444  1: Y444  2: Y422  3: Y420 */
-	enum hdmi_color_space colorspace;
-	/* 4: 24bit  5: 30bit  6: 36bit  7: 48bit */
-	enum hdmi_color_depth colordepth;
 	/* if equals to 1, means current video & audio output are blank */
 	unsigned int output_blank_flag;
 	unsigned int audio_notify_flag;
@@ -257,10 +282,18 @@ struct hdmitx_dev {
 	struct clk *clk_phy;
 	struct clk *clk_vid;
 	unsigned int gpio_i2c_enable;
+	unsigned int repeater_tx;
+	/* 0.1% clock shift, 1080p60hz->59.94hz */
+	unsigned int frac_rate_policy;
+	unsigned int rxsense_policy;
 	/* configure for I2S: 8ch in, 2ch out */
 	/* 0: default setting  1:ch0/1  2:ch2/3  3:ch4/5  4:ch6/7 */
 	unsigned int aud_output_ch;
 	unsigned int hdr_src_feature;
+	unsigned int dv_src_feature;
+	unsigned int flag_3dfp:1;
+	unsigned int flag_3dtb:1;
+	unsigned int flag_3dss:1;
 };
 
 #define CMD_DDC_OFFSET          (0x10 << 24)
@@ -280,7 +313,6 @@ struct hdmitx_dev {
 	#define HDCP14_OFF	0x2
 	#define HDCP22_ON	0x3
 	#define HDCP22_OFF	0x4
-#define DDC_HDCP_BYP		(CMD_DDC_OFFSET + 0x03)
 #define DDC_IS_HDCP_ON          (CMD_DDC_OFFSET + 0x04)
 #define DDC_HDCP_GET_AKSV       (CMD_DDC_OFFSET + 0x05)
 #define DDC_HDCP_GET_BKSV       (CMD_DDC_OFFSET + 0x06)
@@ -296,6 +328,7 @@ struct hdmitx_dev {
 #define DDC_HDCP_14_LSTORE	(CMD_DDC_OFFSET + 0x0f)
 #define DDC_HDCP_22_LSTORE	(CMD_DDC_OFFSET + 0x10)
 #define DDC_SCDC_DIV40_SCRAMB	(CMD_DDC_OFFSET + 0x20)
+#define DDC_HDCP14_GET_BCAPS_RP	(CMD_DDC_OFFSET + 0x30)
 
 /***********************************************************************
  *             CONFIG CONTROL //CntlConfig
@@ -321,6 +354,20 @@ struct hdmitx_dev {
 #define CONF_AVI_BT2020		(CMD_CONF_OFFSET + 0X2000 + 0x00)
 	#define CLR_AVI_BT2020	0x0
 	#define SET_AVI_BT2020	0x1
+/* set value as COLORSPACE_RGB444, YUV422, YUV444, YUV420 */
+#define CONF_AVI_RGBYCC_INDIC	(CMD_CONF_OFFSET + 0X2000 + 0x01)
+#define CONF_AVI_Q01		(CMD_CONF_OFFSET + 0X2000 + 0x02)
+	#define RGB_RANGE_DEFAULT	0
+	#define RGB_RANGE_LIM		1
+	#define RGB_RANGE_FUL		2
+	#define RGB_RANGE_RSVD		3
+#define CONF_AVI_YQ01		(CMD_CONF_OFFSET + 0X2000 + 0x03)
+	#define YCC_RANGE_LIM		0
+	#define YCC_RANGE_FUL		1
+	#define YCC_RANGE_RSVD		2
+#define CONF_VIDEO_MUTE_OP      (CMD_CONF_OFFSET + 0x1000 + 0x04)
+#define VIDEO_MUTE          0x1
+#define VIDEO_UNMUTE        0x2
 
 /***********************************************************************
  *             MISC control, hpd, hpll //CntlMisc
@@ -351,6 +398,7 @@ struct hdmitx_dev {
 #define MISC_HPLL_FAKE			(CMD_MISC_OFFSET + 0x0c)
 #define MISC_ESM_RESET		(CMD_MISC_OFFSET + 0x0d)
 #define MISC_HDCP_CLKDIS	(CMD_MISC_OFFSET + 0x0e)
+#define MISC_TMDS_RXSENSE	(CMD_MISC_OFFSET + 0x0f)
 
 /***********************************************************************
  *                          Get State //GetState
@@ -387,6 +435,7 @@ extern void hdmitx_init_parameters(struct hdmitx_info *info);
 extern enum hdmi_vic hdmitx_edid_vic_tab_map_vic(const char *disp_mode);
 
 extern int hdmitx_edid_parse(struct hdmitx_dev *hdmitx_device);
+extern int check_dvi_hdmi_edid_valid(unsigned char *buf);
 
 enum hdmi_vic hdmitx_edid_get_VIC(struct hdmitx_dev *hdmitx_device,
 	const char *disp_mode, char force_flag);
@@ -396,6 +445,9 @@ extern int hdmitx_edid_VIC_support(enum hdmi_vic vic);
 extern int hdmitx_edid_dump(struct hdmitx_dev *hdmitx_device, char *buffer,
 	int buffer_len);
 
+bool hdmitx_edid_check_valid_mode(struct hdmitx_dev *hdev,
+	struct hdmi_format_para *para);
+extern const char *hdmitx_edid_vic_to_string(enum hdmi_vic vic);
 extern void hdmitx_edid_clear(struct hdmitx_dev *hdmitx_device);
 
 extern void hdmitx_edid_ram_buffer_clear(struct hdmitx_dev *hdmitx_device);
@@ -468,15 +520,10 @@ extern void hdmitx_output_rgb(void);
 
 extern int get_cur_vout_index(void);
 extern struct vinfo_s *hdmi_get_current_vinfo(void);
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-extern enum fine_tune_mode_e get_hpll_tune_mode(void);
-extern void register_hdmi_edid_supported_func(int (*pfunc)(char *mode_name));
-#endif
 void phy_pll_off(void);
 
-
 extern int get_hpd_state(void);
-
+void hdmitx_hdcp_do_work(struct hdmitx_dev *hdev);
 
 /***********************************************************************
  *    hdmitx hardware level interface
@@ -490,12 +537,14 @@ extern void hdmitx_hpd_plugin_handler(struct work_struct *work);
 extern void hdmitx_hpd_plugout_handler(struct work_struct *work);
 extern void hdmitx_internal_intr_handler(struct work_struct *work);
 extern unsigned char hdmi_audio_off_flag;
+extern unsigned int get_hdcp22_base(void);
 /*
  * hdmitx_audio_mute_op() is used by external driver call
  * flag: 0: audio off   1: audio_on
  *       2: for EDID auto mode
  */
 extern void hdmitx_audio_mute_op(unsigned int flag);
+extern void hdmitx_video_mute_op(unsigned int flag);
 
 #define HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH       0x3
 #define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4

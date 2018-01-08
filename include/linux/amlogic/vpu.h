@@ -47,6 +47,11 @@ enum vpu_mod_e {
 	VPU_VIU2_OFIFO,       /* reg1[9:8] */
 	VPU_VIU2_SCALE,       /* reg1[11:10] */
 	VPU_VIU2_OSD_SCALE,   /* reg1[13:12] */
+	VPU_VKSTONE,          /* reg1[5:4]    //TXLX */
+	VPU_DOLBY_CORE3,      /* reg1[7:6]    //TXLX */
+	VPU_DOLBY0,           /* reg1[9:8]    //TXLX */
+	VPU_DOLBY1A,          /* reg1[11:10]  //TXLX */
+	VPU_DOLBY1B,          /* reg1[13:12]  //TXLX */
 	VPU_VDIN_AM_ASYNC,    /* reg1[15:14]  //G9TV */
 	VPU_VPU_ARB,          /* reg1[15:14]  //GXBB, GXTVBB, GXL */
 	VPU_VDISP_AM_ASYNC,   /* reg1[17:16]  //G9TV */
@@ -54,16 +59,27 @@ enum vpu_mod_e {
 	VPU_AFBC_DEC0,        /* reg1[17:16]  //GXTVBB */
 	VPU_AFBC_DEC,         /* reg1[17:16]  //GXBB */
 	VPU_VPUARB2_AM_ASYNC, /* reg1[19:18]  //G9TV */
+	VPU_OSD_AFBCD,        /* reg1[19:18]  //TXLX */
 	VPU_VENCP,            /* reg1[21:20] //common */
 	VPU_VENCL,            /* reg1[23:22] //common */
 	VPU_VENCI,            /* reg1[25:24] //common */
 	VPU_ISP,              /* reg1[27:26] */
 	VPU_CVD2,             /* reg1[29:28]  //G9TV, G9BB */
 	VPU_ATV_DMD,          /* reg1[31:30]  //G9TV, G9BB */
-	VPU_LDIM_STTS,        /* reg1[29:28]  //GXTVBB, GXL */
-	VPU_XVYCC_LUT,        /* reg1[31:30]  //GXTVBB, GXL */
+	VPU_LDIM_STTS,        /* reg1[29:28]  //GXTVBB, GXL, TXL, TXLX */
+	VPU_XVYCC_LUT,        /* reg1[31:30]  //GXTVBB, GXL, TXL, TXLX */
 
 	VPU_VIU1_WM,          /* reg2[1:0]  //GXL, TXL */
+
+	/* for clk_gate */
+	VPU_VPU_TOP,
+	VPU_VPU_CLKB,
+	VPU_RDMA,
+	VPU_MISC,      /* hs,vs,interrupt */
+	VPU_VENC_DAC,
+	VPU_VLOCK,
+	VPU_DI,
+	VPU_VPP,
 
 	VPU_MAX,
 };
@@ -72,6 +88,9 @@ enum vpu_mod_e {
 #define VPU_MEM_POWER_ON		0
 #define VPU_MEM_POWER_DOWN		1
 
+#define VPU_CLK_GATE_ON			1
+#define VPU_CLK_GATE_OFF		0
+
 extern unsigned int get_vpu_clk(void);
 extern unsigned int get_vpu_clk_vmod(unsigned int vmod);
 extern int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod);
@@ -79,4 +98,6 @@ extern int release_vpu_clk_vmod(unsigned int vmod);
 
 extern void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag);
 extern int get_vpu_mem_pd_vmod(unsigned int vmod);
+
+extern void switch_vpu_clk_gate_vmod(unsigned int vmod, int flag);
 #endif

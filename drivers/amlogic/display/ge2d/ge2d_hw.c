@@ -28,6 +28,116 @@
 #include "ge2d_io.h"
 #include "ge2d_reg.h"
 
+static const  unsigned int filt_coef_gau1[] = { /* gau1+phase */
+	0x20402000,
+	0x203f2001,
+	0x203e2002,
+	0x203d2003,
+	0x203c2004,
+	0x203b2005,
+	0x203a2006,
+	0x20392007,
+	0x20382008,
+	0x20372009,
+	0x2036200a,
+	0x2035200b,
+	0x2034200c,
+	0x2033200d,
+	0x2032200e,
+	0x2031200f,
+	0x20302010,
+	0x202f2011,
+	0x202e2012,
+	0x202d2013,
+	0x202c2014,
+	0x202b2015,
+	0x202a2016,
+	0x20292017,
+	0x20282018,
+	0x20272019,
+	0x2026201a,
+	0x2025201b,
+	0x2024201c,
+	0x2023201d,
+	0x2022201e,
+	0x2021201f,
+	0x20202020
+};
+
+/* average, no phase, horizontal filter and vertical filter for top field */
+static const  unsigned int filt_coef_gau0[] = {
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020,
+	0x20202020
+};
+
+/* average, no phase, only for vertical filter of bot filed*/
+static const  unsigned int filt_coef_gau0_bot[] = {
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00,
+	0x2a2b2a00
+};
+
 static const  unsigned int filt_coef0[] = { /* bicubic */
 	0x00800000,
 	0x007f0100,
@@ -191,6 +301,8 @@ void ge2d_set_src1_data(struct ge2d_src1_data_s *cfg)
 	ge2d_reg_set_bits(GE2D_GEN_CTRL2, cfg->endian, 7, 1);
 	ge2d_reg_set_bits(GE2D_GEN_CTRL2, cfg->color_map, 3, 4);
 	ge2d_reg_set_bits(GE2D_GEN_CTRL2, cfg->format, 0, 2);
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXL)
+		ge2d_reg_set_bits(GE2D_GEN_CTRL2, cfg->deep_color, 2, 1);
 	ge2d_reg_set_bits(GE2D_GEN_CTRL0, cfg->mode_8b_sel, 5, 2);
 	ge2d_reg_set_bits(GE2D_GEN_CTRL0, cfg->lut_en, 3, 1);
 
@@ -220,8 +332,14 @@ void ge2d_set_src1_scale_coef(unsigned v_filt_type, unsigned h_filt_type)
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef0[i]);
 		else if (v_filt_type == FILTER_TYPE_BILINEAR)
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef1[i]);
-		else if ((v_filt_type & 0xf) == FILTER_TYPE_TRIANGLE)
+		else if (v_filt_type == FILTER_TYPE_TRIANGLE)
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef2[i]);
+		else if (v_filt_type == FILTER_TYPE_GAU0)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau0[i]);
+		else if (v_filt_type == FILTER_TYPE_GAU0_BOT)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau0_bot[i]);
+		else if (v_filt_type == FILTER_TYPE_GAU1)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau1[i]);
 		else {
 			/* TODO */
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef3[i]);
@@ -237,6 +355,12 @@ void ge2d_set_src1_scale_coef(unsigned v_filt_type, unsigned h_filt_type)
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef1[i]);
 		else if (h_filt_type == FILTER_TYPE_TRIANGLE)
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef2[i]);
+		else if (h_filt_type == FILTER_TYPE_GAU0)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau0[i]);
+		else if (h_filt_type == FILTER_TYPE_GAU0_BOT)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau0_bot[i]);
+		else if (h_filt_type == FILTER_TYPE_GAU1)
+			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef_gau1[i]);
 		else {
 			/* TODO */
 			ge2d_reg_write(GE2D_SCALE_COEF, filt_coef3[i]);
@@ -490,6 +614,7 @@ void ge2d_set_dp_gen(struct ge2d_dp_gen_s *cfg)
 		cfg->matrix_sat_in_en = 0;
 		cfg->matrix_minus_16_ctrl = 0;
 		cfg->matrix_sign_ctrl = 0;
+
 	} else if (cfg->use_matrix_default == MATRIX_FULL_RANGE_YCC_TO_RGB) {
 		/* ycbcr (0-255) to rgb(0-255) */
 		/* 1,     0,      1.402 */
@@ -510,6 +635,22 @@ void ge2d_set_dp_gen(struct ge2d_dp_gen_s *cfg)
 		cfg->matrix_sat_in_en = 0;
 		cfg->matrix_minus_16_ctrl = 0;
 		cfg->matrix_sign_ctrl = 0x3;
+	} else if (cfg->use_matrix_default == MATRIX_RGB_TO_FULL_RANGE_YCC) {
+		cfg->matrix_coef[0] = 0x132;
+		cfg->matrix_coef[1] = 0x259;
+		cfg->matrix_coef[2] = 0x75;
+		cfg->matrix_coef[3] = 0x1f53;
+		cfg->matrix_coef[4] = 0x1ead;
+		cfg->matrix_coef[5] = 0x200;
+		cfg->matrix_coef[6] = 0x200;
+		cfg->matrix_coef[7] = 0x1e53;
+		cfg->matrix_coef[8] = 0x1fad;
+		cfg->matrix_offset[0] = 0;
+		cfg->matrix_offset[1] = 128;
+		cfg->matrix_offset[2] = 128;
+		cfg->matrix_sat_in_en = 0;
+		cfg->matrix_minus_16_ctrl = 0;
+		cfg->matrix_sign_ctrl = 0;
 	}
 
 	if (cfg->matrix_minus_16_ctrl)
@@ -777,6 +918,13 @@ void ge2d_set_cmd(struct ge2d_cmd_s *cfg)
 			  cfg->alpha_dst_blend_factor) << 0)
 		       );
 
+	/* if true, disable bug fix about the dp_out_done/
+	 * scale_out_done(test1823) hang issue when
+	 * scaling down ratio is high.
+	 */
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXLX)
+		ge2d_reg_set_bits(GE2D_GEN_CTRL4, cfg->hang_flag, 0, 1);
+
 	ge2d_reg_write(GE2D_CMD_CTRL,
 			(cfg->src2_fill_color_en << 9) |
 			(cfg->src1_fill_color_en << 8) |
@@ -822,5 +970,14 @@ void ge2d_set_gen(struct ge2d_gen_s *cfg)
 			(cfg->vfmt_onoff_en << 15) |
 			(cfg->dp_off_cnt << 0)
 		       );
-
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_TXLX) {
+		ge2d_reg_set_bits(GE2D_GEN_CTRL4,
+			(cfg->fifo_size << 26) |
+			(cfg->fifo_size << 24) |
+			(cfg->fifo_size << 22) |
+			(cfg->fifo_size << 20) |
+			(cfg->burst_ctrl << 18) |
+			(cfg->burst_ctrl << 16),
+		       16, 12);
+	}
 }

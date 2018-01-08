@@ -32,7 +32,7 @@ obj-$(CONFIG_AM_IRBLASTER)	+= irblaster/
 
 obj-$(CONFIG_I2C_AML)		+= i2c/
 
-obj-$(CONFIG_AML_PWM)		+= pwm/
+obj-$(CONFIG_AMLOGIC_PWM)		+= pwm/
 
 obj-$(CONFIG_AML_POWER_SUPPORT)	+= power/
 
@@ -98,6 +98,8 @@ obj-$(CONFIG_AM_VECM)		+= amvecm/
 
 obj-$(CONFIG_AML_NAND)		+= amlnf/
 
+obj-$(CONFIG_AMLOGIC_NAND)	+= mtd/
+
 obj-$(CONFIG_AM_INPUT)		+= input/
 
 obj-$(CONFIG_MESON_SUSPEND)	+= pm/
@@ -134,4 +136,6 @@ obj-$(CONFIG_CRYPTO_AML)	+= crypto/
 
 obj-$(CONFIG_AMLOGIC_WATCHPOINT) += watchpoint/
 
-obj-$(CONFIG_MESON_PWM) += pwm/
+obj-$(CONFIG_AML_ESM) += esm/
+
+obj-$(CONFIG_DRM_MESON) += drm/

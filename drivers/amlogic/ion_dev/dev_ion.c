@@ -47,7 +47,7 @@ MODULE_PARM_DESC(debug, "activates debug info");
  */
 #define AML_ION_TYPE_SYSTEM	 0
 #define AML_ION_TYPE_CARVEOUT   1
-#define MAX_HEAP 4
+#define MAX_HEAP 5
 
 static struct ion_device *idev;
 static int num_heaps;
@@ -75,18 +75,31 @@ struct ion_client *meson_ion_client_create(unsigned int heap_mask,
 }
 EXPORT_SYMBOL(meson_ion_client_create);
 
-int meson_ion_share_fd_to_phys(struct ion_client *client,
-		int share_fd, ion_phys_addr_t *addr, size_t *len)
+int meson_ion_share_fd_to_phys(
+	struct ion_client *client, int share_fd,
+	ion_phys_addr_t *addr, size_t *len)
 {
-	struct ion_handle *handle = NULL;
+	struct ion_handle *handle;
+	int ret;
 
 	handle = ion_import_dma_buf(client, share_fd);
 	if (IS_ERR_OR_NULL(handle)) {
-		dprintk(0, "EINVAL, client=%p, share_fd=%d\n",
-				client, share_fd);
+		/* pr_err("%s,EINVAL, client=%p, share_fd=%d\n",
+		 *	 __func__, client, share_fd);
+		*/
+		return PTR_ERR(handle);
 	}
 
-	return ion_phys(client, handle, addr, len);
+	ret = ion_phys(client, handle, addr, (size_t *)len);
+	pr_debug("ion_phys ret=%d, phys=0x%lx\n", ret, *addr);
+	if (ret < 0) {
+		pr_err("ion_get_phys error, ret=%d\n", ret);
+		return ret;
+	}
+
+	ion_free(client, handle);
+
+	return 0;
 }
 EXPORT_SYMBOL(meson_ion_share_fd_to_phys);
 
@@ -117,6 +130,9 @@ static int meson_ion_get_phys(
 		dprintk(0, "meson_ion_get_phys error, ret=%d\n", ret);
 		return ret;
 	}
+
+	ion_free(client, handle);
+
 	data.phys_addr = (unsigned int)addr;
 	data.size = (unsigned int)len;
 	if (copy_to_user((void __user *)arg, &data,
@@ -143,7 +159,7 @@ static long meson_custom_ioctl(
 int dev_ion_probe(struct platform_device *pdev)
 {
 	int err = 0;
-
+	int i;
 	my_ion_heap[num_heaps].type = ION_HEAP_TYPE_SYSTEM;
 	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_SYSTEM;
 	my_ion_heap[num_heaps].name = "vmalloc_ion";
@@ -153,15 +169,55 @@ int dev_ion_probe(struct platform_device *pdev)
 	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_CUSTOM;
 	my_ion_heap[num_heaps].name = "codec_mm_ion";
 	my_ion_heap[num_heaps].base = (ion_phys_addr_t) NULL;
-	my_ion_heap[num_heaps].size = 16 * 1024 * 1024;
+	my_ion_heap[num_heaps].size = 48 * 1024 * 1024;
+	num_heaps++;
+
+	/*add CMA ion heap*/
+	my_ion_heap[num_heaps].type = ION_HEAP_TYPE_DMA;
+	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_DMA;
+	my_ion_heap[num_heaps].name = "cma_ion";
+	my_ion_heap[num_heaps].priv = &pdev->dev;
 	num_heaps++;
 
 	/* init reserved memory */
 	err = of_reserved_mem_device_init(&pdev->dev);
 	if (err != 0)
 		dprintk(1, "failed get reserved memory\n");
+	heaps = kzalloc(sizeof(struct ion_heap *) * num_heaps, GFP_KERNEL);
+	if (!heaps)
+		return -ENOMEM;
+	/* idev = ion_device_create(NULL); */
+	idev = ion_device_create(meson_custom_ioctl);
+	if (IS_ERR_OR_NULL(idev)) {
+		kfree(heaps);
+		panic(0);
+		return PTR_ERR(idev);
+	}
+
+	platform_set_drvdata(pdev, idev);
+
+	/* create the heaps as specified in the board file */
+	for (i = 0; i < num_heaps; i++) {
+		heaps[i] = ion_heap_create(&my_ion_heap[i]);
+		if (IS_ERR_OR_NULL(heaps[i])) {
+			err = PTR_ERR(heaps[i]);
+			goto failed;
+		}
+		ion_device_add_heap(idev, heaps[i]);
+		dprintk(2, "add heap type:%d id:%d\n",
+			my_ion_heap[i].type, my_ion_heap[i].id);
+	}
+
+	dprintk(1, "%s, create %d heaps\n", __func__, num_heaps);
 
 	return 0;
+
+failed:
+	dprintk(0, "ion heap create failed\n");
+	kfree(heaps);
+	heaps = NULL;
+	panic(0);
+	return err;
 }
 
 int dev_ion_remove(struct platform_device *pdev)
@@ -194,67 +250,26 @@ static struct platform_driver ion_driver = {
 /*
  * reserved memory initialize begin
  */
-static int ion_dev_mem_init(struct reserved_mem *rmem, struct device *dev)
+static int ion_carveout_init(struct reserved_mem *rmem, struct device *dev)
 {
-	int i = 0;
-	int err;
-	struct platform_device *pdev = to_platform_device(dev);
+	return 0;
 
+}
+
+static const struct reserved_mem_ops sr_carveout_ops = {
+	.device_init = ion_carveout_init,
+};
+
+static int __init ion_dev_mem_setup(struct reserved_mem *rmem)
+{
 	my_ion_heap[num_heaps].type = ION_HEAP_TYPE_CARVEOUT;
 	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_CARVEOUT;
 	my_ion_heap[num_heaps].name = "carveout_ion";
 	my_ion_heap[num_heaps].base = (ion_phys_addr_t) rmem->base;
 	my_ion_heap[num_heaps].size = rmem->size;
 	num_heaps++;
-	heaps = kzalloc(sizeof(struct ion_heap *) * num_heaps, GFP_KERNEL);
-	/* idev = ion_device_create(NULL); */
-	idev = ion_device_create(meson_custom_ioctl);
-	if (IS_ERR_OR_NULL(idev)) {
-		kfree(heaps);
-		panic(0);
-		return PTR_ERR(idev);
-	}
 
-	platform_set_drvdata(pdev, idev);
-
-	/* create the heaps as specified in the board file */
-	for (i = 0; i < num_heaps; i++) {
-		heaps[i] = ion_heap_create(&my_ion_heap[i]);
-		if (IS_ERR_OR_NULL(heaps[i])) {
-			err = PTR_ERR(heaps[i]);
-			goto failed;
-		}
-		ion_device_add_heap(idev, heaps[i]);
-		dprintk(2, "add heap type:%d id:%d\n",
-	 my_ion_heap[i].type, my_ion_heap[i].id);
-	}
-
-	dprintk(1, "%s, create %d heaps\n", __func__, num_heaps);
-
-	return 0;
-
-failed:
-	dprintk(0, "ion heap create failed\n");
-	kfree(heaps);
-	heaps = NULL;
-	panic(0);
-	return err;
-
-}
-
-static const struct reserved_mem_ops rmem_ion_dev_ops = {
-	.device_init = ion_dev_mem_init,
-};
-
-static struct rmem_multi_user rmem_ion_muser = {
-	.of_match_table = amlogic_ion_dev_dt_match,
-	.ops  = &rmem_ion_dev_ops,
-};
-
-static int __init ion_dev_mem_setup(struct reserved_mem *rmem)
-{
-	of_add_rmem_multi_user(rmem, &rmem_ion_muser);
-	pr_debug("ion_dev mem setup\n");
+	rmem->ops = &sr_carveout_ops;
 
 	return 0;
 }
@@ -273,6 +288,37 @@ static void __exit ion_exit(void)
 {
 	platform_driver_unregister(&ion_driver);
 }
+
+static int ion_chunk_device_init(struct reserved_mem *rmem, struct device *dev)
+{
+	return 0;
+}
+
+static const struct reserved_mem_ops sr_rmem_ops = {
+	.device_init = ion_chunk_device_init,
+};
+
+static int __init ion_chunk_setup(struct reserved_mem *rmem)
+{
+	phys_addr_t align = PAGE_SIZE;
+	phys_addr_t mask = align - 1;
+	if ((rmem->base & mask) || (rmem->size & mask)) {
+		pr_err("Reserved memory: incorrect alignment of region\n");
+		return -EINVAL;
+	}
+	/* add chunk ion heap */
+	my_ion_heap[num_heaps].type = ION_HEAP_TYPE_CHUNK;
+	my_ion_heap[num_heaps].id = ION_HEAP_TYPE_CHUNK;
+	my_ion_heap[num_heaps].name = "chunck_mm_ion";
+	my_ion_heap[num_heaps].base = (ion_phys_addr_t)rmem->base;
+	my_ion_heap[num_heaps].size = rmem->size;
+	num_heaps++;
+
+	rmem->ops = &sr_rmem_ops;
+	return 0;
+}
+
+RESERVEDMEM_OF_DECLARE(ion_chunk, "amlogic, chunk-reserve", ion_chunk_setup);
 
 module_init(ion_init);
 module_exit(ion_exit);

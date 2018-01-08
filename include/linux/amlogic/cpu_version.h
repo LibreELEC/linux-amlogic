@@ -1,7 +1,7 @@
 /*
  * include/linux/amlogic/cpu_version.h
  *
- * Copyright (C) 2015 Amlogic, Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Amlogic, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,18 +50,18 @@
 #define MESON_CPU_MAJOR_ID_GXL		0x21
 #define MESON_CPU_MAJOR_ID_GXM		0x22
 #define MESON_CPU_MAJOR_ID_TXL		0x23
+#define MESON_CPU_MAJOR_ID_TXLX		0x24
+#define MESON_CPU_MAJOR_ID_GXLX		0x26
 
 #define MESON_CPU_VERSION_LVL_MAJOR	0
 #define MESON_CPU_VERSION_LVL_MINOR	1
 #define MESON_CPU_VERSION_LVL_PACK	2
 #define MESON_CPU_VERSION_LVL_MISC	3
 #define MESON_CPU_VERSION_LVL_MAX	MESON_CPU_VERSION_LVL_MISC
-extern unsigned int system_serial_low0;
-extern unsigned int system_serial_low1;
-extern unsigned int system_serial_high0;
-extern unsigned int system_serial_high1;
 
+void cpuinfo_get_chipid(unsigned char cid[16]);
 int  meson_cpu_version_init(void);
+
 #ifdef CONFIG_AML_CPU_VERSION
 int get_meson_cpu_version(int level);
 int arch_big_cpu(int cpu);
@@ -165,6 +165,11 @@ static inline bool is_meson_gxl_package_905M2(void)
 	return is_meson_gxl_cpu() && package_id_is(0xe0);
 }
 
+static inline bool is_meson_gxl_package_805X(void)
+{
+	return is_meson_gxl_cpu() && package_id_is(0x30);
+}
+
 static inline bool is_meson_gxm_cpu(void)
 {
 	return get_cpu_type() == MESON_CPU_MAJOR_ID_GXM;
@@ -175,9 +180,38 @@ static inline bool is_meson_txl_cpu(void)
 	return get_cpu_type() == MESON_CPU_MAJOR_ID_TXL;
 }
 
+static inline bool is_meson_txlx_cpu(void)
+{
+	return get_cpu_type() == MESON_CPU_MAJOR_ID_TXLX;
+}
+
 static inline bool cpu_after_eq(unsigned int id)
 {
 	return get_cpu_type() >= id;
 }
 
+static inline bool is_meson_txlx_package_962X(void)
+{
+	return is_meson_txlx_cpu() && package_id_is(0x10);
+}
+
+static inline bool is_meson_txlx_package_962E(void)
+{
+	return is_meson_txlx_cpu() && package_id_is(0x20);
+}
+
+static inline bool is_meson_gxlx_cpu(void)
+{
+	return get_cpu_type() == MESON_CPU_MAJOR_ID_GXLX;
+}
+
+static inline bool is_meson_gxlx_package_905L2(void)
+{
+	return is_meson_gxlx_cpu() && package_id_is(0xc0);
+}
+
+static inline bool is_meson_gxlx_package_905C(void)
+{
+	return is_meson_gxlx_cpu() && package_id_is(0xd0);
+}
 #endif

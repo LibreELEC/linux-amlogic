@@ -43,6 +43,7 @@
 #include <linux/mmc/emmc_partitions.h>
 #include <../drivers/mmc/core/mmc_ops.h>
 #include "amlsd.h"
+#include "aml_sd_emmc_v3.h"
 
 #ifdef SD_EMMC_DATA_TASKLET
 struct tasklet_struct sd_emmc_finish_tasklet;
@@ -89,6 +90,7 @@ u8 max_index;
 #define MAX_CALI_RETRY	(3)
 #define MAX_DELAY_CNT	(16)
 #define CALI_BLK_CNT	(10)
+#define CALI_PATTERN_OFFSET	((SZ_1M * (36 + 3)) / 512)
 
 static int is_larger(u8 value, u8 base, u8 wrap)
 {
@@ -145,7 +147,7 @@ static int aml_sd_emmc_cali_transfer(struct mmc_host *mmc,
 	struct scatterlist sg;
 
 	cmd.opcode = opcode;
-	cmd.arg = 0;
+	cmd.arg = CALI_PATTERN_OFFSET;
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_ADTC;
 
 	stop.opcode = MMC_STOP_TRANSMISSION;
@@ -207,6 +209,8 @@ static int  aml_sd_emmc_auto_calibration(struct mmc_host *mmc,
 		return -ENOMEM;
 	if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXBB)
 		delay_step = 125;
+	else if (get_cpu_type() == MESON_CPU_MAJOR_ID_GXM)
+		delay_step = 250;
 	else
 		delay_step = 200;
 
@@ -685,7 +689,7 @@ static u32 aml_sd_emmc_tuning_transfer(struct mmc_host *mmc,
 }
 
 /* TODO....., based on new tuning function */
-static int aml_sd_emmc_execute_tuning_(struct mmc_host *mmc, u32 opcode,
+int aml_sd_emmc_execute_tuning_(struct mmc_host *mmc, u32 opcode,
 					struct aml_tuning_data *tuning_data,
 					u32 adj_win_start)
 {
@@ -801,8 +805,10 @@ tunning:
 	}
 	if (best_win_size <= 0) {
 		if ((tuning_num++ > MAX_TUNING_RETRY)
-			|| (clkc->div <= 10)) {
+			|| (clkc->div >= 10)) {
 			kfree(blk_test);
+			pr_info("%s: final result of tuning failed\n",
+				 mmc_hostname(host->mmc));
 			return -1;
 		}
 		clkc->div += 1;
@@ -1300,7 +1306,7 @@ read response (136bit or 48bit)
 136bit: SRAM [498~511]
 48bit: DESC response addr
 */
-static int aml_sd_emmc_read_response(
+int aml_sd_emmc_read_response(
 	struct mmc_host *mmc, struct mmc_command *cmd)
 {
 	struct amlsd_platform *pdata = mmc_priv(mmc);
@@ -1515,7 +1521,7 @@ err_exit:
  *a linear buffer and an SG list  for amlogic,
  * We don't disable irq in this function
  **/
-static int aml_sd_emmc_post_dma(struct amlsd_host *host,
+int aml_sd_emmc_post_dma(struct amlsd_host *host,
 		struct mmc_request *mrq)
 {
 	struct sd_emmc_regs *sd_emmc_regs = host->sd_emmc_regs;
@@ -1581,7 +1587,7 @@ void aml_sd_emmc_prepare_dma(struct amlsd_host *host,
 }
 #endif
 
-static void aml_sd_emmc_clk_switch_off(struct amlsd_host *host)
+void aml_sd_emmc_clk_switch_off(struct amlsd_host *host)
 {
 	struct sd_emmc_regs *sd_emmc_regs = host->sd_emmc_regs;
 	u32 vcfg = sd_emmc_regs->gcfg;
@@ -1601,7 +1607,7 @@ static void aml_sd_emmc_clk_switch_off(struct amlsd_host *host)
 	/* sd_emmc_err("clock off\n"); */
 }
 
-static void aml_sd_emmc_clk_switch_on(
+void aml_sd_emmc_clk_switch_on(
 	struct amlsd_platform *pdata, int clk_div, int clk_src_sel)
 {
 	struct amlsd_host *host = (void *)pdata->host;
@@ -1627,7 +1633,7 @@ static void aml_sd_emmc_clk_switch_on(
 	host->is_gated = false;
 }
 
-static void aml_sd_emmc_clk_switch(struct amlsd_platform *pdata,
+void aml_sd_emmc_clk_switch(struct amlsd_platform *pdata,
 	int clk_div, int clk_src_sel)
 {
 	struct amlsd_host *host = (void *)pdata->host;
@@ -2025,7 +2031,7 @@ void aml_sd_emmc_start_cmd(struct amlsd_platform *pdata,
 	desc_start->init = 0;
 	desc_start->busy = 1;
 	desc_start->addr = host->desc_dma_addr>>2;
-
+	pdata->desc_cnt = desc_cnt;
 #if 0  /* debug */
 	desc_cur = (struct sd_emmc_desc_info *)host->desc_buf;
 	des_cmd_cur = (struct cmd_cfg *)&(desc_cur->cmd_info);
@@ -2105,11 +2111,12 @@ void aml_sd_emmc_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
 	mmc_request_done(host->mmc, mrq);
 }
 
-static void aml_sd_emmc_print_err(struct amlsd_host *host)
+void aml_sd_emmc_print_err(struct amlsd_host *host)
 {
-	/* not print err msg for tuning cmd */
+	/* not print err msg for tuning cmd & stop cmd we send*/
 	if ((host->mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK)
-		|| (host->mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)) {
+		|| (host->mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)
+		|| (host->cmd_is_stop)) {
 		return;
 	}
 
@@ -2305,6 +2312,8 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 	u32 vstat = 0;
 	u32 virqc = 0;
 	u32 vstart = 0;
+	u32 err = 0;
+
 	struct sd_emmc_irq_en *irqc = (struct sd_emmc_irq_en *)&virqc;
 	struct sd_emmc_status *ista = (struct sd_emmc_status *)&vstat;
 	struct sd_emmc_start *desc_start = (struct sd_emmc_start *)&vstart;
@@ -2409,52 +2418,69 @@ static irqreturn_t aml_sd_emmc_irq(int irq, void *dev_id)
 		else
 			host->status = HOST_TASKLET_CMD;
 		mrq->cmd->error = 0;
-	} else { /* error */
-		if ((ista->rxd_err) || (ista->txd_err)) {
-			host->status = HOST_DAT_CRC_ERR;
-			mrq->cmd->error = -EILSEQ;
-			if (host->is_tunning == 0) {
-				sd_emmc_err("%s: warning... data crc, vstat:0x%x, virqc:%x",
-						mmc_hostname(host->mmc),
-						vstat, virqc);
-				sd_emmc_err("@ cmd %d with %p; stop %d, status %d\n",
-						mrq->cmd->opcode, mrq->data,
-						host->cmd_is_stop,
-						host->status);
-			}
-		} else if (ista->resp_err) {
-			if (host->is_tunning == 0)
-				sd_emmc_err("%s: warning... response crc,vstat:0x%x,virqc:%x\n",
-						mmc_hostname(host->mmc),
-						vstat, virqc);
-			host->status = HOST_RSP_CRC_ERR;
-			mrq->cmd->error = -EILSEQ;
-		} else if (ista->resp_timeout) {
-			if (host->is_tunning == 0)
-				sd_emmc_err("%s: resp_timeout,vstat:0x%x,virqc:%x\n",
-						mmc_hostname(host->mmc),
-						vstat, virqc);
-			host->status = HOST_RSP_TIMEOUT_ERR;
-			mrq->cmd->error = -ETIMEDOUT;
-		} else if (ista->desc_timeout) {
-			if (host->is_tunning == 0)
-				sd_emmc_err("%s: desc_timeout,vstat:0x%x,virqc:%x\n",
-						mmc_hostname(host->mmc),
-						vstat, virqc);
-			host->status = HOST_DAT_TIMEOUT_ERR;
-			mrq->cmd->error = -ETIMEDOUT;
-		} else{
-			host->xfer_step = XFER_IRQ_UNKNOWN_IRQ;
-			sd_emmc_err("%s: %s Unknown Irq Ictl 0x%x, Ista 0x%x\n",
+	}
+
+	if ((vstat & 0x1FFF) && (!host->cmd_is_stop)) {
+	#if 0
+		pr_err("~~~~%s() %d, fail in %ld/%d, %s\n", __func__, __LINE__,
+			((vstart & 0xFFFFFFFC)
+			- (u32)host->desc_dma_addr)
+			/ sizeof(struct sd_emmc_desc_info),
+			pdata->desc_cnt,
+			host->cmd_is_stop ? "STOP" : "NOP");
+	#endif
+		err = 1;
+	}
+	/* error */
+	if ((ista->rxd_err) || (ista->txd_err)) {
+		host->status = HOST_DAT_CRC_ERR;
+		mrq->cmd->error = -EILSEQ;
+		if (host->is_tunning == 0) {
+			sd_emmc_err("%s: warning... data crc, vstat:0x%x, virqc:%x",
 					mmc_hostname(host->mmc),
-					pdata->pinname, virqc, vstat);
+					vstat, virqc);
+			sd_emmc_err("@ cmd %d with %p; stop %d, status %d\n",
+					mrq->cmd->opcode, mrq->data,
+					host->cmd_is_stop,
+					host->status);
 		}
+	} else if (ista->resp_err) {
+		if (host->is_tunning == 0)
+			sd_emmc_err("%s: warning... response crc,vstat:0x%x,virqc:%x\n",
+					mmc_hostname(host->mmc),
+					vstat, virqc);
+		host->status = HOST_RSP_CRC_ERR;
+		mrq->cmd->error = -EILSEQ;
+	} else if (ista->resp_timeout) {
+		if (host->is_tunning == 0)
+			sd_emmc_err("%s: resp_timeout,vstat:0x%x,virqc:%x\n",
+					mmc_hostname(host->mmc),
+					vstat, virqc);
+		host->status = HOST_RSP_TIMEOUT_ERR;
+		mrq->cmd->error = -ETIMEDOUT;
+	} else if (ista->desc_timeout) {
+		if (host->is_tunning == 0)
+			sd_emmc_err("%s: desc_timeout,vstat:0x%x,virqc:%x\n",
+					mmc_hostname(host->mmc),
+					vstat, virqc);
+		host->status = HOST_DAT_TIMEOUT_ERR;
+		mrq->cmd->error = -ETIMEDOUT;
+	}
+#if 0
+	else{
+		host->xfer_step = XFER_IRQ_UNKNOWN_IRQ;
+		sd_emmc_err("%s: %s Unknown Irq Ictl 0x%x, Ista 0x%x\n",
+				mmc_hostname(host->mmc),
+				pdata->pinname, virqc, vstat);
+	}
+#endif
+	/* just for error show */
+	if (err) {
 		if (host->is_tunning == 0)
 			aml_host_bus_fsm_show(host, ista->bus_fsm);
 		if (aml_card_type_mmc(pdata))
 			mmc_cmd_LBA_show(mmc, mrq);
 	}
-
 
 	if (host->xfer_step != XFER_IRQ_UNKNOWN_IRQ) {
 #ifdef SD_EMMC_DATA_TASKLET
@@ -2549,7 +2575,7 @@ static irqreturn_t aml_sd_emmc_data_thread(int irq, void *data)
 		}
 		aml_sd_emmc_print_err(host);
 	}
-
+	/* process stop cmd we sent on porpos */
 	if (host->cmd_is_stop) {
 		/* --new irq enter, */
 		host->cmd_is_stop = 0;
@@ -3144,6 +3170,17 @@ static const struct mmc_host_ops aml_sd_emmc_ops = {
 };
 
 
+static const struct mmc_host_ops aml_sd_emmc_ops_v3 = {
+	.request = aml_sd_emmc_request,
+	.set_ios = aml_sd_emmc_set_ios_v3,
+	.enable_sdio_irq = aml_sd_emmc_enable_sdio_irq,
+	.get_cd = aml_sd_emmc_get_cd,
+	.get_ro = aml_sd_emmc_get_ro,
+	.start_signal_voltage_switch = aml_signal_voltage_switch,
+	.card_busy = aml_sd_emmc_card_busy,
+	.execute_tuning = aml_sd_emmc_execute_tuning_v3,
+	.hw_reset = aml_emmc_hw_reset,
+};
 
 static struct amlsd_host *aml_sd_emmc_init_host(struct amlsd_host *host)
 {
@@ -3524,7 +3561,7 @@ static u32 get_storage_dev_by_clk(void)
  return  1: emmc
 		 2: nand
  */
-static u32 get_storage_dev(void)
+u32 get_storage_dev(void)
 {
 	u32 ret;
 
@@ -3536,6 +3573,7 @@ static u32 get_storage_dev(void)
 	pr_err("%s return %d\n", __func__, ret);
 	return ret;
 }
+EXPORT_SYMBOL(get_storage_dev);
 
 int is_storage_emmc(void)
 {
@@ -3544,6 +3582,18 @@ int is_storage_emmc(void)
 		ret = 1;
 	return ret;
 }
+
+/*this function tells wifi is using sd(sdiob) or sdio(sdioa)*/
+const char *get_wifi_inf(void)
+{
+	if (sdio_host != NULL)
+		return mmc_hostname(sdio_host);
+	else
+		return "sdio";
+
+}
+EXPORT_SYMBOL(get_wifi_inf);
+
 static int aml_sd_emmc_probe(struct platform_device *pdev)
 {
 	struct mmc_host *mmc = NULL;
@@ -3574,6 +3624,8 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 		pr_info("error to get irq resource\n");
 		return -ENODEV;
 	}
+	if (is_meson_txlx_cpu())
+		host->ctrl_ver = 3;
 	host->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 	host->base = ioremap(0xc8834400, 0x200);
 	host->sd_emmc_regs = (struct sd_emmc_regs *)
@@ -3583,11 +3635,17 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	host->dma_gpong = res_mem->start+0x600;
 	host->pdev = pdev;
 	host->dev = &pdev->dev;
-	aml_sd_emmc_init_host(host);
-	if (!host)
-		goto fail_init_host;
-
-	aml_sd_emmc_reg_init(host);
+	if (host->ctrl_ver >= 3) {
+		aml_sd_emmc_init_host_v3(host);
+		if (!host)
+			goto fail_init_host;
+		aml_sd_emmc_reg_init_v3(host);
+	} else {
+		aml_sd_emmc_init_host(host);
+		if (!host)
+			goto fail_init_host;
+		aml_sd_emmc_reg_init(host);
+	}
 
 	/*malloc extra amlsd_platform*/
 	mmc = mmc_alloc_host(sizeof(struct amlsd_platform), &pdev->dev);
@@ -3601,7 +3659,8 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	if (amlsd_get_platform_data(pdev, pdata, mmc, 0))
 		mmc_free_host(mmc);
 
-	if (aml_card_type_mmc(pdata)) {
+	if (aml_card_type_mmc(pdata)
+			&& (host->ctrl_ver < 3)) {
 		/**set emmc tx_phase regs here base on dts**/
 		aml_sd_emmc_tx_phase_set(host, pdata);
 		if (!is_storage_emmc()) {
@@ -3616,8 +3675,12 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	if (pdata->caps & MMC_CAP_NONREMOVABLE)
 		pdata->is_in = true;
 
-	if (pdata->caps & MMC_PM_KEEP_POWER)
+	if (pdata->pm_caps & MMC_PM_KEEP_POWER)
 		mmc->pm_caps |= MMC_PM_KEEP_POWER;
+	if (pdata->base != 0) {
+		iounmap(host->base);
+		host->base = ioremap(pdata->base, 0x200);
+	}
 	pdata->host = host;
 	pdata->mmc = mmc;
 	pdata->is_fir_init = true;
@@ -3626,7 +3689,10 @@ static int aml_sd_emmc_probe(struct platform_device *pdev)
 	pdata->signal_voltage = 0xff; /* init as an invalid value */
 	host->is_tunning = 0;
 	mmc->index = 0;
-	mmc->ops = &aml_sd_emmc_ops;
+	if (host->ctrl_ver >= 3)
+		mmc->ops = &aml_sd_emmc_ops_v3;
+	else
+		mmc->ops = &aml_sd_emmc_ops;
 	mmc->alldev_claim = &aml_sd_emmc_claim;
 	mmc->ios.clock = 400000;
 	mmc->ios.bus_width = MMC_BUS_WIDTH_1;

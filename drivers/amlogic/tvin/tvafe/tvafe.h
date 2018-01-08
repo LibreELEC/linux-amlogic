@@ -29,7 +29,7 @@
 #define TVAFE_FLAG_DEV_OPENED       0x00000010
 #define TVAFE_FLAG_DEV_STARTED      0x00000020
 #define TVAFE_FLAG_DEV_SNOW_FLAG    0x00000040
-#define TVAFE_POWERDOWN_IN_IDLE
+#define TVAFE_POWERDOWN_IN_IDLE     0x00000080
 
 /************************************************************ */
 /* *** enum definitions ********************************************* */
@@ -52,6 +52,10 @@ struct tvafe_info_s {
 	struct tvafe_adc_s          adc;
 #endif
 	struct tvafe_cvd2_s         cvd2;
+	/*WSS INFO for av/atv*/
+	enum tvin_aspect_ratio_e aspect_ratio;
+	enum tvin_aspect_ratio_e aspect_ratio_last;
+	unsigned int		aspect_ratio_cnt;
 };
 
 /* tvafe device structure */
@@ -93,6 +97,8 @@ extern void aml_fe_hook_cvd(hook_func_t atv_mode,
 		hook_func_t cvd_hv_lock, hook_func_t get_fmt);
 extern int tvafe_reg_read(unsigned int reg, unsigned int *val);
 extern int tvafe_reg_write(unsigned int reg, unsigned int val);
+extern int tvafe_vbi_reg_read(unsigned int reg, unsigned int *val);
+extern int tvafe_vbi_reg_write(unsigned int reg, unsigned int val);
 extern int tvafe_hiu_reg_read(unsigned int reg, unsigned int *val);
 extern int tvafe_hiu_reg_write(unsigned int reg, unsigned int val);
 

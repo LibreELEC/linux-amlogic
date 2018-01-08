@@ -25,6 +25,7 @@
 #include <linux/reset.h>
 #include <linux/amlogic/saradc.h>
 #include <linux/amlogic/cpu_version.h>
+#include <asm/barrier.h>
 #include "saradc_reg.h"
 
 /* #define ENABLE_DYNAMIC_POWER */
@@ -42,6 +43,17 @@ static char flag_12bit;
 #define SARADC_STATE_BUSY 1
 #define SARADC_STATE_SUSPEND 2
 
+const char *ch7_vol[] = {
+	"gnd",
+	"vdd/4",
+	"vdd/2",
+	"vdd*3/4",
+	"vdd",
+	"unused",
+	"unused",
+	"unused"
+};
+
 struct saradc {
 	struct device *dev;
 	void __iomem *mem_base;
@@ -52,6 +64,7 @@ struct saradc {
 	int ref_nominal;
 	int coef;
 	int state;
+	int ch7_sel;
 };
 
 static struct saradc *gp_saradc;
@@ -125,13 +138,20 @@ static void saradc_reset(struct saradc *adc)
 	writel(0x84004040, mem_base+SARADC_REG0);
 	writel(0, mem_base+SARADC_CH_LIST);
 	writel(0xaaaa, mem_base+SARADC_AVG_CNTL);
-	writel(0x9388000a, mem_base+SARADC_REG3);
+	if (flag_12bit)
+		writel(0x9b88000a, mem_base+SARADC_REG3);
+	else
+		writel(0x9388000a, mem_base+SARADC_REG3);
 	/* set SARADC_DELAY with 0x190a380a when 32k */
 	writel(0x10a000a, mem_base+SARADC_DELAY);
 	writel(0x3eb1a0c, mem_base+SARADC_AUX_SW);
 	writel(0x3eb1a0c, mem_base+SARADC_AUX_SW);
 	writel(0x8c000c, mem_base+SARADC_CH10_SW);
 	writel(0xc000c, mem_base+SARADC_DETECT_IDLE_SW);
+
+	/*select VDDA as ref voltage, otherwise select calibration voltage*/
+	if (is_meson_txlx_cpu())
+		setb(mem_base, REF_VOL_SEL, 1);
 
 	clk_prepare_enable(adc->clk);
 	clk_div = clk_get_rate(adc->clk) / 1200000;
@@ -168,6 +188,8 @@ static int  saradc_internal_cal(struct saradc *adc)
 cal_end:
 	saradc_info("calibration end: coef=%d\n", adc->coef);
 	setb(adc->mem_base, CAL_CNTL, 7);
+
+	adc->ch7_sel = 7;
 	return 0;
 }
 
@@ -228,13 +250,26 @@ int get_adc_sample_early(int dev_id, int ch, char if_10bit)
 
 	adc = gp_saradc;
 	mem_base = adc->mem_base;
-	if (!adc || getb(mem_base, FLAG_BUSY_BL30)
-		|| (adc->state != SARADC_STATE_IDLE))
+
+	if (!adc)
 		return -1;
+
+	count = 0;
+	while (getb(mem_base, FLAG_BUSY_BL30) ||
+			(adc->state != SARADC_STATE_IDLE)) {
+		if (++count > 200) {
+			saradc_err("get adc res timeout!\n");
+			return -1;
+		}
+		udelay(1);
+	}
 
 	spin_lock_irqsave(&adc->lock, flags);
 	adc->state = SARADC_STATE_BUSY;
 	setb(mem_base, FLAG_BUSY_KERNEL, 1);
+	isb();
+	dsb(sy);
+	udelay(1);
 	if (getb(mem_base, FLAG_BUSY_BL30)) {
 		value = -1;
 		goto end;
@@ -314,6 +349,9 @@ end1:
 #endif
 end:
 	setb(mem_base, FLAG_BUSY_KERNEL, 0);
+	isb();
+	dsb(sy);
+	udelay(1);
 	adc->state = SARADC_STATE_IDLE;
 	spin_unlock_irqrestore(&adc->lock, flags);
 	return value;
@@ -396,6 +434,38 @@ static ssize_t ch7_show(struct class *cla,
 	return sprintf(buf, "%d\n", get_adc_sample(0, 7));
 }
 
+static ssize_t ch7_mux_show(struct class *cla,
+		struct class_attribute *attr, char *buf)
+{
+	int i;
+	int len = 0;
+	struct saradc *adc = gp_saradc;
+
+	len = sprintf(buf, "current: [%d]%s\n\n",
+			adc->ch7_sel, ch7_vol[adc->ch7_sel]);
+	for (i = 0; i < ARRAY_SIZE(ch7_vol); i++)
+		len += sprintf(buf + len, "%d: %s\n", i, ch7_vol[i]);
+
+	return len;
+}
+
+static ssize_t ch7_mux_store(struct class *cla,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	int val;
+	struct saradc *adc = gp_saradc;
+
+	if (kstrtoint(buf, 0, &val) != 0)
+		return -EINVAL;
+
+	if (val >= ARRAY_SIZE(ch7_vol))
+		return -EINVAL;
+
+	setb(adc->mem_base, CAL_CNTL, val);
+	adc->ch7_sel = val;
+
+	return count;
+}
 static struct class_attribute saradc_class_attrs[] = {
 		__ATTR_RO(ch0),
 		__ATTR_RO(ch1),
@@ -405,6 +475,7 @@ static struct class_attribute saradc_class_attrs[] = {
 		__ATTR_RO(ch5),
 		__ATTR_RO(ch6),
 		__ATTR_RO(ch7),
+		__ATTR_RW(ch7_mux),
 		__ATTR_NULL
 };
 

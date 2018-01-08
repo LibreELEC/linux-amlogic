@@ -28,11 +28,14 @@ enum vmode_e {
 	VMODE_480I  = 0,
 	VMODE_480I_RPT,
 	VMODE_480CVBS,
+	VMODE_NTSC_M,
 	VMODE_480P,
 	VMODE_480P_RPT,
 	VMODE_576I,
 	VMODE_576I_RPT,
 	VMODE_576CVBS,
+	VMODE_PAL_M,
+	VMODE_PAL_N,
 	VMODE_576P,
 	VMODE_576P_RPT,
 	VMODE_720P,
@@ -56,13 +59,6 @@ enum vmode_e {
 	VMODE_4K2K_SMPTE_50HZ_Y420,
 	VMODE_4K2K_SMPTE_60HZ,
 	VMODE_4K2K_SMPTE_60HZ_Y420,
-	VMODE_4K2K_50HZ_Y420_10BIT,
-	VMODE_4K2K_60HZ_Y420_10BIT,
-	VMODE_4K2K_50HZ_Y422_10BIT,
-	VMODE_4K2K_60HZ_Y422_10BIT,
-	VMODE_4K2K_24HZ_Y444_10BIT,
-	VMODE_4K2K_25HZ_Y444_10BIT,
-	VMODE_4K2K_30HZ_Y444_10BIT,
 	VMODE_4K2K_FAKE_5G,
 	VMODE_4K2K_60HZ,
 	VMODE_4K2K_60HZ_Y420,
@@ -77,13 +73,47 @@ enum vmode_e {
 	VMODE_4K05K_240HZ_Y420,
 	VMODE_4K05K_200HZ,
 	VMODE_4K05K_200HZ_Y420,
+	VMODE_640x480p60hz,
+	VMODE_800x480p60hz,
+	VMODE_800x600p60hz,
+	VMODE_852x480p60hz,
+	VMODE_854x480p60hz,
+	VMODE_1024x600p60hz,
+	VMODE_1024x768p60hz,
+	VMODE_1152x864p75hz,
+	VMODE_1280x600p60hz,
+	VMODE_1280x768p60hz,
+	VMODE_1280x800p60hz,
+	VMODE_1280x960p60hz,
+	VMODE_1280x1024p60hz,
+	VMODE_1360x768p60hz,
+	VMODE_1366x768p60hz,
+	VMODE_1400x1050p60hz,
+	VMODE_1440x900p60hz,
+	VMODE_1600x900p60hz,
+	VMODE_1600x1200p60hz,
+	VMODE_1680x1050p60hz,
+	VMODE_1920x1200p60hz,
+	VMODE_2160x1200p90hz,
+	VMODE_2560x1080p60hz,
+	VMODE_2560x1440p60hz,
+	VMODE_2560x1600p60hz,
+	VMODE_3440x1440p60hz,
 	VMODE_VGA,
 	VMODE_SVGA,
 	VMODE_XGA,
 	VMODE_SXGA,
 	VMODE_WSXGA,
 	VMODE_FHDVGA,
+	VMODE_720FP50HZ, /* Extra VMODE for 3D Frame Packing */
+	VMODE_720FP60HZ,
+	VMODE_1080FP24HZ,
+	VMODE_1080FP25HZ,
+	VMODE_1080FP30HZ,
+	VMODE_1080FP50HZ,
+	VMODE_1080FP60HZ,
 	VMODE_LCD,
+	VMODE_NULL, /* null mode is used as temporary witch mode state */
 	VMODE_MAX,
 	VMODE_INIT_NULL,
 	VMODE_MASK = 0xFF,
@@ -93,11 +123,14 @@ enum tvmode_e {
 	TVMODE_480I = 0,
 	TVMODE_480I_RPT,
 	TVMODE_480CVBS,
+	TVMODE_NTSC_M,
 	TVMODE_480P,
 	TVMODE_480P_RPT,
 	TVMODE_576I,
 	TVMODE_576I_RPT,
 	TVMODE_576CVBS,
+	TVMODE_PAL_M,
+	TVMODE_PAL_N,
 	TVMODE_576P,
 	TVMODE_576P_RPT,
 	TVMODE_720P,
@@ -121,13 +154,6 @@ enum tvmode_e {
 	TVMODE_4K2K_SMPTE_50HZ_Y420,
 	TVMODE_4K2K_SMPTE_60HZ,
 	TVMODE_4K2K_SMPTE_60HZ_Y420,
-	TVMODE_4K2K_50HZ_Y420_10BIT,
-	TVMODE_4K2K_60HZ_Y420_10BIT,
-	TVMODE_4K2K_50HZ_Y422_10BIT,
-	TVMODE_4K2K_60HZ_Y422_10BIT,
-	TVMODE_4K2K_24HZ_Y444_10BIT,
-	TVMODE_4K2K_25HZ_Y444_10BIT,
-	TVMODE_4K2K_30HZ_Y444_10BIT,
 	TVMODE_4K2K_FAKE_5G,
 	TVMODE_4K2K_60HZ,
 	TVMODE_4K2K_60HZ_Y420,
@@ -142,13 +168,47 @@ enum tvmode_e {
 	TVMODE_4K05K_240HZ_Y420,
 	TVMODE_4K05K_200HZ,
 	TVMODE_4K05K_200HZ_Y420,
+	TVMODE_640x480p60hz,
+	TVMODE_800x480p60hz,
+	TVMODE_800x600p60hz,
+	TVMODE_852x480p60hz,
+	TVMODE_854x480p60hz,
+	TVMODE_1024x600p60hz,
+	TVMODE_1024x768p60hz,
+	TVMODE_1152x864p75hz,
+	TVMODE_1280x600p60hz,
+	TVMODE_1280x768p60hz,
+	TVMODE_1280x800p60hz,
+	TVMODE_1280x960p60hz,
+	TVMODE_1280x1024p60hz,
+	TVMODE_1360x768p60hz,
+	TVMODE_1366x768p60hz,
+	TVMODE_1400x1050p60hz,
+	TVMODE_1440x900p60hz,
+	TVMODE_1600x900p60hz,
+	TVMODE_1600x1200p60hz,
+	TVMODE_1680x1050p60hz,
+	TVMODE_1920x1200p60hz,
+	TVMODE_2160x1200p90hz,
+	TVMODE_2560x1080p60hz,
+	TVMODE_2560x1440p60hz,
+	TVMODE_2560x1600p60hz,
+	TVMODE_3440x1440p60hz,
 	TVMODE_VGA ,
 	TVMODE_SVGA,
 	TVMODE_XGA,
 	TVMODE_SXGA,
 	TVMODE_WSXGA,
 	TVMODE_FHDVGA,
-	TVMODE_MAX
+	TVMODE_720FP50HZ, /* Extra TVMODE for 3D Frame Packing */
+	TVMODE_720FP60HZ,
+	TVMODE_1080FP24HZ,
+	TVMODE_1080FP25HZ,
+	TVMODE_1080FP30HZ,
+	TVMODE_1080FP50HZ,
+	TVMODE_1080FP60HZ,
+	TVMODE_NULL, /* null mode is used as temporary witch mode state */
+	TVMODE_MAX,
 };
 
 #define SUPPORT_2020	0x01
@@ -160,6 +220,8 @@ struct master_display_info_s {
 	u32 primaries[3][2];		/* normalized 50000 in G,B,R order */
 	u32 white_point[2];		/* normalized 50000 */
 	u32 luminance[2];		/* max/min lumin, normalized 10000 */
+	u32 max_content;		/* Maximum Content Light Level */
+	u32 max_frame_average;	/* Maximum Frame-average Light Level */
 };
 
 struct hdr_info {
@@ -167,12 +229,61 @@ struct hdr_info {
 	u32 lumi_max; /* RX EDID Lumi Max value */
 	u32 lumi_avg; /* RX EDID Lumi Avg value */
 	u32 lumi_min; /* RX EDID Lumi Min value */
+	u8 sink_flag; /*0 = hdmi, 1 = panel*/
 };
 
-struct vinfo_s {
-	char *name;
+/* Refer ot DolbyVision 2.6, Page 35
+ * For Explicit Switch Signaling Methods using.
+ */
+enum eotf_type {
+	EOTF_T_NULL = 0,
+	EOTF_T_DOLBYVISION,
+	EOTF_T_HDR10,
+	EOTF_T_SDR,
+	EOTF_T_MAX,
+};
+
+/* Dolby Version support information */
+/* Refer to DV Spec issue 2.6 Page 11 and 14 */
+#define DV_IEEE_OUI	0x00d046
+struct dv_info {
+	uint32_t ieeeoui;
+	uint8_t ver; /* 0 or 1 */
+	uint8_t sup_yuv422_12bit:1; /* if as 0, then support RGB tunnel mode */
+	uint8_t sup_2160p60hz:1; /* if as 0, then support 2160p30hz */
+	uint8_t sup_global_dimming:1;
+	uint8_t colorimetry:1;
+	union {
+		struct {
+			uint16_t chrom_red_primary_x;
+			uint16_t chrom_red_primary_y;
+			uint16_t chrom_green_primary_x;
+			uint16_t chrom_green_primary_y;
+			uint16_t chrom_blue_primary_x;
+			uint16_t chrom_blue_primary_y;
+			uint16_t chrom_white_primary_x;
+			uint16_t chrom_white_primary_y;
+			uint16_t target_min_pq;
+			uint16_t target_max_pq;
+			uint8_t dm_major_ver;
+			uint8_t dm_minor_ver;
+		} ver0;
+		struct {
+			uint8_t dm_version;
+			uint8_t target_max_lum;
+			uint8_t target_min_lum;
+			uint8_t chrom_red_primary_x;
+			uint8_t chrom_red_primary_y;
+			uint8_t chrom_green_primary_x;
+			uint8_t chrom_green_primary_y;
+			uint8_t chrom_blue_primary_x;
+			uint8_t chrom_blue_primary_y;
+		} ver1;
+	} vers;
+};
+
+struct vinfo_base_s {
 	enum vmode_e mode;
-	char ext_name[32];
 	u32 width;
 	u32 height;
 	u32 field_height;
@@ -185,10 +296,32 @@ struct vinfo_s {
 	u32 video_clk;
 	enum tvin_color_fmt_e viu_color_fmt;
 	struct hdr_info hdr_info;
+};
+
+struct vinfo_s {
+	char *name;
+	enum vmode_e mode;
+	u32 width;
+	u32 height;
+	u32 field_height;
+	u32 aspect_ratio_num;
+	u32 aspect_ratio_den;
+	u32 sync_duration_num;
+	u32 sync_duration_den;
+	u32 screen_real_width;
+	u32 screen_real_height;
+	u32 video_clk;
+	u32 htotal;
+	u32 vtotal;
+	enum tvin_color_fmt_e viu_color_fmt;
+	struct hdr_info hdr_info;
 	struct master_display_info_s
 		master_display_info;
+	const struct dv_info *dv_info;
 	/* update hdmitx hdr packet, if data is NULL, disalbe packet */
 	void (*fresh_tx_hdr_pkt)(struct master_display_info_s *data);
+	/* tunnel_mode: 1: tunneling mode, RGB 8bit  0: YCbCr422 12bit mode */
+	void (*fresh_tx_vsif_pkt)(enum eotf_type type, uint8_t tunnel_mode);
 };
 
 struct disp_rect_s {

@@ -45,7 +45,7 @@
 
 void *fetchbuf = 0;
 
-static s32 _stbuf_alloc(struct stream_buf_s *buf)
+static s32 _stbuf_alloc(struct stream_buf_s *buf, bool is_secure)
 {
 	if (buf->buf_size == 0)
 		return -ENOBUFS;
@@ -75,8 +75,11 @@ static s32 _stbuf_alloc(struct stream_buf_s *buf)
 			flags |= CODEC_MM_FLAGS_DMA_CPU;
 		}
 
+		if (is_secure)
+			flags |= CODEC_MM_FLAGS_TVP;
+
 		buf->buf_start = codec_mm_alloc_for_dma(MEM_NAME,
-			buf->buf_page_num, 4+PAGE_SHIFT, flags);
+			buf->buf_page_num, 4 + PAGE_SHIFT, flags);
 		if (!buf->buf_start) {
 			int is_video = (buf->type == BUF_TYPE_HEVC) ||
 					(buf->type == BUF_TYPE_VIDEO);
@@ -98,27 +101,32 @@ static s32 _stbuf_alloc(struct stream_buf_s *buf)
 				"Subtitle", buf->buf_size);
 			return -ENOMEM;
 		}
-		pr_info("%s stbuf alloced at %p, size = %d\n",
+
+		buf->is_secure = is_secure;
+
+		pr_info("%s stbuf alloced at %p, secure = %d, size = %d\n",
 				(buf->type == BUF_TYPE_HEVC) ? "HEVC" :
 				(buf->type == BUF_TYPE_VIDEO) ? "Video" :
 				(buf->type == BUF_TYPE_AUDIO) ? "Audio" :
 				"Subtitle", (void *)buf->buf_start,
+				buf->is_secure,
 				buf->buf_size);
 	}
-
+	if (buf->buf_size < buf->canusebuf_size)
+		buf->canusebuf_size = buf->buf_size;
 	buf->flag |= BUF_FLAG_ALLOC;
 
 	return 0;
 }
 
-int stbuf_change_size(struct stream_buf_s *buf, int size)
+int stbuf_change_size(struct stream_buf_s *buf, int size, bool is_secure)
 {
 	unsigned long old_buf;
 	int old_size, old_pagenum;
 	int ret;
 
-	pr_info("buffersize=%d,%d,start=%p\n", size, buf->buf_size,
-			(void *)buf->buf_start);
+	pr_info("buffersize=%d,%d,start=%p, secure=%d\n", size, buf->buf_size,
+			(void *)buf->buf_start, is_secure);
 
 	if (buf->buf_size == size && buf->buf_start != 0)
 		return 0;
@@ -130,7 +138,8 @@ int stbuf_change_size(struct stream_buf_s *buf, int size)
 	buf->buf_size = size;
 	ret = size;
 
-	if (size == 0 || _stbuf_alloc(buf) == 0) {
+	if (size == 0 ||
+		_stbuf_alloc(buf, is_secure) == 0) {
 		/*
 		 * size=0:We only free the old memory;
 		 * alloc ok,changed to new buffer
@@ -138,6 +147,9 @@ int stbuf_change_size(struct stream_buf_s *buf, int size)
 		if (old_buf != 0) {
 			codec_mm_free_for_dma(MEM_NAME, old_buf);
 		}
+
+		if (size == 0)
+			buf->is_secure = false;
 
 		pr_info("changed the (%d) buffer size from %d to %d\n",
 				buf->type, old_size, size);
@@ -181,11 +193,6 @@ void stbuf_fetch_release(void)
 	return;
 }
 
-static inline u32 _stbuf_wp(struct stream_buf_s *buf)
-{
-	return _READ_ST_REG(WP);
-}
-
 static void _stbuf_timer_func(unsigned long arg)
 {
 	struct stream_buf_s *p = (struct stream_buf_s *)arg;
@@ -201,16 +208,35 @@ static void _stbuf_timer_func(unsigned long arg)
 
 u32 stbuf_level(struct stream_buf_s *buf)
 {
-	return (buf->type ==
-			BUF_TYPE_HEVC) ? READ_VREG(HEVC_STREAM_LEVEL) :
-		   _READ_ST_REG(LEVEL);
+	if ((buf->type == BUF_TYPE_HEVC) || (buf->type == BUF_TYPE_VIDEO)) {
+		if (READ_PARSER_REG(PARSER_ES_CONTROL) & 1) {
+			int level = READ_PARSER_REG(PARSER_VIDEO_WP) -
+				READ_PARSER_REG(PARSER_VIDEO_RP);
+			if (level < 0)
+				level += READ_PARSER_REG(PARSER_VIDEO_END_PTR) -
+				READ_PARSER_REG(PARSER_VIDEO_START_PTR) + 8;
+			return (u32)level;
+		} else
+			return (buf->type == BUF_TYPE_HEVC) ?
+				READ_VREG(HEVC_STREAM_LEVEL) :
+				_READ_ST_REG(LEVEL);
+	}
+
+	return _READ_ST_REG(LEVEL);
 }
 
 u32 stbuf_rp(struct stream_buf_s *buf)
 {
-	return (buf->type ==
-			BUF_TYPE_HEVC) ? READ_VREG(HEVC_STREAM_RD_PTR) :
-		   _READ_ST_REG(RP);
+	if ((buf->type == BUF_TYPE_HEVC) || (buf->type == BUF_TYPE_VIDEO)) {
+		if (READ_PARSER_REG(PARSER_ES_CONTROL) & 1)
+			return READ_PARSER_REG(PARSER_VIDEO_RP);
+		else
+			return (buf->type == BUF_TYPE_HEVC) ?
+				READ_VREG(HEVC_STREAM_RD_PTR) :
+				_READ_ST_REG(RP);
+	}
+
+	return _READ_ST_REG(RP);
 }
 
 u32 stbuf_space(struct stream_buf_s *buf)
@@ -219,30 +245,7 @@ u32 stbuf_space(struct stream_buf_s *buf)
 	   the parser fifo size is 1024byts, so reserve it */
 	int size;
 
-	if (buf->type == BUF_TYPE_HEVC)
-		size = buf->canusebuf_size - READ_VREG(HEVC_STREAM_LEVEL);
-	else
-		size = (buf->canusebuf_size - _READ_ST_REG(LEVEL));
-
-	/* #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TVD */
-	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_M8) {
-		if ((buf->type == BUF_TYPE_VIDEO) && (vdec_on(VDEC_2))) {
-			int v2_start = _READ_VDEC2_ST_REG(START_PTR);
-			int v_start = _READ_ST_REG(START_PTR);
-			int v2_end = _READ_VDEC2_ST_REG(END_PTR);
-			int v_end = _READ_ST_REG(END_PTR);
-			int v2_ctl = _READ_VDEC2_ST_REG(CONTROL);
-			if ((v2_start == v_start)
-					&& (v2_end == v_end)
-					&& (v2_ctl & MEM_CTRL_FILL_EN)) {
-				int v2_st_level = _READ_VDEC2_ST_REG(LEVEL);
-				size = min(size,
-						(int)(buf->canusebuf_size -
-							  v2_st_level));
-			}
-		}
-	}
-	/* #endif */
+	size = buf->canusebuf_size - stbuf_level(buf);
 
 	if (buf->canusebuf_size >= buf->buf_size / 2) {
 		/* old reversed value,tobe full, reversed only... */
@@ -251,7 +254,7 @@ u32 stbuf_space(struct stream_buf_s *buf)
 
 	if ((buf->type == BUF_TYPE_VIDEO)
 		|| (has_hevc_vdec() && buf->type == BUF_TYPE_HEVC))
-		size -= READ_MPEG_REG(PARSER_VIDEO_HOLE);
+		size -= READ_PARSER_REG(PARSER_VIDEO_HOLE);
 
 	return size > 0 ? size : 0;
 }
@@ -266,20 +269,41 @@ u32 stbuf_canusesize(struct stream_buf_s *buf)
 	return buf->canusebuf_size;
 }
 
-s32 stbuf_init(struct stream_buf_s *buf)
+s32 stbuf_init(struct stream_buf_s *buf, struct vdec_s *vdec, bool is_multi)
 {
 	s32 r;
 	u32 dummy;
 	u32 addr32;
 
 	if (!buf->buf_start) {
-		r = _stbuf_alloc(buf);
+		r = _stbuf_alloc(buf, (vdec) ?
+			vdec->port_flag & PORT_FLAG_DRM : 0);
 		if (r < 0)
 			return r;
 	}
 	addr32 = buf->buf_start & 0xffffffff;
 	init_waitqueue_head(&buf->wq);
+
+	/*
+	 * For multidec, do not touch HW stream buffers during port
+	 * init and release.
+	 */
+	if ((buf->type == BUF_TYPE_VIDEO) || (buf->type == BUF_TYPE_HEVC)) {
+		if (vdec) {
+			if (vdec_stream_based(vdec))
+				vdec_set_input_buffer(vdec, addr32,
+						buf->buf_size);
+			else
+				return vdec_set_input_buffer(vdec, addr32,
+						buf->buf_size);
+		}
+	}
+
 	buf->write_thread = 0;
+
+	if ((vdec && !vdec_single(vdec)) || (is_multi))
+		return 0;
+
 	if (has_hevc_vdec() && buf->type == BUF_TYPE_HEVC) {
 		CLEAR_VREG_MASK(HEVC_STREAM_CONTROL, 1);
 		WRITE_VREG(HEVC_STREAM_START_ADDR, addr32);
@@ -299,21 +323,21 @@ s32 stbuf_init(struct stream_buf_s *buf)
 		WRITE_VREG(DOS_SW_RESET0, (1 << 4));
 		WRITE_VREG(DOS_SW_RESET0, 0);
 #else
-		WRITE_MPEG_REG(RESET0_REGISTER, RESET_VLD);
+		WRITE_RESET_REG(RESET0_REGISTER, RESET_VLD);
 #endif
 
-		dummy = READ_MPEG_REG(RESET0_REGISTER);
+		dummy = READ_RESET_REG(RESET0_REGISTER);
 		WRITE_VREG(POWER_CTL_VLD, 1 << 4);
 	} else if (buf->type == BUF_TYPE_AUDIO) {
 		_WRITE_ST_REG(CONTROL, 0);
 
-		WRITE_MPEG_REG(AIU_AIFIFO_GBIT, 0x80);
+		WRITE_AIU_REG(AIU_AIFIFO_GBIT, 0x80);
 	}
 
 	if (buf->type == BUF_TYPE_SUBTITLE) {
-		WRITE_MPEG_REG(PARSER_SUB_RP, addr32);
-		WRITE_MPEG_REG(PARSER_SUB_START_PTR, addr32);
-		WRITE_MPEG_REG(PARSER_SUB_END_PTR,
+		WRITE_PARSER_REG(PARSER_SUB_RP, addr32);
+		WRITE_PARSER_REG(PARSER_SUB_START_PTR, addr32);
+		WRITE_PARSER_REG(PARSER_SUB_END_PTR,
 					   addr32 + buf->buf_size - 8);
 
 		return 0;
@@ -381,35 +405,38 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 	return 0;
 }
 
-void stbuf_release(struct stream_buf_s *buf)
+void stbuf_release(struct stream_buf_s *buf, bool is_multi)
 {
 	buf->first_tstamp = INVALID_PTS;
-	stbuf_init(buf);	/* reinit buffer */
+
+	stbuf_init(buf, NULL, is_multi);/* reinit buffer */
+
 	if (buf->flag & BUF_FLAG_ALLOC && buf->buf_start) {
 		codec_mm_free_for_dma(MEM_NAME, buf->buf_start);
 		buf->flag &= ~BUF_FLAG_ALLOC;
 		buf->buf_start = 0;
+		buf->is_secure = false;
 	}
 	buf->flag &= ~BUF_FLAG_IN_USE;
 }
 
 u32 stbuf_sub_rp_get(void)
 {
-	return READ_MPEG_REG(PARSER_SUB_RP);
+	return READ_PARSER_REG(PARSER_SUB_RP);
 }
 
 void stbuf_sub_rp_set(unsigned int sub_rp)
 {
-	WRITE_MPEG_REG(PARSER_SUB_RP, sub_rp);
+	WRITE_PARSER_REG(PARSER_SUB_RP, sub_rp);
 	return;
 }
 
 u32 stbuf_sub_wp_get(void)
 {
-	return READ_MPEG_REG(PARSER_SUB_WP);
+	return READ_PARSER_REG(PARSER_SUB_WP);
 }
 
 u32 stbuf_sub_start_get(void)
 {
-	return READ_MPEG_REG(PARSER_SUB_START_PTR);
+	return READ_PARSER_REG(PARSER_SUB_START_PTR);
 }

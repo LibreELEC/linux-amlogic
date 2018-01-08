@@ -25,9 +25,13 @@
 #include "arch/log.h"
 
 
+struct port_priv_s {
+	struct vdec_s *vdec;
+	struct stream_port_s *port;
+};
+
 struct stream_buf_s *get_buf_by_type(u32 type);
 
-extern void amvenc_dos_top_reg_fix(void);
 /*video.c provide*/
 extern u32 trickmode_i;
 struct amvideocap_req;
@@ -48,4 +52,5 @@ struct device *amports_get_dma_device(void);
 struct device *get_codec_cma_device(void);
 int amports_get_debug_flags(void);
 
+unsigned char is_mult_inc(unsigned int);
 #endif

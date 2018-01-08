@@ -29,14 +29,20 @@
 #ifdef TVBUS_REG_ADDR
 #define R_APB_REG(reg) aml_read_reg32(TVBUS_REG_ADDR(reg))
 #define W_APB_REG(reg, val) aml_write_reg32(TVBUS_REG_ADDR(reg), val)
+#define R_VBI_APB_REG(reg) aml_read_reg32(TVBUS_REG_ADDR(reg))
+#define W_VBI_APB_REG(reg, val) aml_write_reg32(TVBUS_REG_ADDR(reg), val)
 #define R_APB_BIT(reg, start, len) \
 	aml_get_reg32_bits(TVBUS_REG_ADDR(reg), start, len)
 #define W_APB_BIT(reg, val, start, len) \
+	aml_set_reg32_bits(TVBUS_REG_ADDR(reg), val, start, len)
+#define W_VBI_APB_BIT(reg, val, start, len) \
 	aml_set_reg32_bits(TVBUS_REG_ADDR(reg), val, start, len)
 #else
 #if 1
 extern int tvafe_reg_read(unsigned int reg, unsigned int *val);
 extern int tvafe_reg_write(unsigned int reg, unsigned int val);
+extern int tvafe_vbi_reg_read(unsigned int reg, unsigned int *val);
+extern int tvafe_vbi_reg_write(unsigned int reg, unsigned int val);
 extern int tvafe_hiu_reg_read(unsigned int reg, unsigned int *val);
 extern int tvafe_hiu_reg_write(unsigned int reg, unsigned int val);
 #else
@@ -65,6 +71,29 @@ static inline void W_APB_REG(uint32_t reg,
 				 const uint32_t val)
 {
 	tvafe_reg_write(reg, val);
+}
+
+static inline uint32_t R_VBI_APB_REG(uint32_t reg)
+{
+	unsigned int val = 0;
+	tvafe_vbi_reg_read(reg, &val);
+	return val;
+}
+
+static inline void W_VBI_APB_REG(uint32_t reg,
+				 const uint32_t val)
+{
+	tvafe_vbi_reg_write(reg, val);
+}
+
+static inline void W_VBI_APB_BIT(uint32_t reg,
+				    const uint32_t value,
+				    const uint32_t start,
+				    const uint32_t len)
+{
+	W_VBI_APB_REG(reg, ((R_VBI_APB_REG(reg) &
+			     ~(((1L << (len)) - 1) << (start))) |
+			    (((value) & ((1L << (len)) - 1)) << (start))));
 }
 
 static inline void W_APB_BIT(uint32_t reg,
@@ -363,9 +392,9 @@ enum tvin_hdr_eotf_e {
 };
 
 enum tvin_hdr_state_e {
-	HDR_STATE_OLD,
-	HDR_STATE_READ,
-	HDR_STATE_NEW,
+	HDR_STATE_NULL,
+	HDR_STATE_GET,
+	HDR_STATE_SET,
 };
 
 struct tvin_hdr_property_s {
@@ -377,12 +406,18 @@ struct tvin_hdr_data_s {
 	enum tvin_hdr_eotf_e eotf:8;
 	unsigned char metadata_id;
 	unsigned char lenght;
-	enum tvin_hdr_state_e data_status:8;
+	unsigned char reserved;
 	struct tvin_hdr_property_s primaries[3];
 	struct tvin_hdr_property_s white_points;
 	struct tvin_hdr_property_s master_lum;/* max min lum */
 	unsigned int mcll;
 	unsigned int mfall;
+};
+
+struct tvin_hdr_info_s {
+	struct tvin_hdr_data_s hdr_data;
+	enum tvin_hdr_state_e hdr_state;
+	unsigned int hdr_check_cnt;
 };
 
 struct tvin_sig_property_s {
@@ -398,11 +433,16 @@ struct tvin_sig_property_s {
 	unsigned int		he;	/* for horizontal end cut window */
 	unsigned int		vs;	/* for vertical start cut window */
 	unsigned int		ve;	/* for vertical end cut window */
+	unsigned int		pre_vs;	/* for vertical start cut window */
+	unsigned int		pre_ve;	/* for vertical end cut window */
+	unsigned int		pre_hs;	/* for horizontal start cut window */
+	unsigned int		pre_he;	/* for horizontal end cut window */
 	unsigned int		decimation_ratio;	/* for decimation */
 	unsigned int		colordepth; /* for color bit depth */
 	unsigned int		vdin_hdr_Flag;
 	enum tvin_color_fmt_range_e color_fmt_range;
-	struct tvin_hdr_data_s hdr_data;
+	struct tvin_hdr_info_s hdr_info;
+	bool dolby_vision;/*is signal dolby version*/
 };
 
 #define TVAFE_VF_POOL_SIZE			6 /* 8 */

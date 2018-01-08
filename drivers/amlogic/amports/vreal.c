@@ -36,6 +36,8 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
+#include <linux/amlogic/codec_mm/codec_mm.h>
+
 #include "amports_priv.h"
 #include "vdec.h"
 #include "vdec_reg.h"
@@ -48,7 +50,9 @@
 #include "rmparser.h"
 #include "vreal.h"
 #include "arch/register.h"
+#include <linux/amlogic/codec_mm/configs.h>
 
+#include "decoder/decoder_bmmu_box.h"
 
 #define DRIVER_NAME "amvdec_real"
 #define MODULE_NAME "amvdec_real"
@@ -91,6 +95,9 @@
 #define VF_POOL_SIZE        16
 #define VF_BUF_NUM          4
 #define PUT_INTERVAL        (HZ/100)
+#define WORKSPACE_SIZE		(1 * SZ_1M)
+#define MAX_BMMU_BUFFER_NUM	(VF_BUF_NUM + 1)
+#define RV_AI_BUFF_START_IP	 0x01f00000
 
 static struct vframe_s *vreal_vf_peek(void *);
 static struct vframe_s *vreal_vf_get(void *);
@@ -98,7 +105,7 @@ static void vreal_vf_put(struct vframe_s *, void *);
 static int vreal_vf_states(struct vframe_states *states, void *);
 static int vreal_event_cb(int type, void *data, void *private_data);
 
-static void vreal_prot_init(void);
+static int vreal_prot_init(void);
 static void vreal_local_init(void);
 
 static const char vreal_dec_id[] = "vreal-dev";
@@ -117,6 +124,7 @@ static const struct vframe_operations_s vreal_vf_provider = {
 };
 
 static struct vframe_provider_s vreal_vf_prov;
+static void *mm_blk_handle;
 
 static DECLARE_KFIFO(newframe_q, struct vframe_s *, VF_POOL_SIZE);
 static DECLARE_KFIFO(display_q, struct vframe_s *, VF_POOL_SIZE);
@@ -129,8 +137,8 @@ static u32 frame_width, frame_height, frame_dur, frame_prog;
 static u32 saved_resolution;
 static struct timer_list recycle_timer;
 static u32 stat;
-static unsigned long buf_start;
-static u32 buf_size, buf_offset;
+static u32 buf_size = 32 * 1024 * 1024;
+static u32 buf_offset;
 static u32 vreal_ratio;
 u32 vreal_format;
 static u32 wait_key_frame;
@@ -143,6 +151,7 @@ static u32 real_err_count;
 
 static u32 fatal_flag;
 static s32 wait_buffer_counter;
+static bool is_reset;
 
 static DEFINE_SPINLOCK(lock);
 
@@ -337,6 +346,10 @@ static irqreturn_t vreal_isr(int irq, void *dev_id)
 		vf->type_original = vf->type;
 
 		vfbuf_use[buffer_index] = 1;
+		vf->mem_handle =
+			decoder_bmmu_box_get_mem_handle(
+				mm_blk_handle,
+				buffer_index);
 
 		kfifo_put(&display_q, (const struct vframe_s *)vf);
 
@@ -490,14 +503,14 @@ static void vreal_put_timer_func(unsigned long arg)
 	add_timer(timer);
 }
 
-int vreal_dec_status(struct vdec_status *vstatus)
+int vreal_dec_status(struct vdec_s *vdec, struct vdec_info *vstatus)
 {
-	vstatus->width = vreal_amstream_dec_info.width;
-	vstatus->height = vreal_amstream_dec_info.height;
+	vstatus->frame_width = vreal_amstream_dec_info.width;
+	vstatus->frame_height = vreal_amstream_dec_info.height;
 	if (0 != vreal_amstream_dec_info.rate)
-		vstatus->fps = 96000 / vreal_amstream_dec_info.rate;
+		vstatus->frame_rate = 96000 / vreal_amstream_dec_info.rate;
 	else
-		vstatus->fps = 96000;
+		vstatus->frame_rate = 96000;
 	vstatus->error_count = real_err_count;
 	vstatus->status =
 		((READ_VREG(STATUS_AMRISC) << 16) | fatal_flag) | stat;
@@ -505,14 +518,20 @@ int vreal_dec_status(struct vdec_status *vstatus)
 	return 0;
 }
 
-/****************************************/
-static void vreal_canvas_init(void)
+int vreal_set_isreset(struct vdec_s *vdec, int isreset)
 {
-	int i;
+	is_reset = isreset;
+	return 0;
+}
+
+/****************************************/
+static int  vreal_canvas_init(void)
+{
+	int i, ret;
+	unsigned long buf_start;
 	u32 canvas_width, canvas_height;
-	u32 decbuf_size, decbuf_y_size, decbuf_uv_size;
-	u32 disp_addr = 0xffffffff;
-	u32 buff_off = 0;
+	u32 alloc_size, decbuf_size, decbuf_y_size, decbuf_uv_size;
+
 	if (buf_size <= 0x00400000) {
 		/* SD only */
 		canvas_width = 768;
@@ -560,86 +579,69 @@ static void vreal_canvas_init(void)
 			decbuf_size = 0x300000;
 		}
 		#endif
-	/*	canvas_width = 1920;
-		canvas_height = 1088;
-		decbuf_y_size = 0x200000;
-		decbuf_uv_size = 0x80000;
-		decbuf_size = 0x300000;*/
 	}
 
-	if (is_vpp_postblend()) {
-		struct canvas_s cur_canvas;
+	for (i = 0; i < MAX_BMMU_BUFFER_NUM; i++) {
+		/* workspace mem */
+		if (i == (MAX_BMMU_BUFFER_NUM - 1))
+			alloc_size =  WORKSPACE_SIZE;
+		else
+			alloc_size = decbuf_size;
 
-		canvas_read((READ_VCBUS_REG(VD1_IF0_CANVAS0) & 0xff),
-					&cur_canvas);
-		disp_addr = (cur_canvas.addr + 7) >> 3;
-	}
+		ret = decoder_bmmu_box_alloc_buf_phy(mm_blk_handle, i,
+				alloc_size, DRIVER_NAME, &buf_start);
+		if (ret < 0)
+			return ret;
 
-	for (i = 0; i < 4; i++) {
-		u32 one_buf_start = buf_start + buff_off;
-		if (((one_buf_start + 7) >> 3) == disp_addr) {
-			/*last disp buffer, to next..*/
-			buff_off += decbuf_size;
-			one_buf_start = buf_start + buff_off;
-			pr_info("one_buf_start %d,=== %x disp_addr %x",
-				i, one_buf_start, disp_addr);
+		if (i == (MAX_BMMU_BUFFER_NUM - 1)) {
+			buf_offset = buf_start - RV_AI_BUFF_START_IP;
+			continue;
 		}
-		if (buff_off < 0x01000000 &&
-			buff_off + decbuf_size > 0x0f00000){
-			/*0x01b00000 is references buffer.
-			to next 16M;*/
-			buff_off = 16 * SZ_1M;/*next 16M*/
-			one_buf_start = buf_start + buff_off;
-		}
-		if (buff_off + decbuf_size > buf_size) {
-			pr_err("ERROR::too small buffer for buf%d %d x%d ,size =%d\n",
-				i,
-				canvas_width,
-				canvas_height,
-				buf_size);
-		}
-		pr_info("alloced buffer %d at %x,%d\n",
-				i, one_buf_start, decbuf_size);
- #ifdef NV21
+
+#ifdef NV21
 		canvas_config(2 * i + 0,
-			one_buf_start,
+			buf_start,
 			canvas_width, canvas_height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
 		canvas_config(2 * i + 1,
-			one_buf_start +
+			buf_start +
 			decbuf_y_size, canvas_width,
 			canvas_height / 2, CANVAS_ADDR_NOWRAP,
 			CANVAS_BLKMODE_32X32);
- #else
+#else
 		canvas_config(3 * i + 0,
-			one_buf_start,
+			buf_start,
 			canvas_width, canvas_height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
 		canvas_config(3 * i + 1,
-			one_buf_start +
+			buf_start +
 			decbuf_y_size, canvas_width / 2,
 			canvas_height / 2, CANVAS_ADDR_NOWRAP,
 			CANVAS_BLKMODE_32X32);
 		canvas_config(3 * i + 2,
-			one_buf_start +
+			buf_start +
 			decbuf_y_size + decbuf_uv_size,
 			canvas_width / 2, canvas_height / 2,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
- #endif
-		buff_off = buff_off + decbuf_size;
+#endif
 	}
+
+	return 0;
 }
 
-static void vreal_prot_init(void)
+static int vreal_prot_init(void)
 {
+	int r;
 #if 1	/* MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6 */
 	WRITE_VREG(DOS_SW_RESET0, (1 << 7) | (1 << 6));
 	WRITE_VREG(DOS_SW_RESET0, 0);
 #else
-	WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC);
+	WRITE_RESET_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC);
 #endif
 
-	vreal_canvas_init();
+
+
+	r = vreal_canvas_init();
 
 	/* index v << 16 | u << 8 | y */
 #ifdef NV21
@@ -661,7 +663,7 @@ static void vreal_prot_init(void)
 	WRITE_VREG(DOS_SW_RESET0, (1 << 9) | (1 << 8));
 	WRITE_VREG(DOS_SW_RESET0, 0);
 #else
-	WRITE_MPEG_REG(RESET2_REGISTER, RESET_PIC_DC | RESET_DBLK);
+	WRITE_RESET_REG(RESET2_REGISTER, RESET_PIC_DC | RESET_DBLK);
 #endif
 
 	/* disable PSCALE for hardware sharing */
@@ -691,6 +693,7 @@ static void vreal_prot_init(void)
 #ifdef NV21
 	SET_VREG_MASK(MDEC_PIC_DC_CTRL, 1 << 17);
 #endif
+	return r;
 }
 
 static void vreal_local_init(void)
@@ -718,6 +721,19 @@ static void vreal_local_init(void)
 		vfpool[i].index = VF_BUF_NUM;
 		kfifo_put(&newframe_q, vf);
 	}
+
+	if (mm_blk_handle) {
+		decoder_bmmu_box_free(mm_blk_handle);
+		mm_blk_handle = NULL;
+	}
+
+	 mm_blk_handle = decoder_bmmu_box_alloc_box(
+			DRIVER_NAME,
+			0,
+			MAX_BMMU_BUFFER_NUM,
+			4 + PAGE_SHIFT,
+			CODEC_MM_FLAGS_CMA_CLEAR |
+			CODEC_MM_FLAGS_FOR_VDECODER);
 
 	decoder_state = 1;
 	hold = 0;
@@ -761,7 +777,7 @@ static void load_block_data(void *dest, unsigned int count)
 	return;
 }
 
-s32 vreal_init(void)
+s32 vreal_init(struct vdec_s *vdec)
 {
 	int r;
 
@@ -775,7 +791,7 @@ s32 vreal_init(void)
 
 	vreal_local_init();
 
-	r = rmparser_init();
+	r = rmparser_init(vdec);
 	if (r) {
 		amvdec_disable();
 
@@ -814,8 +830,9 @@ s32 vreal_init(void)
 	stat |= STAT_MC_LOAD;
 
 	/* enable AMRISC side protocol */
-	vreal_prot_init();
-
+	r = vreal_prot_init();
+	if (r < 0)
+		return r;
 	if (vdec_request_irq(VDEC_IRQ_1,  vreal_isr,
 		    "vreal-irq", (void *)vreal_dec_id)) {
 		amvdec_disable();
@@ -836,8 +853,9 @@ s32 vreal_init(void)
 	vf_reg_provider(&vreal_vf_prov);
 #endif
 
-	vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_HINT,
-		(void *)((unsigned long)vreal_amstream_dec_info.rate));
+	if (!is_reset)
+		vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_HINT,
+			(void *)((unsigned long)vreal_amstream_dec_info.rate));
 
 	stat |= STAT_VF_HOOK;
 
@@ -853,8 +871,6 @@ s32 vreal_init(void)
 
 	stat |= STAT_VDEC_RUN;
 
-	set_vdec_func(&vreal_dec_status);
-
 	pr_info("vreal init finished\n");
 
 	return 0;
@@ -866,57 +882,23 @@ void vreal_set_fatal_flag(int flag)
 		fatal_flag = PARSER_FATAL_ERROR;
 }
 
-/*TODO encoder*/
-/* extern void AbortEncodeWithVdec2(int abort); */
-
 static int amvdec_real_probe(struct platform_device *pdev)
 {
-	struct vdec_dev_reg_s *pdata =
-		(struct vdec_dev_reg_s *)pdev->dev.platform_data;
+	struct vdec_s *pdata = *(struct vdec_s **)pdev->dev.platform_data;
 
 	if (pdata == NULL) {
 		pr_info("amvdec_real memory resource undefined.\n");
 		return -EFAULT;
 	}
-
-	buf_start = pdata->mem_start;
-	buf_size = pdata->mem_end - pdata->mem_start + 1;
-	buf_offset = buf_start - RM_DEF_BUFFER_ADDR;
-
 	if (pdata->sys_info)
 		vreal_amstream_dec_info = *pdata->sys_info;
-	/* #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)&&(HAS_HDEC)) */
-	/* if(IS_MESON_M8_CPU){ */
-	if (has_hdec()) {
-		/* disable vdec2 dblk when miracast. */
-		int count = 0;
-		if (get_vdec2_usage() != USAGE_NONE)
-			/*TODO encoder */
-			/* AbortEncodeWithVdec2(1); */
-			while ((get_vdec2_usage() != USAGE_NONE)
-				   && (count < 10)) {
-				msleep(50);
-				count++;
-			}
 
-		if (get_vdec2_usage() != USAGE_NONE) {
-			pr_info("\namvdec_real_probe --- stop vdec2 fail.\n");
-			return -EBUSY;
-		}
-	}
-	/* } */
-	/* #endif */
+	pdata->dec_status = vreal_dec_status;
+	pdata->set_isreset = vreal_set_isreset;
+	is_reset = 0;
 
-
-	if (vreal_init() < 0) {
+	if (vreal_init(pdata) < 0) {
 		pr_info("amvdec_real init failed.\n");
-		/* #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)&&(HAS_HDEC) */
-		/* if(IS_MESON_M8_CPU) */
-		if (has_hdec()) {
-			/*TODO encoder */
-			/* AbortEncodeWithVdec2(0); */
-		}
-		/* #endif */
 		return -ENODEV;
 	}
 
@@ -941,8 +923,9 @@ static int amvdec_real_remove(struct platform_device *pdev)
 	}
 
 	if (stat & STAT_VF_HOOK) {
-		vf_notify_receiver(PROVIDER_NAME,
-			VFRAME_EVENT_PROVIDER_FR_END_HINT, NULL);
+		if (!is_reset)
+			vf_notify_receiver(PROVIDER_NAME,
+				VFRAME_EVENT_PROVIDER_FR_END_HINT, NULL);
 
 		vf_unreg_provider(&vreal_vf_prov);
 		stat &= ~STAT_VF_HOOK;
@@ -959,13 +942,10 @@ static int amvdec_real_remove(struct platform_device *pdev)
 
 	amvdec_disable();
 
-	/* #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)&&(HAS_HDEC) */
-	/* if(IS_MESON_M8_CPU) */
-	if (has_hdec()) {
-		/*TODO encoder */
-		/* AbortEncodeWithVdec2(0); */
+	if (mm_blk_handle) {
+		decoder_bmmu_box_free(mm_blk_handle);
+		mm_blk_handle = NULL;
 	}
-	/* #endif */
 	pr_info("frame duration %d, frames %d\n", frame_dur, frame_count);
 	return 0;
 }
@@ -988,6 +968,10 @@ static struct codec_profile_t amvdec_real_profile = {
 	.name = "real",
 	.profile = "rmvb,1080p+"
 };
+static struct mconfig real_configs[] = {
+	MC_PU32("stat", &stat),
+};
+static struct mconfig_node real_node;
 
 static int __init amvdec_real_driver_init_module(void)
 {
@@ -998,6 +982,8 @@ static int __init amvdec_real_driver_init_module(void)
 		return -ENODEV;
 	}
 	vcodec_profile_register(&amvdec_real_profile);
+	INIT_REG_NODE_CONFIGS("media.decoder", &real_node,
+		"real", real_configs, CONFIG_FOR_R);
 	return 0;
 }
 
@@ -1009,9 +995,6 @@ static void __exit amvdec_real_driver_remove_module(void)
 }
 
 /****************************************/
-
-module_param(stat, uint, 0664);
-MODULE_PARM_DESC(stat, "\n amvdec_real stat\n");
 
 module_init(amvdec_real_driver_init_module);
 module_exit(amvdec_real_driver_remove_module);

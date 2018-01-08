@@ -71,6 +71,7 @@ extern bool pre_scaler_en;
 
 #define VIU_MISC_AFBC_VD1           (1 << 20)
 
+#define VPP_CM_ENABLE            (1 << 28)
 #define VPP_VD2_ALPHA_WID           9
 #define VPP_VD2_ALPHA_MASK          0x1ff
 #define VPP_VD2_ALPHA_BIT           18
@@ -250,10 +251,16 @@ extern int power_key_pressed;
 #ifdef CONFIG_AM_VIDEO2
 extern void set_clone_frame_rate(unsigned int frame_rate, unsigned int delay);
 #endif
+extern struct vframe_provider_s *vf_get_provider_by_name(
+	const char *provider_name);
 
 extern void prot_get_parameter(u32 wide_mode, struct vframe_s *vf,
 			       struct vpp_frame_par_s *next_frame_par,
 			       const struct vinfo_s *vinfo);
+u32 get_blackout_policy(void);
+int get_video0_frame_info(struct vframe_s *vf);
+extern unsigned int DI_POST_REG_RD(unsigned int addr);
+extern int DI_POST_WR_REG_BITS(u32 adr, u32 val, u32 start, u32 len);
 #endif				/* VIDEO_H */
 
-u32 get_blackout_policy(void);
+

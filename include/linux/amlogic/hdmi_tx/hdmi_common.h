@@ -24,6 +24,7 @@
 	VIC_MAX_VALID_MODE and VIC_MAX_NUM in hdmi_tx_module.h */
 #define HDMITX_VIC420_OFFSET	0x100
 #define HDMITX_VIC420_FAKE_OFFSET 0x200
+#define HDMITX_VESA_OFFSET	0x300
 
 #define HDMITX_VIC_MASK			0xff
 
@@ -166,6 +167,32 @@ enum hdmi_vic {
 	HDMI_VIC_Y420_MAX,
 
 	HDMI_VIC_FAKE = HDMITX_VIC420_FAKE_OFFSET,
+	HDMIV_640x480p60hz = HDMITX_VESA_OFFSET,
+	HDMIV_800x480p60hz,
+	HDMIV_800x600p60hz,
+	HDMIV_852x480p60hz,
+	HDMIV_854x480p60hz,
+	HDMIV_1024x600p60hz,
+	HDMIV_1024x768p60hz,
+	HDMIV_1152x864p75hz,
+	HDMIV_1280x600p60hz,
+	HDMIV_1280x768p60hz,
+	HDMIV_1280x800p60hz,
+	HDMIV_1280x960p60hz,
+	HDMIV_1280x1024p60hz,
+	HDMIV_1360x768p60hz,
+	HDMIV_1366x768p60hz,
+	HDMIV_1400x1050p60hz,
+	HDMIV_1440x900p60hz,
+	HDMIV_1600x900p60hz,
+	HDMIV_1600x1200p60hz,
+	HDMIV_1680x1050p60hz,
+	HDMIV_1920x1200p60hz,
+	HDMIV_2160x1200p90hz,
+	HDMIV_2560x1080p60hz,
+	HDMIV_2560x1440p60hz,
+	HDMIV_2560x1600p60hz,
+	HDMIV_3440x1440p60hz,
 	HDMI_VIC_END,
 };
 
@@ -210,12 +237,15 @@ enum hdmi_vic {
 #define HDMI_4k2k_smpte_60_y420 HDMI_4096x2160p60_256x135_Y420
 
 enum hdmi_audio_fs;
+struct dtd;
 
 /* CEA TIMING STRUCT DEFINITION */
 struct hdmi_cea_timing {
 	unsigned int pixel_freq; /* Unit: 1000 */
+	unsigned int frac_freq; /* 1.001 shift */
 	unsigned int h_freq; /* Unit: Hz */
 	unsigned int v_freq; /* Unit: 0.001 Hz */
+	unsigned int vsync; /* Unit: Hz, rough data */
 	unsigned int vsync_polarity:1;
 	unsigned int hsync_polarity:1;
 	unsigned short h_active;
@@ -238,6 +268,7 @@ enum hdmi_color_depth {
 	COLORDEPTH_30B = 5,
 	COLORDEPTH_36B = 6,
 	COLORDEPTH_48B = 7,
+	COLORDEPTH_RESERVED,
 };
 
 enum hdmi_color_space {
@@ -251,6 +282,19 @@ enum hdmi_color_space {
 enum hdmi_color_range {
 	COLORRANGE_LIM,
 	COLORRANGE_FUL,
+};
+
+enum hdmi_3d_type {
+	T3D_FRAME_PACKING = 0,
+	T3D_FIELD_ALTER = 1,
+	T3D_LINE_ALTER = 2,
+	T3D_SBS_FULL = 3,
+	T3D_L_DEPTH = 4,
+	T3D_L_DEPTH_GRAPHICS = 5,
+	T3D_TAB = 6, /* Top and Buttom */
+	T3D_RSVD = 7,
+	T3D_SBS_HALF = 8,
+	T3D_DISABLE,
 };
 
 /* get hdmi cea timing */
@@ -326,15 +370,22 @@ enum hdmi_aspect_ratio {
 	TV_ASPECT_RATIO_MAX
 };
 
+struct vesa_standard_timing;
+
 struct hdmi_format_para *hdmi_get_fmt_paras(enum hdmi_vic vic);
+struct hdmi_format_para *hdmi_match_dtd_paras(struct dtd *t);
 void check_detail_fmt(void);
 unsigned int hdmi_get_csc_coef(
 	unsigned int input_format, unsigned int output_format,
 	unsigned int color_depth, unsigned int color_format,
 	unsigned char **coef_array, unsigned int *coef_length);
-struct hdmi_format_para *hdmi_get_fmt_name(char const *name);
+struct hdmi_format_para *hdmi_get_fmt_name(char const *name, char const *attr);
+const char *hdmi_get_str_cd(struct hdmi_format_para *para);
+const char *hdmi_get_str_cs(struct hdmi_format_para *para);
+const char *hdmi_get_str_cr(struct hdmi_format_para *para);
 unsigned int hdmi_get_aud_n_paras(enum hdmi_audio_fs fs,
 	enum hdmi_color_depth cd, unsigned int tmds_clk);
+struct hdmi_format_para *hdmi_get_vesa_paras(struct vesa_standard_timing *t);
 
 /* HDMI Audio Parmeters */
 /* Refer to CEA-861-D Page 88 */
@@ -503,7 +554,7 @@ struct hdmi_rx_audioinfo {
 	unsigned CTS;
 };
 
-#define AUDIO_PARA_MAX_NUM       13
+#define AUDIO_PARA_MAX_NUM       14
 struct hdmi_audio_fs_ncts {
 	struct {
 		unsigned int tmds_clk;
@@ -530,6 +581,35 @@ struct parse_cs {
 struct parse_cr {
 	enum hdmi_color_range cr;
 	const char *name;
+};
+
+/* Refer CEA861-D Page 116 Table 55 */
+struct dtd {
+	unsigned short pixel_clock;
+	unsigned short h_active;
+	unsigned short h_blank;
+	unsigned short v_active;
+	unsigned short v_blank;
+	unsigned short h_sync_offset;
+	unsigned short h_sync;
+	unsigned short v_sync_offset;
+	unsigned short v_sync;
+	unsigned char h_image_size;
+	unsigned char v_image_size;
+	unsigned char h_border;
+	unsigned char v_border;
+	unsigned char flags;
+	enum hdmi_vic vic;
+};
+
+struct vesa_standard_timing {
+	unsigned short hactive;
+	unsigned short vactive;
+	unsigned short hblank;
+	unsigned short vblank;
+	unsigned short hsync;
+	unsigned short tmds_clk; /* Value = Pixel clock ?? 10,000 */
+	enum hdmi_vic vesa_timing;
 };
 
 #endif

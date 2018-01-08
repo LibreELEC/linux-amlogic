@@ -13,7 +13,8 @@
 /* cvd2 memory size defines */
 #define DECODER_MOTION_BUFFER_ADDR_OFFSET   0x70000
 #define DECODER_MOTION_BUFFER_4F_LENGTH     0x15a60
-#define DECODER_VBI_ADDR_OFFSET             0x86000
+/*motion is not use,only 3d-com need mem:1135x625x10bit/8 * 4 = 0x361ef8*/
+#define DECODER_VBI_ADDR_OFFSET             0x400000/*0x86000*/
 #define DECODER_VBI_VBI_SIZE                0x1000
 #define DECODER_VBI_START_ADDR              0x0
 
@@ -36,11 +37,13 @@ Do not trust Reg no signal flag */
 #define TVAFE_CVD2_AUTO_DE_CHECK_CNT        100
 /* check lines counter 100*10ms */
 #define TVAFE_CVD2_AUTO_DE_TH               0xd0
+#define TVAFE_CVD2_AUTO_VS_TH               0x6
 /* audo de threshold */
 #define TVAFE_CVD2_PAL_DE_START             0x17
 /* default de start value for pal */
 
-
+/* test with vlsi guys */
+#define TVAFE_VS_VE_VAL                     20
 /**************************************** */
 /* *** enum definitions *****************/
 /* **************************************/
@@ -107,6 +110,8 @@ struct tvafe_cvd2_info_s {
 	unsigned int                hcnt64[4];
 	unsigned int                hcnt64_cnt;
 #endif
+	unsigned int		    hs_adj_level;
+	unsigned int		    vs_adj_level;
 #ifdef TVAFE_SET_CVBS_PGA_EN
 	unsigned short              dgain[4];
 	unsigned short              dgain_cnt;
@@ -117,6 +122,10 @@ struct tvafe_cvd2_info_s {
 	bool                        non_std_config;
 	bool                        non_std_worst;
 	bool                        adc_reload_en;
+	bool			    hs_adj_en;
+	bool			    vs_adj_en;
+	/*0:+;1:-*/
+	bool			    hs_adj_dir;
 
 
 #ifdef TVAFE_CVD2_ADC_REG_CHECK
@@ -161,6 +170,9 @@ extern void tvafe_cvd2_adj_pga(struct tvafe_cvd2_s *cvd2);
 extern void tvafe_cvd2_adj_cdto(struct tvafe_cvd2_s *cvd2,
 			unsigned int hcnt64);
 #endif
+extern void tvafe_cvd2_adj_hs(struct tvafe_cvd2_s *cvd2,
+			unsigned int hcnt64);
+
 extern void tvafe_cvd2_set_default_cdto(struct tvafe_cvd2_s *cvd2);
 extern void tvafe_cvd2_set_default_de(struct tvafe_cvd2_s *cvd2);
 extern void tvafe_cvd2_check_3d_comb(struct tvafe_cvd2_s *cvd2);
@@ -175,6 +187,10 @@ extern void get_cvd_version(const char **ver, const char **last_ver);
 extern void tvafe_snow_config(unsigned int onoff);
 extern void tvafe_snow_config_clamp(unsigned int onoff);
 extern void tvafe_snow_config_acd(void);
+extern void tvafe_snow_config_acd_resume(void);
+extern enum tvin_aspect_ratio_e tvafe_cvd2_get_wss(void);
+
+extern bool tvafe_snow_function_flag;
 
 #endif /* _TVAFE_CVD_H */
 
