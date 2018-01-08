@@ -588,8 +588,6 @@ static void ir_input_device_init(struct input_dev *dev,
 	dev->id.vendor  = 0x0001;
 	dev->id.product = 0x0001;
 	dev->id.version = 0x0100;
-	dev->rep[REP_DELAY] = 0xffffffff;  /*close input repeat*/
-	dev->rep[REP_PERIOD] = 0xffffffff; /*close input repeat*/
 }
 
 static int remote_probe(struct platform_device *pdev)

@@ -202,6 +202,7 @@ int remote_register_device(struct remote_dev *dev)
 	}
 
 	__set_bit(EV_KEY, dev->input_device->evbit);
+	__set_bit(EV_REP, dev->input_device->evbit);
 
 	for (i = 0; i < KEY_MAX; i++)
 		__set_bit(i, dev->input_device->keybit);
