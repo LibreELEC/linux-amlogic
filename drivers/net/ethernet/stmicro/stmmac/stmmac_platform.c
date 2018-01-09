@@ -75,7 +75,7 @@ static const struct of_device_id stmmac_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, stmmac_dt_ids);
 #ifdef CONFIG_DWMAC_MESON
 static u8 DEFMAC[] = {0, 0, 0, 0, 0, 0};
-static unsigned int g_mac_addr_setup;
+unsigned int g_mac_addr_setup = 0;
 static unsigned char chartonum(char c)
 {
 	if (c >= '0' && c <= '9')

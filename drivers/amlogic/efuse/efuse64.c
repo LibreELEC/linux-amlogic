@@ -381,6 +381,26 @@ error_exit:
 	return ret;
 }
 
+int efuse_get_mac(char *addr)
+{
+	char buf[6];
+	int ret;
+
+	/* Copy H/W MAC address from eFuse programmed on production.
+	 * If missing or an error, C0:FF:EE:00:01:9F will be used.
+	 */
+	ret = efuse_user_attr_show("mac", buf);
+	if (ret < 0) {
+		pr_err("%s: failed to read MAC\n", __func__);
+	} else {
+		printk("%s: %pM\n", __func__, buf);
+		memcpy(addr, buf, 6);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(efuse_get_mac);
+
 static ssize_t userdata_show(struct class *cla,
 	struct class_attribute *attr, char *buf)
 {
