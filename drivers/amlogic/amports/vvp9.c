@@ -5697,8 +5697,8 @@ static int prepare_display_buf(struct VP9Decoder_s *pbi,
 			pbi->vf_pre_count++;
 #ifndef CONFIG_MULTI_DEC
 			/*count info*/
-			gvs->frame_dur = pbi->frame_dur;
-			vdec_count_info(gvs, 0, stream_offset);
+			pbi->gvs->frame_dur = pbi->frame_dur;
+			vdec_count_info(pbi->gvs, 0, stream_offset);
 #endif
 			vf_notify_receiver(pbi->provider_name,
 			VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);
@@ -6460,15 +6460,17 @@ int vvp9_dec_status(struct vdec_s *vdec, struct vdec_info *vstatus)
 	vstatus->status = vp9->stat | vp9->fatal_error;
 	vstatus->frame_dur = vp9->frame_dur;
 #ifndef CONFIG_MULTI_DEC
-	vstatus->bit_rate = gvs->bit_rate;
-	vstatus->frame_data = gvs->frame_data;
-	vstatus->total_data = gvs->total_data;
-	vstatus->frame_count = gvs->frame_count;
-	vstatus->error_frame_count = gvs->error_frame_count;
-	vstatus->drop_frame_count = gvs->drop_frame_count;
-	vstatus->total_data = gvs->total_data;
-	vstatus->samp_cnt = gvs->samp_cnt;
-	vstatus->offset = gvs->offset;
+	if (vp9->gvs) {
+		vstatus->bit_rate = vp9->gvs->bit_rate;
+		vstatus->frame_data = vp9->gvs->frame_data;
+		vstatus->total_data = vp9->gvs->total_data;
+		vstatus->frame_count = vp9->gvs->frame_count;
+		vstatus->error_frame_count = vp9->gvs->error_frame_count;
+		vstatus->drop_frame_count = vp9->gvs->drop_frame_count;
+		vstatus->total_data = vp9->gvs->total_data;
+		vstatus->samp_cnt = vp9->gvs->samp_cnt;
+		vstatus->offset = vp9->gvs->offset;
+	}
 	snprintf(vstatus->vdec_name, sizeof(vstatus->vdec_name),
 		"%s", DRIVER_NAME);
 #endif
