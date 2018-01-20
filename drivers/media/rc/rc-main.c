@@ -31,7 +31,7 @@ DECLARE_BITMAP(ir_core_dev_number, IRRCV_NUM_DEVICES);
 #define IR_TAB_MAX_SIZE	8192
 
 /* FIXME: IR_KEYPRESS_TIMEOUT should be protocol specific */
-#define IR_KEYPRESS_TIMEOUT 150
+#define IR_KEYPRESS_TIMEOUT 250
 
 /* Used to keep track of known keymaps */
 static LIST_HEAD(rc_map_list);
