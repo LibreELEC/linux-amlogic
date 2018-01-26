@@ -106,6 +106,8 @@ obj-$(CONFIG_MESON_SUSPEND)	+= pm/
 
 obj-$(CONFIG_AM_DVB)		+= dvb_tv/
 
+obj-$(CONFIG_WETEK)		+= wetek/
+
 obj-$(CONFIG_MESON_MHU_MBOX)	+= mailbox/
 
 obj-$(CONFIG_AML_RDMA)		+= rdma/
