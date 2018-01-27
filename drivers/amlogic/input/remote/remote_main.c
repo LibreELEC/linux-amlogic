@@ -913,7 +913,6 @@ static int remote_resume(struct platform_device *pdev)
 			input_sync(gp_remote->input);
 			input_event(gp_remote->input, EV_KEY, KEY_POWER, 0);
 			input_sync(gp_remote->input);
-
 			/*aml_write_reg32(P_AO_RTC_ADDR0,
 			(aml_read_reg32(P_AO_RTC_ADDR0) | (0x0000f000)));*/
 			aml_write_aobus(AO_RTI_STATUS_REG2, 0);
@@ -921,10 +920,12 @@ static int remote_resume(struct platform_device *pdev)
 	} else {
 		if (get_resume_method() == REMOTE_WAKEUP) {
 			input_dbg("remote_wakeup\n");
+#ifndef CONFIG_GXBB_FORCE_POWER_ON_STATE_AFTER_RESUME
 			input_event(gp_remote->input, EV_KEY, KEY_POWER, 1);
 			input_sync(gp_remote->input);
 			input_event(gp_remote->input, EV_KEY, KEY_POWER, 0);
 			input_sync(gp_remote->input);
+#endif
 		}
 
 		if (get_resume_method() == REMOTE_CUS_WAKEUP) {

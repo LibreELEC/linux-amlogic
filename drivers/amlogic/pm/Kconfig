@@ -19,3 +19,10 @@ config GXBB_SUSPEND
     help
       This is the Amlogic suspend  driver
 
+config GXBB_FORCE_POWER_ON_STATE_AFTER_RESUME
+    bool "Force to request the Power ON state after a resume"
+    depends on WAKELOCK && EARLYSUSPEND && GXBB_SUSPEND
+    default n
+    help
+      Force to request the Power ON state after a resume, causing to execute the late resume
+      and prevent transition back into the suspended state.

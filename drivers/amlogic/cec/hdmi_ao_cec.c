@@ -1393,10 +1393,12 @@ static int cec_late_check_rx_buffer(void)
 
 void cec_key_report(int suspend)
 {
+#ifndef CONFIG_GXBB_FORCE_POWER_ON_STATE_AFTER_RESUME
 	input_event(cec_dev->cec_info.remote_cec_dev, EV_KEY, KEY_POWER, 1);
 	input_sync(cec_dev->cec_info.remote_cec_dev);
 	input_event(cec_dev->cec_info.remote_cec_dev, EV_KEY, KEY_POWER, 0);
 	input_sync(cec_dev->cec_info.remote_cec_dev);
+#endif
 	if (!suspend)
 		CEC_INFO("== WAKE UP BY CEC ==\n")
 	else
