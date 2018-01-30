@@ -59,7 +59,7 @@
 		system:system
 		{
 			pname = "system";
-			size = <0x0 0x80000000>;
+			size = <0x0 0x20000000>;
 			mask = <1>;
 		};
 		cache:cache
