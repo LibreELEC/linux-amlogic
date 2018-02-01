@@ -916,7 +916,7 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			break;
 		}
 	case FBIO_WAITFORVSYNC:
-		osd_wait_vsync_event();
+		osd_wait_vsync_hw();
 		ret = copy_to_user(argp, &ret, sizeof(u32));
 		break;
 	default:
