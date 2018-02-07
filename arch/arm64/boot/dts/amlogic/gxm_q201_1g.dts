@@ -25,6 +25,7 @@
 #include "mesongxm.dtsi"
 #include "partition_mbox.dtsi"
 / {
+	le-dt-id = "gxm_q201_1g";
 	model = "Amlogic";
 	compatible = "amlogic, Gxm";
 	amlogic-dt-id = "gxm_q201_1g";
