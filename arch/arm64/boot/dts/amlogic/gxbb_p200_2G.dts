@@ -13,6 +13,7 @@
 #include "mesongxbb.dtsi"
 #include "partition_mbox.dtsi"
 / {
+	le-dt-id = "gxbb_p200_2G";
 	model = "Amlogic";
 	amlogic-dt-id = "gxb_p200_2g";
 	compatible = "amlogic, Gxbb";
