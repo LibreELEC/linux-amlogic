@@ -981,7 +981,7 @@ static ssize_t store_edid(struct device *dev,
 
 PROCESS_END:
 	kfree(p);
-	return 16;
+	return count;
 }
 
 /* rawedid attr */
@@ -1464,7 +1464,7 @@ static ssize_t store_config(struct device *dev,
 				DRM_DB, DRM_HB);
 	} else if (strncmp(buf, "vsif", 4) == 0)
 		hdmitx_set_vsif_pkt(buf[4] - '0', buf[5] == '1');
-	return 16;
+	return count;
 }
 
 static ssize_t show_aud_mute(struct device *dev,
