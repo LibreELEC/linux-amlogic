@@ -971,4 +971,10 @@
 	                   /*all channels use the default clock source XTAL_CLK*/
 	                   /*and you can shoose it in file dt-bindings/pwm/meson.h*/
 	};
+
+	le-vfd {
+		compatible = "le,vfd";
+		dev_name = "le-vfd";
+		status = "okay";
+	};
 };/* end of / */
