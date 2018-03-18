@@ -26,7 +26,7 @@ static bool dnr_reg_update = 1;/*gxtvbb can't work normal,must set to 0*/
 module_param(dnr_reg_update, bool, 0644);
 MODULE_PARM_DESC(dnr_reg_update, "/n dnr dm enable debug /n");
 
-static unsigned int nr2_en = 0x1;
+static unsigned int nr2_en = 0x0;
 module_param_named(nr2_en, nr2_en, uint, 0644);
 
 int global_bs_calc_sw(int *pGbsVldCnt,
