@@ -950,6 +950,12 @@
 	                   /*and you can shoose it in file dt-bindings/pwm/meson.h*/
 	};
 
+	le-vfd {
+		compatible = "le,vfd";
+		dev_name = "le-vfd";
+		status = "okay";
+	};
+
 };/* end of / */
 
 &gpu{
