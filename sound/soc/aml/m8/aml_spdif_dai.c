@@ -259,7 +259,7 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	}
 
 	if (runtime->rate == 192000 && runtime->channels == 8 && runtime->format == SNDRV_PCM_FORMAT_S16) {
-		IEC958_mode_codec = 8; /* TrueHD/DTS-HD MA */
+		// IEC958_mode_codec = 8; /* TrueHD/DTS-HD MA */
 		pr_info("set 4x audio clk for 958\n");
 		aml_cbus_update_bits(AIU_CLK_CTRL, 3 << 4, 0 << 4);
 	} else if (runtime->rate == 192000 && runtime->channels == 2 && runtime->format == SNDRV_PCM_FORMAT_S16) {
@@ -308,7 +308,7 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 	set.chan_stat->chstat0_r = set.chan_stat->chstat0_l;
 
 	/* AES3+2 */
-	if (IEC958_mode_codec == 8) {
+	if (IEC958_mode_codec == 8 || IEC958_mode_codec == 7) {
 		set.chan_stat->chstat1_l = 0x0900;
 	} else if (runtime->rate == 192000) {
 		set.chan_stat->chstat1_l = 0x0e00;
@@ -334,8 +334,11 @@ void aml_hw_iec958_init(struct snd_pcm_substream *substream, int samesrc)
 
 	/* notify hdmi to set audio type */
 	if (IEC958_mode_codec == 8) {
-		/* TrueHD/DTS-HD MA */
+		/* DTS-HD MA */
 		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD_MA, substream);
+       } else if (IEC958_mode_codec == 7) {
+               /* TrueHD */
+               aout_notifier_call_chain(AOUT_EVENT_RAWDATA_MAT_MLP, substream);
 	} else if (iec958_mode == AIU_958_MODE_PCM_RAW) {
 		/* AC3/DTS/EAC3 */
 		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD, substream);
