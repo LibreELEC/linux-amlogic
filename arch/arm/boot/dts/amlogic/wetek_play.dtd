@@ -1374,6 +1374,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "dvb_s_ts2_pins_match" = "pinctrl-1"
 	dvb{
 		compatible = "amlogic,dvb";
+		dev_name = "wetek-dvb";
 		/*"parallel","serial","disable"*/
 		ts2 = "parallel";
 		ts2_control = <0>;
