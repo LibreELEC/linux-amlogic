@@ -592,27 +592,6 @@ static long amjpegdec_ioctl(struct file *file, unsigned int cmd, ulong arg)
 	return r;
 }
 
-static int mmap(struct file *filp, struct vm_area_struct *vma)
-{
-	unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
-	unsigned vm_size = vma->vm_end - vma->vm_start;
-
-	if (vm_size == 0)
-		return -EAGAIN;
-	/* pr_info("mmap:%x\n",vm_size); */
-	off += jegdec_mem_info.canv_addr;
-
-	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
-
-	if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
-		vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
-		pr_info("set_cached: failed remap_pfn_range\n");
-		return -EAGAIN;
-	}
-	return 0;
-
-}
-
 #ifdef CONFIG_COMPAT
 static long amjpegdec_compat_ioctl(struct file *filp,
 			      unsigned int cmd, unsigned long args)
@@ -629,7 +608,6 @@ static long amjpegdec_compat_ioctl(struct file *filp,
 static const struct file_operations amjpegdec_fops = {
 	.owner = THIS_MODULE,
 	.open = amjpegdec_open,
-	.mmap = mmap,
 	.release = amjpegdec_release,
 	.unlocked_ioctl = amjpegdec_ioctl,
 #ifdef CONFIG_COMPAT
