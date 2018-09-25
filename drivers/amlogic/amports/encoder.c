@@ -3139,15 +3139,27 @@ static s32 avc_mmap(struct file *filp, struct vm_area_struct *vma)
 	ulong off = vma->vm_pgoff << PAGE_SHIFT;
 	ulong vma_size = vma->vm_end - vma->vm_start;
 
-	if (vma_size == 0) {
-		enc_pr(LOG_ERROR, "vma_size is 0, wq:%p.\n", (void *)wq);
+	if ((vma_size == 0) || !wq) {
+		enc_pr(LOG_ERROR, "vma_size is 0x%lx or wq:%p.\n",
+			vma_size, (void *)wq);
 		return -EAGAIN;
 	}
+
 	if (!off)
-		off += wq->mem.buf_start;
+		off = wq->mem.buf_start;
+
+	if ((off + vma_size) > (wq->mem.buf_start + wq->mem.buf_size)
+		|| (off < wq->mem.buf_start)) {
+		enc_pr(LOG_ERROR,
+			"vma_size:0x%lx, off:0x%lx, buffsize:0x%x, wq:%p.\n",
+			vma_size, off, wq->mem.buf_size, (void *)wq);
+		return -EAGAIN;
+	}
+
 	enc_pr(LOG_ALL,
-		"vma_size is %ld , off is %ld, wq:%p.\n",
-		vma_size , off, (void *)wq);
+		"vm_pgoff:0x%lx, size:0x%lx, buffstart:0x%x, wq:%p.\n",
+		(vma->vm_pgoff << PAGE_SHIFT), vma_size,
+		wq->mem.buf_start, (void *)wq);
 	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
 	/* vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot); */
 	if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
